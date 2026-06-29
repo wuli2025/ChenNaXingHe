@@ -32,11 +32,10 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://llmwiki.cloud/downloads/latest.json",
         "https://gh-proxy.com/https://github.com/wuli2025/chuanying/releases/latest/download/latest.json",
         "https://github.com/wuli2025/chuanying/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyOTE3RUQ2RTExMEE1QTgKUldTb3BSRGgxbjZSRWtmTDBvUVlDR1hSTkIzY0k4TGRKbTJxOWtmRUpDMUYyL01LYnViWTVVNy8K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQxRERGNjI5NkJGRjEwNEMKUldSTUVQOXJLZmJkMFpCTWczZ0JaNUo3WG5uQktHYlFJRFVTUitmUHZKUjB5b3BEdVlrelJUQVQK",
       "windows": {
         "installMode": "passive"
       }
