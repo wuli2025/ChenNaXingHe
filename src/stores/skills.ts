@@ -4,10 +4,14 @@ import { ref } from "vue";
 const STORAGE_KEY = "polaris:enabled-skills";
 // 存"已种入过的默认 id 列表"（旧版本可能存的是字符串 "1"）
 const SEED_KEY = "polaris:default-skills-seeded";
-// 软件自带、默认开启的技能：深度搜索 + 官方 Skill 创建向导 + CloakBrowser 默认浏览器
-// + browser-use 浏览器智能体（底层走 CloakBrowser）
-// （每个 id 只种一次；用户关掉后不会被重新打开）
-const DEFAULT_ON = ["deep-research", "skill-creator", "cloak-browser", "browser-use"];
+// 不再默认开启任何技能：新对话开箱即「干净」，技能一律由用户在「技能」面板手动开启。
+// （保留 seed 机制以便将来按需补种，但当前默认集为空）
+const DEFAULT_ON: string[] = [];
+
+// 历史上默认自动开启过的技能 —— 老用户的 localStorage 里仍残留为「已激活」，
+// 一次性清掉它们（只清这几个旧默认项，用户自己装/开的不动），让老安装也回到「无初始技能」。
+const LEGACY_DEFAULTS = ["deep-research", "skill-creator", "cloak-browser", "browser-use"];
+const PURGE_KEY = "polaris:legacy-defaults-purged.v1";
 
 export const useSkillsStore = defineStore("skills", () => {
   const enabledSkills = ref<Set<string>>(new Set());
@@ -91,9 +95,25 @@ export const useSkillsStore = defineStore("skills", () => {
     return enabledSkills.value.has(id);
   }
 
-  // 初始化时加载 + 种入默认插件
+  /** 一次性清掉历史默认开启的技能（老安装迁移）：只动旧默认那几个，其余保留。 */
+  function purgeLegacyDefaults() {
+    if (localStorage.getItem(PURGE_KEY)) return;
+    const next = new Set(enabledSkills.value);
+    let changed = false;
+    for (const id of LEGACY_DEFAULTS) {
+      if (next.delete(id)) changed = true;
+    }
+    if (changed) {
+      enabledSkills.value = next;
+      saveToStorage();
+    }
+    localStorage.setItem(PURGE_KEY, "1");
+  }
+
+  // 初始化时加载 + 种入默认插件 + 清掉历史默认项
   loadFromStorage();
   seedDefaults();
+  purgeLegacyDefaults();
 
   return {
     enabledSkills,
