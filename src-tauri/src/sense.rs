@@ -109,14 +109,14 @@ static STORE: Lazy<RwLock<SenseStore>> = Lazy::new(|| RwLock::new(SenseStore::de
 static PACK_BUSY: Lazy<Mutex<HashSet<String>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 
 fn data_dir() -> Option<PathBuf> {
-    UserDirs::new().map(|u| u.home_dir().join("Polaris").join("data"))
+    UserDirs::new().map(|u| u.home_dir().join("ChenNaXingHe").join("data"))
 }
 fn store_path() -> Option<PathBuf> {
     data_dir().map(|d| d.join("sense.json"))
 }
 /// 感官包(模型文件)统一落 ~/Polaris/models/<pack_id>/
 pub fn models_root() -> Option<PathBuf> {
-    UserDirs::new().map(|u| u.home_dir().join("Polaris").join("models"))
+    UserDirs::new().map(|u| u.home_dir().join("ChenNaXingHe").join("models"))
 }
 
 fn atomic_write(path: &Path, contents: &str) -> std::io::Result<()> {
@@ -126,6 +126,25 @@ fn atomic_write(path: &Path, contents: &str) -> std::io::Result<()> {
     let tmp = path.with_extension("json.tmp");
     fs::write(&tmp, contents)?;
     fs::rename(&tmp, path)
+}
+
+/// 把损坏的配置文件改名为 `<name>.corrupt-<n>` 备份, 而非被默认值直接覆盖 —— 用户还能从
+/// 备份里抠回 API key / 词库。找第一个不存在的编号, best-effort(失败只打日志)。
+fn backup_corrupt_config(p: &Path) {
+    for n in 0..1000 {
+        let mut name = match p.file_name() {
+            Some(f) => f.to_os_string(),
+            None => return,
+        };
+        name.push(format!(".corrupt-{n}"));
+        let bak = p.with_file_name(name);
+        if !bak.exists() {
+            if let Err(e) = fs::rename(p, &bak) {
+                eprintln!("[sense] 备份损坏配置失败: {e}");
+            }
+            return;
+        }
+    }
 }
 
 fn persist() {
@@ -483,6 +502,8 @@ pub fn sense_pack_install(app: AppHandle, id: String) -> Result<(), String> {
         .iter()
         .find(|p| p.id == id)
         .ok_or_else(|| format!("没有感官包 '{id}'"))?;
+    // 先算 dir(可能 Err): 若放到设置 busy 之后再 `?` 早退, busy 标记就永不清除、卡在「下载中」。
+    let dir = pack_dir(pack.id).ok_or("无法定位模型目录")?;
     {
         let mut busy = PACK_BUSY.lock();
         if busy.contains(pack.id) {
@@ -490,7 +511,6 @@ pub fn sense_pack_install(app: AppHandle, id: String) -> Result<(), String> {
         }
         busy.insert(pack.id.to_string());
     }
-    let dir = pack_dir(pack.id).ok_or("无法定位模型目录")?;
     let pack_id = pack.id.to_string();
     std::thread::spawn(move || {
         let pack = SENSE_PACKS.iter().find(|p| p.id == pack_id).unwrap();
@@ -541,11 +561,21 @@ pub fn sense_pack_remove(id: String) -> Result<(), String> {
 
 /// 启动时调用:读盘 + 与内置注册表合并(注册表新增项自动出现;用户改动保留)。
 pub fn init() {
-    let mut store: SenseStore = store_path()
-        .filter(|p| p.exists())
-        .and_then(|p| fs::read_to_string(p).ok())
-        .and_then(|t| serde_json::from_str(&t).ok())
-        .unwrap_or_default();
+    // 读盘时区分「无配置」与「配置损坏」: 后者若被当成无配置直接 persist 默认值, 会覆盖掉用户
+    // 已存的 API key / 学到的词库。存在但解析失败 → 先改名备份原文件, 再用默认值继续(可恢复)。
+    let mut store: SenseStore = SenseStore::default();
+    if let Some(p) = store_path().filter(|p| p.exists()) {
+        match fs::read_to_string(&p) {
+            Ok(t) if !t.trim().is_empty() => match serde_json::from_str::<SenseStore>(&t) {
+                Ok(s) => store = s,
+                Err(e) => {
+                    eprintln!("[sense] sense.json 解析失败({e}); 备份原文件并以默认配置继续");
+                    backup_corrupt_config(&p);
+                }
+            },
+            _ => {} // 读不出或空文件: 按无配置处理
+        }
+    }
     let registry = builtin_registry();
     for reg in registry {
         match store.items.iter_mut().find(|s| s.id == reg.id) {

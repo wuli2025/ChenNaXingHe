@@ -164,6 +164,10 @@ pub struct FileOverview {
 /// `C:\Windows\System32` 这种父子并存。父根扫描时已把子根的文件全收过一遍,若把两边的
 /// 文件数/体积直接相加,同一批文件会被数 2~3 遍(实测把真实量抬成约 8 倍虚高)。只统计
 /// 极大根即可去重,且非破坏性(不动库,父根被删后子根自然重新参与)。
+/// 「显式指定的根解析不到任何 id」时用的哨兵 root_id。roots 主键自增恒为正,-1 永不存在,
+/// 故 `IN (-1)` 恒匹配零行 —— 让「找不到的根」过滤成空结果,而非退化成「全部根」。
+const NO_MATCH_ROOT_ID: i64 = -1;
+
 fn resolve_root_ids(conn: &rusqlite::Connection, root: &Option<String>) -> Vec<i64> {
     // 显式指定单根 → 精确匹配。
     if let Some(r) = root.as_ref().map(|r| r.trim()).filter(|r| !r.is_empty()) {
@@ -172,6 +176,13 @@ fn resolve_root_ids(conn: &rusqlite::Connection, root: &Option<String>) -> Vec<i
             if let Ok(rows) = stmt.query_map([r], |row| row.get::<_, i64>(0)) {
                 ids.extend(rows.flatten());
             }
+        }
+        // 关键区分:调用方**显式**要了某个根,却解析不到任何 id(根不存在 / 已删)。
+        // 绝不能回退成空 vec —— 下游把空 vec 当「全部根」,会让 file_grid/file_overview 显示整库、
+        // 让 file_cluster_build 做**全局**删库重建。改用一个不可能命中的哨兵 id
+        // (roots 主键自增恒为正,-1 永不存在)→ IN (-1) 过滤零行,语义即「这个根现在什么都没有」。
+        if ids.is_empty() {
+            ids.push(NO_MATCH_ROOT_ID);
         }
         return ids;
     }
@@ -458,7 +469,9 @@ pub fn grid(
         _ => vec![],
     };
     if !kinds.is_empty() {
-        let list: Vec<String> = kinds.iter().map(|k| format!("'{k}'")).collect();
+        // 与本函数内 lang/query 同口径转义单引号,避免 kind 参数注入。
+        let list: Vec<String> =
+            kinds.iter().map(|k| format!("'{}'", k.replace('\'', "''"))).collect();
         where_sql.push_str(&format!(" AND f.kind IN ({})", list.join(",")));
     }
     // 按语言过滤:代码/标记语言按扩展名集合(不依赖回填)、媒体按 kind、自然语言按回填好的 lang 列。
@@ -1047,23 +1060,28 @@ fn cluster_build_on(
     };
     let n_parents = parent_of_leaf.iter().copied().max().map(|m| m + 1).unwrap_or(0);
 
-    // 清旧簇(对涉及的根)。簇 id 即将重排,旧关系边一并清掉,免得 cluster_edges 残留指向已删簇
-    // (虽然 build_file_graph 会按现存簇过滤、不会渲染脏边,但清掉更干净、避免长期累积)。
-    if ids.is_empty() {
-        conn.execute("DELETE FROM clusters", []).ok();
-        conn.execute("DELETE FROM cluster_edges", []).ok();
-        conn.execute("UPDATE files SET cluster_id=0", []).ok();
-    } else {
-        let list: Vec<String> = ids.iter().map(|i| i.to_string()).collect();
-        let inlist = list.join(",");
-        conn.execute(&format!("DELETE FROM clusters WHERE root_id IN ({inlist})"), []).ok();
-        conn.execute(&format!("DELETE FROM cluster_edges WHERE root_id IN ({inlist})"), []).ok();
-        conn.execute(&format!("UPDATE files SET cluster_id=0 WHERE root_id IN ({inlist})"), []).ok();
-    }
-
     let built_at = chrono::Local::now().timestamp_millis();
     let mut new_clusters = 0usize;
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
+
+    // 清旧簇(对涉及的根)。簇 id 即将重排,旧关系边一并清掉,免得 cluster_edges 残留指向已删簇
+    // (虽然 build_file_graph 会按现存簇过滤、不会渲染脏边,但清掉更干净、避免长期累积)。
+    // 关键:删+重建放进**同一事务**。任一后续插入经 `?` 早返 → 连接 drop 时整体回滚,
+    // 绝不出现「已删旧簇却没写新簇」的空星图(旧实现在 BEGIN 前就 .ok() 提交了删除,失败即留白)。
+    if ids.is_empty() {
+        conn.execute("DELETE FROM clusters", []).map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM cluster_edges", []).map_err(|e| e.to_string())?;
+        conn.execute("UPDATE files SET cluster_id=0", []).map_err(|e| e.to_string())?;
+    } else {
+        let list: Vec<String> = ids.iter().map(|i| i.to_string()).collect();
+        let inlist = list.join(",");
+        conn.execute(&format!("DELETE FROM clusters WHERE root_id IN ({inlist})"), [])
+            .map_err(|e| e.to_string())?;
+        conn.execute(&format!("DELETE FROM cluster_edges WHERE root_id IN ({inlist})"), [])
+            .map_err(|e| e.to_string())?;
+        conn.execute(&format!("UPDATE files SET cluster_id=0 WHERE root_id IN ({inlist})"), [])
+            .map_err(|e| e.to_string())?;
+    }
 
     // 先写顶层主题(父簇:自身不直接挂文件,颜色按主题分配)。
     let mut parent_ids: Vec<i64> = vec![0; n_parents];
@@ -1821,19 +1839,6 @@ fn cluster_llm_run(app: &AppHandle, root: Option<String>) -> Result<(usize, usiz
 
     emit_llm(app, json!({ "kind": "phase", "text": "写回归类…" }));
 
-    // 清旧簇(范围内)+ 旧关系边(簇 id 即将重排)。
-    if ids.is_empty() {
-        conn.execute("DELETE FROM clusters", []).ok();
-        conn.execute("DELETE FROM cluster_edges", []).ok();
-        conn.execute("UPDATE files SET cluster_id=0", []).ok();
-    } else {
-        let inlist: Vec<String> = ids.iter().map(|i| i.to_string()).collect();
-        let inlist = inlist.join(",");
-        conn.execute(&format!("DELETE FROM clusters WHERE root_id IN ({inlist})"), []).ok();
-        conn.execute(&format!("DELETE FROM cluster_edges WHERE root_id IN ({inlist})"), []).ok();
-        conn.execute(&format!("UPDATE files SET cluster_id=0 WHERE root_id IN ({inlist})"), []).ok();
-    }
-
     let built_at = chrono::Local::now().timestamp_millis();
     let mut assigned = 0usize;
     let mut n_clusters = 0usize; // 叶簇数(实际承载文件的子主题)
@@ -1853,6 +1858,24 @@ fn cluster_llm_run(app: &AppHandle, root: Option<String>) -> Result<(usize, usiz
     };
 
     conn.execute_batch("BEGIN").map_err(|e| e.to_string())?;
+
+    // 清旧簇(范围内)+ 旧关系边(簇 id 即将重排)放进**同一事务**:任一插入经 `?` 早返 →
+    // 连接 drop 时整体回滚,绝不出现「已删旧簇却没写回新簇」的空星图。
+    if ids.is_empty() {
+        conn.execute("DELETE FROM clusters", []).map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM cluster_edges", []).map_err(|e| e.to_string())?;
+        conn.execute("UPDATE files SET cluster_id=0", []).map_err(|e| e.to_string())?;
+    } else {
+        let inlist: Vec<String> = ids.iter().map(|i| i.to_string()).collect();
+        let inlist = inlist.join(",");
+        conn.execute(&format!("DELETE FROM clusters WHERE root_id IN ({inlist})"), [])
+            .map_err(|e| e.to_string())?;
+        conn.execute(&format!("DELETE FROM cluster_edges WHERE root_id IN ({inlist})"), [])
+            .map_err(|e| e.to_string())?;
+        conn.execute(&format!("UPDATE files SET cluster_id=0 WHERE root_id IN ({inlist})"), [])
+            .map_err(|e| e.to_string())?;
+    }
+
     for top in &groups {
         let theme_label = if top.label.trim().is_empty() {
             "未命名主题".to_string()

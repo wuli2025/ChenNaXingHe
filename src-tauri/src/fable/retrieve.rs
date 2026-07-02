@@ -12,6 +12,7 @@ use super::{lex_available, open_db, open_db_gauged, worker_count};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
+use std::io::Read;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
@@ -223,8 +224,18 @@ fn scan_and_score(
                     }
                 }
                 let abs = std::path::Path::new(&root).join(&rel);
-                let Ok(bytes) = std::fs::read(&abs) else {
-                    continue;
+                // 索引时 <4MB 的文件之后可能被追加成几 GB(日志/数据集持续写入)。候选表里的
+                // size 是索引时的旧值,不可信 → 按实际大小设防:最多只读前 MAX_GREP_FILE_BYTES
+                // 字节做算分(命中一般在头部;词法档本就只索引 <4MB),避免把巨文件整块读进内存 OOM。
+                let bytes = match std::fs::File::open(&abs) {
+                    Ok(f) => {
+                        let mut buf = Vec::new();
+                        if f.take(MAX_GREP_FILE_BYTES as u64).read_to_end(&mut buf).is_err() {
+                            continue;
+                        }
+                        buf
+                    }
+                    Err(_) => continue,
                 };
                 if bytes.iter().take(4096).any(|&b| b == 0) {
                     continue; // 二进制伪文本

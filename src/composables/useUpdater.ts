@@ -76,13 +76,17 @@ async function ensureCurrentVersion(): Promise<void> {
 async function ensureSubscribed(): Promise<void> {
   if (subscribed) return;
   subscribed = true;
+  let un: (() => void) | null = null;
   try {
-    await listen<UpdaterState>("updater://state", (ev) => {
+    un = await listen<UpdaterState>("updater://state", (ev) => {
       state.value = ev.payload;
     });
     // 拉一次初始快照（可能在 listen 建立前就已被 init 设过 available）。
     state.value = await invoke<UpdaterState>("updater_get_state");
   } catch (e) {
+    // listen 成功但随后的 invoke 抛错时:先退订已挂上的监听,否则每次失败的 manualCheck 都
+    // 会永久多留一个 updater://state 监听器(泄漏 + 事件被重复处理)。
+    un?.();
     subscribed = false; // 非 Tauri 运行时：留待下次，静默
     console.warn("[updater] subscribe failed:", e);
   }

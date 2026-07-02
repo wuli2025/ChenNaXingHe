@@ -453,13 +453,22 @@ pub async fn chat_send(app: AppHandle, args: ChatSendArgs) -> Result<String, Str
                 // 取到 Some 才证明仍是本 req 的活进程(防 PID 复用误杀); 取到 None = 已正常
                 // 结束被 stdout 线程 remove → 退出看门狗。
                 let idle = wd_activity.lock().elapsed();
-                let g = CHILDREN.lock();
-                let Some(c) = g.get(&wd_req) else { break };
-                if idle >= timeout {
-                    kill_tree(c.id()); // 持锁内杀进程组: 一并带走 cwd=/ 的子代理
+                // 只在锁内取出 pid 后立即释放锁, 阻塞的 kill_tree 放到锁外做,
+                // 避免持锁跨阻塞式杀进程而卡住 chat_cancel/kill_all_children/新起子进程。
+                let to_kill = {
+                    let g = CHILDREN.lock();
+                    let Some(c) = g.get(&wd_req) else { break };
+                    if idle >= timeout {
+                        Some(c.id())
+                    } else {
+                        None
+                    }
+                }; // 锁在此释放
+                if let Some(pid) = to_kill {
+                    kill_tree(pid); // 脱锁后杀进程组: 一并带走 cwd=/ 的子代理
                     break;
                 }
-                // 否则仍在活跃推进, 不误杀, 继续看门(锁随作用域结束释放)。
+                // 否则仍在活跃推进, 不误杀, 继续看门。
             }
         });
     }
@@ -1092,7 +1101,7 @@ fn conversation_dir(conv_id: Option<&str>) -> PathBuf {
         kb_root.join("conversations").join(id)
     } else {
         UserDirs::new()
-            .map(|u| u.home_dir().join("Polaris").join("data").join("artifacts"))
+            .map(|u| u.home_dir().join("ChenNaXingHe").join("data").join("artifacts"))
             .unwrap_or_else(|| PathBuf::from("artifacts"))
             .join(id)
     }
@@ -2278,7 +2287,7 @@ pub struct ArtifactSearchHit {
 fn allowed_open_roots() -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = Vec::new();
     if let Some(u) = UserDirs::new() {
-        roots.push(u.home_dir().join("Polaris"));
+        roots.push(u.home_dir().join("ChenNaXingHe"));
     }
     let kb_root = PathBuf::from(kb::kb_root());
     if !kb_root.as_os_str().is_empty() {
@@ -2313,7 +2322,7 @@ fn conversation_roots() -> Vec<PathBuf> {
         roots.push(kb_root.join("conversations"));
     }
     if let Some(u) = UserDirs::new() {
-        roots.push(u.home_dir().join("Polaris").join("data").join("artifacts"));
+        roots.push(u.home_dir().join("ChenNaXingHe").join("data").join("artifacts"));
     }
     roots
 }
@@ -2381,16 +2390,25 @@ pub fn artifact_search(query: String) -> Vec<ArtifactSearchHit> {
             // 文本类才读正文匹配 (限大小, 防卡)
             if matches!(kind, "text" | "markdown" | "html" | "svg") && meta.len() < 512 * 1024 {
                 if let Ok(body) = std::fs::read_to_string(p) {
+                    // 在同一份 lowercase 串里查找并切片：to_lowercase() 可能改变字节长度
+                    // (如 'İ' U+0130 2→3 字节), 若用 lower 的偏移去切原 body 会越界/切错
+                    // 字符边界而 panic。这里对 lower 自身切片, 且所有下标都落在字符边界内。
                     let lower = body.to_lowercase();
                     if let Some(pos) = lower.find(&q) {
                         score += 2;
-                        let start = body[..pos].char_indices().rev().take(40).last().map(|(i, _)| i).unwrap_or(0);
-                        let end = (pos + q.len() + 60).min(body.len());
-                        let mut e = end;
-                        while e < body.len() && !body.is_char_boundary(e) {
+                        // pos 与 pos+q.len() 均为 lower 的合法字符边界
+                        let start = lower[..pos]
+                            .char_indices()
+                            .rev()
+                            .take(40)
+                            .last()
+                            .map(|(i, _)| i)
+                            .unwrap_or(0);
+                        let mut e = (pos + q.len() + 60).min(lower.len());
+                        while e < lower.len() && !lower.is_char_boundary(e) {
                             e += 1;
                         }
-                        snippet = body[start..e].replace('\n', " ").trim().to_string();
+                        snippet = lower[start..e].replace('\n', " ").trim().to_string();
                     }
                 }
             }

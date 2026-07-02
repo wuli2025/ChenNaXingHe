@@ -8,7 +8,7 @@ Polaris 支持两种 Skill：
 
 | 类型 | 存储位置 | 持久化方式 | 适用场景 |
 |------|---------|-----------|---------|
-| **用户 Skill** | `~/Polaris/skills/{id}/skill.md` | 磁盘文件，运行时扫描 | 个人自定义、快速迭代、无需重新编译 |
+| **用户 Skill** | `~/ChenNaXingHe/skills/{id}/skill.md` | 磁盘文件，运行时扫描 | 个人自定义、快速迭代、无需重新编译 |
 | **内建 Skill** | `src-tauri/src/skills.rs` + `src-tauri/src/templates/skills/*.md` | 编译进二进制 | 官方发布、需要随应用分发、生产就绪 |
 
 ## 判断用户意图
@@ -26,7 +26,7 @@ Polaris 支持两种 Skill：
 ### 流程
 1. 询问 Skill 的名称、ID、用途
 2. 帮助用户设计 System Prompt（核心指令）
-3. **直接生成文件** 到 `~/Polaris/skills/{id}/skill.md`
+3. **直接生成文件** 到 `~/ChenNaXingHe/skills/{id}/skill.md`
 
 ### 文件格式
 ```markdown
@@ -47,7 +47,7 @@ created_at: {unix_timestamp}
 
 ### 生成后操作
 用 Write 工具直接写入文件：
-- 路径：`~/Polaris/skills/{id}/skill.md`
+- 路径：`~/ChenNaXingHe/skills/{id}/skill.md`
 - 内容：上面格式的完整内容
 
 ---

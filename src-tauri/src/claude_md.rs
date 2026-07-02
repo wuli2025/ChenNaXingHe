@@ -58,7 +58,7 @@ pub fn project_root() -> Option<PathBuf> {
 }
 
 fn projects_root() -> Option<PathBuf> {
-    UserDirs::new().map(|u| u.home_dir().join("Polaris").join("projects"))
+    UserDirs::new().map(|u| u.home_dir().join("ChenNaXingHe").join("projects"))
 }
 
 fn project_claude_md_path(project_id: &str) -> Option<PathBuf> {

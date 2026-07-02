@@ -87,7 +87,19 @@ async function setCfg(patch: Record<string, unknown>) {
   }
 }
 
-onMounted(refresh);
+onMounted(async () => {
+  await refresh();
+  // 后端目前只有 voice_listen_start/stop,没有状态查询命令(见 src-tauri/src/voice.rs)。
+  // 采集态在组件卸载后仍存活于后端,切页重进会误显示「未启用」,此时点一下反而会重启采集。
+  // 这里前瞻性地尝试 voice_listen_status:后端将来补上就能据真实态初始化;当前命令不存在则静默忽略,
+  // listenOn 退化为本地乐观态(已知局限,待后端提供状态查询命令后消除)。
+  try {
+    const st = await invoke<{ running: boolean }>("voice_listen_status");
+    if (st && typeof st.running === "boolean") listenOn.value = st.running;
+  } catch {
+    /* 无状态命令:保持本地态 */
+  }
+});
 
 // ── 防污染「测一下」──
 const probeIn = ref("把设置改成扣带式那种形态，名字就叫北极心吧");

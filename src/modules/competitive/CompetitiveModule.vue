@@ -243,10 +243,17 @@ async function runPipeline() {
 /* ────────────────────────── 持久化 ────────────────────────── */
 function persist() {
   try {
+    // 读回既有记录，保留另一模式的输入槽（本次只覆盖当前模式那一份）。
+    let prev: Partial<PersistedRun> = {};
+    try { prev = JSON.parse(localStorage.getItem(LS_RUN) || "{}") as Partial<PersistedRun>; } catch { /* ignore */ }
     const rec: PersistedRun = {
       mode: mode.value,
       company: company.value,
       product: product.value,
+      companyA: mode.value === "A" ? company.value : prev.companyA,
+      productA: mode.value === "A" ? product.value : prev.productA,
+      companyB: mode.value === "B" ? company.value : prev.companyB,
+      productB: mode.value === "B" ? product.value : prev.productB,
       dataA: dataA.value ?? undefined,
       dataB: dataB.value ?? undefined,
       at: Date.now(),
@@ -261,8 +268,17 @@ function restore() {
     const raw = localStorage.getItem(LS_RUN);
     if (raw) {
       const rec = JSON.parse(raw) as PersistedRun;
-      company.value = rec.company || "";
-      product.value = rec.product || "";
+      // 按当前模式取对应输入槽；旧记录（无分模式槽）仅在其模式与当前一致时迁移。
+      const hasPerMode =
+        rec.companyA !== undefined || rec.companyB !== undefined ||
+        rec.productA !== undefined || rec.productB !== undefined;
+      if (hasPerMode) {
+        company.value = (mode.value === "A" ? rec.companyA : rec.companyB) ?? "";
+        product.value = (mode.value === "A" ? rec.productA : rec.productB) ?? "";
+      } else if (rec.mode === mode.value) {
+        company.value = rec.company || "";
+        product.value = rec.product || "";
+      }
       if (rec.dataA) dataA.value = rec.dataA;
       if (rec.dataB) dataB.value = rec.dataB;
       if (rec.dataA || rec.dataB) stage.value = "done";

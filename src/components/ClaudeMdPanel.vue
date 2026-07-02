@@ -23,6 +23,9 @@ const projMeta = ref<Record<string, { personaId: string | null; kbScope: string 
 const kbScope = ref("");
 const applying = ref(false);
 const showGallery = ref(false);
+// 人格后端（persona_list / persona_apply）在某些构建里不存在：不可用时隐藏人格 UI，
+// 而不是把它当作致命「加载异常」永久报错（优雅降级）。
+const personaAvailable = ref(true);
 // 非阻塞的覆盖确认（替代原生 confirm，避免模态卡死界面）
 const pendingOverwrite = ref<PersonaPreset | null>(null);
 
@@ -39,6 +42,9 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 const selected = ref<Selected | null>(null);
 const content = ref("");
 const originalContent = ref("");
+// loadContent 请求令牌：快速切项目时，只有最后一次请求的结果允许落入编辑器，
+// 丢弃先前未决请求的迟到响应（否则会把 A 的内容落进 B，且 dirty 仍为 false → 保存写错文件）。
+let loadToken = 0;
 const loading = ref(false);
 const saving = ref(false);
 const message = ref<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -82,7 +88,13 @@ async function refresh() {
   ]);
   if (psR.status === "fulfilled") projects.value = psR.value;
   if (kbR.status === "fulfilled") kbInfo.value = kbR.value;
-  if (prR.status === "fulfilled") presets.value = prR.value;
+  // 人格库单独处理：拿到则可用，失败则判定后端不支持并隐藏人格 UI（不算致命错误）。
+  if (prR.status === "fulfilled") {
+    presets.value = prR.value;
+    personaAvailable.value = true;
+  } else {
+    personaAvailable.value = false;
+  }
   if (metaR.status === "fulfilled") {
     const map: Record<string, { personaId: string | null; kbScope: string | null }> = {};
     for (const p of metaR.value) {
@@ -90,7 +102,8 @@ async function refresh() {
     }
     projMeta.value = map;
   }
-  const failed = [psR, kbR, prR, metaR].find((r) => r.status === "rejected");
+  // persona 列表失败不计入致命「加载异常」，只做降级；仅其余核心命令失败才提示。
+  const failed = [psR, kbR, metaR].find((r) => r.status === "rejected");
   if (failed && failed.status === "rejected") {
     message.value = { kind: "err", text: `加载异常：${failed.reason}` };
   }
@@ -170,11 +183,16 @@ const currentPersona = computed(() => {
 
 async function loadContent(area: ClaudeMdArea, projectId?: string) {
   message.value = null;
+  const token = ++loadToken;
+  const target = selected.value; // 引用快照：每次 selectXxx 会重建 selected 对象
   try {
     const text = await claudeMd.read(area, projectId);
+    // 过期响应（已发起更晚的加载）或选择已变化：直接丢弃，绝不覆盖当前编辑器。
+    if (token !== loadToken || selected.value !== target) return;
     content.value = text;
     originalContent.value = text;
   } catch (err: any) {
+    if (token !== loadToken || selected.value !== target) return;
     message.value = { kind: "err", text: `读取失败: ${err}` };
     content.value = "";
     originalContent.value = "";
@@ -332,7 +350,7 @@ onMounted(refresh);
           </div>
 
           <!-- 板块⑫: 人格条 —— 仅项目可套用预设人格 + 绑定知识库 scope -->
-          <div v-if="selected.kind === 'project'" class="persona-bar">
+          <div v-if="selected.kind === 'project' && personaAvailable" class="persona-bar">
             <div class="pb-left">
               <span class="pb-icon">{{ currentPersona?.icon ?? "🧩" }}</span>
               <span class="pb-name">{{ currentPersona?.name ?? "自定义人格" }}</span>
@@ -361,7 +379,7 @@ onMounted(refresh);
           </div>
 
           <!-- 预设人格画廊（仿 WeSight 右侧选人格）：专家团 + 单专家两组 -->
-          <div v-if="selected.kind === 'project' && showGallery" class="gallery-wrap">
+          <div v-if="selected.kind === 'project' && showGallery && personaAvailable" class="gallery-wrap">
             <div class="g-grp">专家团 · 战略师领衔（注入后默认单 agent，值得才升级）</div>
             <div class="gallery">
               <button

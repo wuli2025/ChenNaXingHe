@@ -41,7 +41,7 @@ pub fn init() -> Result<()> {
 
 fn data_dir() -> Result<PathBuf> {
     let user = UserDirs::new().ok_or_else(|| anyhow::anyhow!("no user dir"))?;
-    Ok(user.home_dir().join("Polaris"))
+    Ok(user.home_dir().join("ChenNaXingHe"))
 }
 
 fn dockerfile_path() -> Result<PathBuf> {

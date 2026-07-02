@@ -142,11 +142,18 @@ const fileItems = computed(() =>
   files.value.map((f, i) => ({ id: i, path: f }))
 );
 
+// 连点不同文件时后端返回顺序无保证：用递增 token 让「最后发起」的读取胜出，
+// 丢弃先发后到的旧结果，避免右侧显示到错误文件的内容。
+let openFileSeq = 0;
 async function openFile(p: string) {
   selected.value = p;
+  const token = ++openFileSeq;
   try {
-    markdown.value = await kb.read(p);
+    const md = await kb.read(p);
+    if (token !== openFileSeq) return; // 已被更晚的点击取代，丢弃本次结果
+    markdown.value = md;
   } catch (e: any) {
+    if (token !== openFileSeq) return;
     markdown.value = `_(读取失败:${e?.message ?? e})_`;
   }
 }
@@ -228,18 +235,23 @@ async function doConvertBatch() {
   }
 }
 
+// 快速改词多次搜索时，后端返回顺序无保证：用递增 token 让最后一次查询胜出，
+// 丢弃先发后到的旧结果，避免命中列表闪回上一个关键词的结果。
+let searchSeq = 0;
 async function doSearch() {
   const q = query.value.trim();
   hitCap.value = 100;
   if (!q) {
+    searchSeq++; // 让在飞的旧搜索作废，清空结果不被其覆盖
     hits.value = [];
     artHits.value = [];
     return;
   }
-  [hits.value, artHits.value] = await Promise.all([
-    kb.search(q),
-    artifactsApi.search(q),
-  ]);
+  const token = ++searchSeq;
+  const [h, a] = await Promise.all([kb.search(q), artifactsApi.search(q)]);
+  if (token !== searchSeq) return; // 已被更晚的搜索取代，丢弃本次结果
+  hits.value = h;
+  artHits.value = a;
 }
 
 // 点开历史产物 → 右侧抽屉预览
@@ -295,42 +307,63 @@ async function doClear() {
 
 // ─────────── 拖拽上传到知识库 ───────────
 interface UploadItem {
+  // 每次拖拽一批，行带 batchId：清理计时器只碰本批的行，别误删并发第二批的 loading 行。
+  batchId: number;
   name: string;
   status: "loading" | "ok" | "err";
   detail: string;
 }
 const uploading = ref<UploadItem[]>([]);
+let uploadBatchSeq = 0;
 
 async function onDropFiles(paths: string[]) {
-  // 乐观占位（大文件转换 / 复制需要时间，逐个显示进度）
-  uploading.value = paths.map((p) => ({
+  const batchId = ++uploadBatchSeq;
+  // 乐观占位（大文件转换 / 复制需要时间，逐个显示进度）——追加本批，不再整段替换 uploading，
+  // 否则并发的第二次拖拽会把上一批还在 loading 的行整体抹掉。
+  const rows: UploadItem[] = paths.map((p) => ({
+    batchId,
     name: p.split(/[\\/]/).pop() || p,
     status: "loading",
     detail: "",
   }));
+  uploading.value = [...uploading.value, ...rows];
   try {
     const res = await kb.uploadFiles(paths);
-    uploading.value = res.map((r) => ({
-      name: r.name,
-      status: r.ok ? "ok" : "err",
-      detail: r.ok ? r.relPath : r.message,
-    }));
+    // 就地更新本批行（按位置对位），其它批次的行原样保留。
+    let ri = 0;
+    uploading.value = uploading.value.map((u) => {
+      if (u.batchId !== batchId) return u;
+      const r = res[ri++];
+      return r
+        ? {
+            batchId,
+            name: r.name,
+            status: r.ok ? "ok" : "err",
+            detail: r.ok ? r.relPath : r.message,
+          }
+        : u;
+    });
     await refreshList();
   } catch (e: any) {
-    uploading.value = uploading.value.map((u) => ({
-      ...u,
-      status: "err",
-      detail: e?.message ?? String(e),
-    }));
+    uploading.value = uploading.value.map((u) =>
+      u.batchId === batchId
+        ? { ...u, status: "err", detail: e?.message ?? String(e) }
+        : u
+    );
   }
-  // 成功项几秒后淡出，失败项保留以便查看
+  // 成功项几秒后淡出，失败项保留以便查看 —— 只清理本批的非 err 行，
+  // 不动其它并发批次仍在 loading / 已完成的行。
   window.setTimeout(() => {
-    uploading.value = uploading.value.filter((u) => u.status === "err");
+    uploading.value = uploading.value.filter(
+      (u) => u.batchId !== batchId || u.status === "err"
+    );
   }, 5000);
 }
 
 const { isOver: dropOver } = useFileDrop({
-  active: () => app.view === "wiki",
+  // 按真实活动视图 moduleTab 路由(app.view 是遗留字段、从不被设为 "wiki",落区会被对话吞掉):
+  // 知识库主区激活(moduleTab==='kb')时,由本组件认领拖拽落区。
+  active: () => app.moduleTab === "kb",
   onDrop: onDropFiles,
 });
 

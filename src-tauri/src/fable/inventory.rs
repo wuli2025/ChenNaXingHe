@@ -943,8 +943,16 @@ pub fn scan_root(
             .into_iter()
             .filter(|(_, rel)| {
                 // relpath 用 '/',Path::join 在 Windows 上也认 '/',无需替换分隔符。
-                let abs = root_base.join(rel);
-                let parent_ok = abs.parent().map(|p| p.exists()).unwrap_or(false);
+                // 关键:relpath 存的是 GBK→UTF-8 解码后的**显示**路径;直接对它 .exists() 在
+                // GBK 命名的文件上恒为 false(磁盘上的真名是原始字节),会把这些文件误判成「消失」而
+                // 连向量/倒排一起删。故先用 reencode_fs_path 把显示路径编回磁盘真实路径再判存在性
+                // (与 files.rs 速览/缩略图取真身同法)。父目录同样可能是 GBK 名 → 一并 reencode。
+                let abs_display = root_base.join(rel);
+                let abs = super::reencode_fs_path(&abs_display.to_string_lossy());
+                let parent_ok = abs_display
+                    .parent()
+                    .map(|p| super::reencode_fs_path(&p.to_string_lossy()).exists())
+                    .unwrap_or(false);
                 parent_ok && !abs.exists()
             })
             .map(|(id, _)| id)

@@ -69,7 +69,7 @@ onBeforeUnmount(() => {
       <p class="line l2">在混乱的时代坚守本心</p>
     </div>
 
-    <div class="wordmark">北极星 · Polaris</div>
+    <div class="wordmark">北极星跨境 · ChenNaXingHe</div>
     <div class="hint">点击任意处进入</div>
   </div>
 </template>

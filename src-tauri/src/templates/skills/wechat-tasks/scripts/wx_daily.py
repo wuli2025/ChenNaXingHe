@@ -45,7 +45,7 @@ def resolve_kb_root():
                 return kr
     except Exception:
         pass
-    return os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "Polaris", "PolarisKB")
+    return os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), "ChenNaXingHe", "PolarisKB")
 
 
 # ───────────────────────── master key 有效性校验（纯标准库）─────────────────────────

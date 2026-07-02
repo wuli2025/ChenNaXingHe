@@ -56,13 +56,16 @@ function addManual() {
 /* ── CSV 导入（表头别名映射） ── */
 const csvPreview = ref<ReturnType<typeof parseCSV> | null>(null);
 function onCsv(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0];
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (ev) => {
     csvPreview.value = parseCSV(String(ev.target?.result || ""));
   };
   reader.readAsText(file, "utf-8");
+  // 重置输入值：否则取消后再次选同一文件不触发 change。
+  input.value = "";
 }
 function importCsv() {
   if (!csvPreview.value) return;

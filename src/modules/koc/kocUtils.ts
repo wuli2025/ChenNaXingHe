@@ -120,13 +120,54 @@ export interface ParsedCSV {
   headers: string[];
   rows: Record<string, string>[];
 }
+/**
+ * RFC-4180 CSV 解析：对整段文本做状态机切分，正确处理带引号的字段
+ * （含转义双引号 "" 与嵌入换行 / 逗号）。旧实现先按换行 split 再逐行 parse，
+ * 会把带内嵌换行的引号单元格从中间拆断，导致整行错位。
+ */
 export function parseCSV(text: string): ParsedCSV {
-  const lines = text.trim().split(/\r?\n/);
-  const headers = parseCSVLine(lines[0] || "").map((h) => h.trim());
-  const rows = lines.slice(1).map((line) => {
-    const vals = parseCSVLine(line).map((v) => v.trim());
+  const src = text.replace(/^﻿/, ""); // 去掉 BOM
+  const records: string[][] = [];
+  let field = "";
+  let record: string[] = [];
+  let inQuotes = false;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        field += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      record.push(field);
+      field = "";
+    } else if (ch === "\n") {
+      record.push(field);
+      field = "";
+      records.push(record);
+      record = [];
+    } else if (ch !== "\r") {
+      field += ch;
+    }
+  }
+  // flush 末尾未闭合的字段 / 记录（文件不以换行结尾时）
+  if (field !== "" || record.length) {
+    record.push(field);
+    records.push(record);
+  }
+  // 丢弃全空记录（空行 / 末尾换行）
+  const nonEmpty = records.filter((r) => r.some((c) => c.trim() !== ""));
+  const headers = (nonEmpty[0] || []).map((h) => h.trim());
+  const rows = nonEmpty.slice(1).map((vals) => {
     const obj: Record<string, string> = {};
-    headers.forEach((h, i) => (obj[h] = vals[i] || ""));
+    headers.forEach((h, i) => (obj[h] = (vals[i] ?? "").trim()));
     return obj;
   });
   return { headers, rows };
@@ -164,7 +205,7 @@ export function rowToKoc(row: Record<string, string>): Koc | null {
   const actEngagement =
     +getRowField(row, ["Act. Engagement", "Actual Engagement", "act_engagement", "实际互动"]) || 0;
   const followers = +getRowField(row, ["followers", "粉丝量"]) || TIER_FOLLOWERS[tier] || 0;
-  const engRate = +getRowField(row, ["engagement_rate", "互动率"]) || 0;
+  const engRate = +getRowField(row, ["engagement_rate", "互动率", "互动率(%)"]) || 0;
   const lagos = +getRowField(row, ["lagos", "Lagos受众占比"]) || 0;
   const ibadan = +getRowField(row, ["ibadan", "Ibadan受众占比"]) || 0;
 
@@ -194,14 +235,15 @@ export function rowToKoc(row: Record<string, string>): Koc | null {
     recruitmentSource: getRowField(row, ["Recruitment Source", "招募渠道来源"]),
     followers,
     engagementRate: engRate || (platform === "tiktok" ? 0 : 0),
-    avgViews: +getRowField(row, ["avg_views", "平均播放量"]) || actViews || 0,
-    reelsAvg: platform === "instagram" ? +getRowField(row, ["reels_avg", "Reels平均播放"]) || actViews || 0 : undefined,
+    avgViews: +getRowField(row, ["avg_views", "平均播放量", "平均播放/Reels"]) || actViews || 0,
+    reelsAvg: platform === "instagram" ? +getRowField(row, ["reels_avg", "Reels平均播放", "平均播放/Reels"]) || actViews || 0 : undefined,
     lagosAudience: lagos,
     ibadanAudience: ibadan,
     nigeriaLocalAudience:
       +getRowField(row, [
         "Nigeria Local Audience %",
         "尼日利亚本地受众占比",
+        "尼日利亚本地受众(%)",
         "本地受众占比",
       ]) || 0,
     contentBrandFit: getRowField(row, ["Content Brand Fit", "内容与品牌契合度评分"]),

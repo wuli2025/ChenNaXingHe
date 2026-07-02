@@ -21,9 +21,11 @@ const emit = defineEmits<{ (e: "done"): void }>();
 
 const READY_FLAG = "polaris.env.ready.v1";
 
-type Phase = "checking" | "ready-skip" | "panel";
+type Phase = "checking" | "ready-skip" | "panel" | "error";
 const phase = ref<Phase>("checking");
 const report = ref<EnvReport | null>(null);
+// env_check 失败时的错误文案(phase==='error' 时展示 + 重试)
+const checkErr = ref("");
 
 // 安装 / 修复 / 更新 的进行态
 const busyKind = ref<
@@ -33,6 +35,8 @@ const installReqId = ref<string | null>(null);
 const logs = ref<string[]>([]);
 const banner = ref<{ kind: "ok" | "err" | "info"; text: string } | null>(null);
 let unlisten: (() => void) | null = null;
+// 卸载守卫:listen() 是异步的,若在它 resolve 前组件已卸载,立刻退订避免孤儿监听器。
+let disposed = false;
 
 // Claude Code 更新检测
 const updateInfo = ref<ClaudeUpdateInfo | null>(null);
@@ -77,8 +81,13 @@ onMounted(async () => {
   if (!isTauri) {
     if (props.gate) emit("done");
     else {
-      report.value = await runCheck();
-      phase.value = "panel";
+      try {
+        report.value = await runCheck();
+        phase.value = "panel";
+      } catch (e) {
+        checkErr.value = String(e);
+        phase.value = "error";
+      }
     }
     return;
   }
@@ -90,16 +99,25 @@ onMounted(async () => {
     return;
   }
 
-  unlisten = await listen<EnvStreamEvent>("env:stream", onStream);
+  const un = await listen<EnvStreamEvent>("env:stream", onStream);
+  if (disposed) un();
+  else unlisten = un;
 
-  const r = await runCheck();
-  if (r.ready) localStorage.setItem(READY_FLAG, "1");
-  // claude 在但缺 shell → 自动补装 PowerShell 7 (进入流式日志), 不再放任用户进去后对话报错
-  if (maybeAutoInstallShell(r)) return;
-  phase.value = r.ready && props.gate ? "ready-skip" : "panel";
+  try {
+    const r = await runCheck();
+    if (r.ready) localStorage.setItem(READY_FLAG, "1");
+    // claude 在但缺 shell → 自动补装 PowerShell 7 (进入流式日志), 不再放任用户进去后对话报错
+    if (maybeAutoInstallShell(r)) return;
+    phase.value = r.ready && props.gate ? "ready-skip" : "panel";
+  } catch (e) {
+    // env_check 拒绝:不再永久卡在「检测中」转圈,给错误态 + 重试入口
+    checkErr.value = String(e);
+    phase.value = "error";
+  }
 });
 
 onBeforeUnmount(() => {
+  disposed = true;
   if (unlisten) unlisten();
 });
 
@@ -116,7 +134,9 @@ watch(phase, (p) => {
 });
 
 function onStream(ev: EnvStreamEvent) {
-  if (installReqId.value && ev.reqId !== installReqId.value) return;
+  // 无进行中的安装(installReqId 为空)时,忽略一切事件 —— 否则被取消安装的迟到 `done`
+  // 会误触 finishInstall。仅接受与当前 installReqId 匹配的事件。
+  if (!installReqId.value || ev.reqId !== installReqId.value) return;
   if (ev.kind === "log" && ev.line) {
     logs.value.push(ev.line);
     if (logs.value.length > 400) logs.value.splice(0, logs.value.length - 400);
@@ -307,10 +327,16 @@ async function cancelInstall() {
 
 async function recheck() {
   banner.value = null;
+  checkErr.value = "";
   phase.value = "checking";
-  const r = await runCheck();
-  if (r.ready) localStorage.setItem(READY_FLAG, "1");
-  phase.value = "panel";
+  try {
+    const r = await runCheck();
+    if (r.ready) localStorage.setItem(READY_FLAG, "1");
+    phase.value = "panel";
+  } catch (e) {
+    checkErr.value = String(e);
+    phase.value = "error";
+  }
 }
 
 function enter() {
@@ -368,6 +394,12 @@ const npmReady = computed(() => !!report.value?.npm.found);
       <!-- 检测中 -->
       <div v-if="phase === 'checking'" class="checking">
         <span class="spinner"></span> 正在检测本机环境…
+      </div>
+
+      <!-- 检测失败: 不再永久转圈, 给重试 -->
+      <div v-else-if="phase === 'error'" class="check-error">
+        <p class="ce-text">环境检测失败：{{ checkErr }}</p>
+        <button class="btn primary" @click="recheck">重试检测</button>
       </div>
 
       <template v-else>
@@ -633,6 +665,22 @@ const npmReady = computed(() => !!report.value?.npm.found);
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.check-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 0;
+  text-align: center;
+}
+.ce-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--vermilion);
+  max-width: 460px;
+}
 
 .tools {
   list-style: none;

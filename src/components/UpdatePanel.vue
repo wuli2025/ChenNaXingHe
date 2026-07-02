@@ -120,7 +120,7 @@ const lastChecked = computed(() => {
           <div>自动检查更新失败: {{ updateError || "网络或服务端异常" }}</div>
           <div style="margin-top:4px;font-size:11px;color:var(--dim)">
             可点击上方「检查更新」重试，或前往
-            <a href="https://github.com/wuli2025/chuanying/releases" target="_blank" style="color:var(--primary)">GitHub Releases</a>
+            <a href="https://github.com/wuli2025/ChenNaXingHe/releases" target="_blank" style="color:var(--primary)">GitHub Releases</a>
             手动下载
           </div>
         </div>

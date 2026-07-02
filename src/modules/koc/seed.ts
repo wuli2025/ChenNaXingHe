@@ -61,7 +61,9 @@ export function buildSeed(): Koc[] {
   const now = new Date().toISOString();
   return RAW.map((a, i) => {
     const avgViews = Math.round(a.likes / (a.videos || 1));
-    const engagementRate = parseFloat(((avgViews / a.followers) * 100).toFixed(2));
+    // 单条平均互动 / 粉丝；对小号病毒视频（互动 > 粉丝）钳制到合理上限，避免算出 >100% 的失真互动率。
+    const rawEng = a.followers > 0 ? (avgViews / a.followers) * 100 : 0;
+    const engagementRate = parseFloat(Math.min(rawEng, 30).toFixed(2));
     const base: Koc = {
       id: `seed_${a.username}`,
       platform: "tiktok",

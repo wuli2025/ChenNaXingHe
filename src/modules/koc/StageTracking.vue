@@ -17,6 +17,14 @@ function setVM(id: string, field: "postLink" | "views" | "likes" | "comments" | 
   const el = e.target as HTMLInputElement;
   store.updateVM(id, field, el.type === "number" ? Number(el.value) : el.value);
 }
+
+/** 归一到 <input type="date"> 需要的 yyyy-mm-dd（兼容存量的 2026/06/14 斜杠格式），否则输入框渲染空白。 */
+function toDateInput(v?: string): string {
+  if (!v) return "";
+  const m = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/.exec(String(v).trim());
+  if (!m) return "";
+  return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+}
 </script>
 
 <template>
@@ -48,7 +56,7 @@ function setVM(id: string, field: "postLink" | "views" | "likes" | "comments" | 
               <td><span class="cat">{{ k.category || "-" }}</span></td>
               <td><b>{{ k.name || k.username }}</b><div class="sub">@{{ k.username }}</div></td>
               <td>{{ k.platform === "tiktok" ? "TikTok" : k.platform }}</td>
-              <td><a :href="k.url || `https://www.tiktok.com/@${k.username}`" target="_blank" class="lnk">🔗</a></td>
+              <td><a :href="/^https?:\/\//.test(k.url || '') ? k.url : `https://www.tiktok.com/@${k.username}`" target="_blank" rel="noopener" class="lnk">🔗</a></td>
               <td>{{ tierLabel(k) }}</td>
               <td><input class="ti" :value="k.ksp || ''" @change="setField(k.id, 'ksp', $event)" /></td>
               <td>
@@ -56,7 +64,7 @@ function setVM(id: string, field: "postLink" | "views" | "likes" | "comments" | 
                   <option value="">-</option><option value="Yes">Yes</option><option value="No">No</option>
                 </select>
               </td>
-              <td><input class="ti" type="date" :value="k.postDate || ''" @change="setField(k.id, 'postDate', $event)" /></td>
+              <td><input class="ti" type="date" :value="toDateInput(k.postDate)" @change="setField(k.id, 'postDate', $event)" /></td>
               <td><input class="ti" :value="k.postLink || ''" placeholder="https://" @change="setField(k.id, 'postLink', $event)" /></td>
               <td><input class="ti num" type="number" :value="k.collabFee || ''" @change="setField(k.id, 'collabFee', $event)" /></td>
               <td><input class="ti num" type="number" :value="k.actViews || ''" @change="setField(k.id, 'actViews', $event)" /></td>

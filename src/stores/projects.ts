@@ -46,11 +46,16 @@ export const useProjectsStore = defineStore("projects", () => {
     if (logs.value.length > 1200) logs.value.splice(0, logs.value.length - 1200);
   }
 
-  let bound = false;
+  let binding: Promise<void> | null = null;
   const unlisteners: Array<() => void> = [];
-  async function bind() {
-    if (bound) return;
-    bound = true;
+  // 缓存「就绪 promise」而非一个 bound 布尔:并发第二个调用方 await 的是「监听真正挂上」这一刻,
+  // 而不是仅看到标志已置真就早退(那样它会在 listen 完成注册前就 run() → 漏掉最早的 log/ready 事件)。
+  function bind(): Promise<void> {
+    if (binding) return binding;
+    binding = bindListeners();
+    return binding;
+  }
+  async function bindListeners() {
     unlisteners.push(
       await listen<{ root: string; stream: string; line: string }>(
         "project:log",

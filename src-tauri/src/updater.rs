@@ -94,7 +94,7 @@ static UPDATER: Lazy<Mutex<Inner>> = Lazy::new(|| {
 /// 并据落盘标记做「重启续提示」。不 emit（此刻前端还没监听）。
 pub fn init(app: &AppHandle) -> Result<()> {
     let user = UserDirs::new().ok_or_else(|| anyhow::anyhow!("no user dir"))?;
-    let dir = user.home_dir().join("Polaris").join("data");
+    let dir = user.home_dir().join("ChenNaXingHe").join("data");
     fs::create_dir_all(&dir)?;
     let path = dir.join("updater.json");
 
@@ -205,15 +205,10 @@ fn mirror_candidates(url: &str) -> Vec<String> {
         Some(idx) => url[idx..].to_string(),
         None => return vec![url.to_string()],
     };
-    // 文件名（路径最后一段）→ Cloudflare 自托管兜底：站点 `polaris-2us.pages.dev/downloads/<文件名>`，
-    // 独立于 github + 镜像，国内可达性最好。装包很小(win 6MB / mac 14MB)，Pages 直接扛得住、无需 R2。
-    // 发版时把 setup.exe 与 Polaris.app.tar.gz 传进站点 downloads/ 并 `wrangler pages deploy`（见 release-manual）。
-    let filename = bare.rsplit('/').next().unwrap_or("");
+    // ChenNaXingHe 独立分发：只走 GitHub 官方 Release（本仓库 wuli2025/ChenNaXingHe）+ 国内镜像前缀。
+    // 不再引用任何第三方/原项目的自托管镜像（如旧的 Cloudflare Pages 站点），避免拉到别的项目的包。
+    // download() 内部对字节做 minisign 验签——镜像若被劫持/返回错误页，签名必不过 → 自动跳到下一个源。
     let mut out = vec![format!("https://gh-proxy.com/{bare}")];
-    // Cloudflare 排第二：首个源一「卡死」(停滞看门狗 ~30s 触发)就直接切到最可靠的自托管源，而非再耗在第二个 github 镜像上。
-    if !filename.is_empty() {
-        out.push(format!("https://polaris-2us.pages.dev/downloads/{filename}"));
-    }
     out.push(format!("https://ghfast.top/{bare}"));
     out.push(bare); // 直连 github，最后兜底
     out
@@ -421,21 +416,16 @@ mod tests {
     #[test]
     fn mirror_candidates_wraps_bare_github_url() {
         let c = mirror_candidates(
-            "https://github.com/wuli2025/chuanying/releases/download/v0.2.18/Polaris_0.2.18_x64-setup.exe",
+            "https://github.com/wuli2025/ChenNaXingHe/releases/download/v1.7.1/ChenNaXingHe_1.7.1_x64-setup.exe",
         );
-        // gh-proxy / Cloudflare / ghfast / 直连 共 4 个候选源。
-        assert_eq!(c.len(), 4);
+        // gh-proxy / ghfast / 直连 共 3 个候选源（已移除第三方自托管镜像）。
+        assert_eq!(c.len(), 3);
         assert!(c[0].starts_with("https://gh-proxy.com/https://github.com/"));
-        // Cloudflare 排第二（首源卡死即切自托管），按文件名取。
-        assert_eq!(
-            c[1],
-            "https://polaris-2us.pages.dev/downloads/Polaris_0.2.18_x64-setup.exe"
-        );
-        assert!(c[2].starts_with("https://ghfast.top/https://github.com/"));
+        assert!(c[1].starts_with("https://ghfast.top/https://github.com/"));
         // 末位是直连兜底（无镜像前缀）。
         assert_eq!(
-            c[3],
-            "https://github.com/wuli2025/chuanying/releases/download/v0.2.18/Polaris_0.2.18_x64-setup.exe"
+            c[2],
+            "https://github.com/wuli2025/ChenNaXingHe/releases/download/v1.7.1/ChenNaXingHe_1.7.1_x64-setup.exe"
         );
     }
 
@@ -443,14 +433,12 @@ mod tests {
     fn mirror_candidates_unwraps_already_mirrored_url() {
         // latest.json 里若已写成镜像 url，不能套娃，要剥回裸地址再重套。
         let c = mirror_candidates(
-            "https://gh-proxy.com/https://github.com/wuli2025/chuanying/releases/download/v0.2.18/Polaris.app.tar.gz",
+            "https://gh-proxy.com/https://github.com/wuli2025/ChenNaXingHe/releases/download/v1.7.1/ChenNaXingHe.app.tar.gz",
         );
-        assert_eq!(c.len(), 4);
-        // Cloudflare 兜底（第二位）按文件名，不带版本路径前缀。
-        assert_eq!(c[1], "https://polaris-2us.pages.dev/downloads/Polaris.app.tar.gz");
+        assert_eq!(c.len(), 3);
         assert_eq!(
-            c[3],
-            "https://github.com/wuli2025/chuanying/releases/download/v0.2.18/Polaris.app.tar.gz"
+            c[2],
+            "https://github.com/wuli2025/ChenNaXingHe/releases/download/v1.7.1/ChenNaXingHe.app.tar.gz"
         );
         // 不出现双重镜像前缀。
         assert!(!c[0].contains("gh-proxy.com/https://gh-proxy.com"));
@@ -458,9 +446,9 @@ mod tests {
 
     #[test]
     fn mirror_candidates_passthrough_non_github() {
-        // 非 github 源（如将来自托管 Cloudflare）直连、不套镜像。
-        let c = mirror_candidates("https://polaris-2us.pages.dev/v0.2.18/setup.exe");
-        assert_eq!(c, vec!["https://polaris-2us.pages.dev/v0.2.18/setup.exe".to_string()]);
+        // 非 github 源直连、不套镜像。
+        let c = mirror_candidates("https://example.com/v1.7.1/setup.exe");
+        assert_eq!(c, vec!["https://example.com/v1.7.1/setup.exe".to_string()]);
     }
 
     #[test]

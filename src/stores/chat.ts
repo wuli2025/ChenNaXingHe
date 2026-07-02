@@ -257,7 +257,13 @@ export const useChatStore = defineStore("chatRuntime", () => {
       delete historyErrorByConv.value[convId];
       evictStaleConversations(); // 刚加载一个对话 → 顺手卸载最久未用的,封顶常驻内存
     } catch (e: any) {
-      byConv.value[convId] = [];
+      // 与成功路径(见上 ~247)同款守卫:取历史失败的空档里,这条对话可能刚开始发送
+      // (首条消息竞态)——此刻本地气泡才是权威,别用空数组把正在显示的用户气泡/流式回复抹掉。
+      if (sendingByConv.value[convId] && !force) return;
+      // 已有实时气泡(如刚推入、尚未落库的 user 气泡)也别清空,只登记错误让对话区给「重试」入口。
+      if (!byConv.value[convId] || byConv.value[convId].length === 0) {
+        byConv.value[convId] = [];
+      }
       historyErrorByConv.value[convId] = e?.message ?? String(e);
     }
   }
@@ -330,6 +336,7 @@ export const useChatStore = defineStore("chatRuntime", () => {
 
   async function cancel(convId: string | null) {
     if (!convId) return;
+    flushDelta(convId); // 落地已缓冲但未渲染的尾段文本
     const sessions = useSessionsStore();
     const req = reqByConv.value[convId];
     if (req) {
@@ -346,6 +353,33 @@ export const useChatStore = defineStore("chatRuntime", () => {
     wakeWaiters(convId); // 取消后唤醒分批循环, 让它看到 !isRunning 自行收尾
   }
 
+  // ── 流式 delta 批处理（治理「每 token 全量重渲染」的 O(n²) 卡顿）──
+  //   后端每吐一个 token 就发一条 delta。过去直接 `last.text +=` → 触发 markdown 全量重解析 +
+  //   DOMPurify + 整个 turn 列表 computed 重算 + 同步读 scrollHeight 滚动回流，每条消息 O(N²)。
+  //   现在把同一帧内的多个 delta 累积进缓冲，rAF 里一次性写入响应式气泡 → 每帧最多刷一次。
+  const pendingDelta: Record<string, string> = {};
+  let deltaFlushRaf = 0;
+  function flushDelta(cid: string) {
+    const buf = pendingDelta[cid];
+    if (!buf) return;
+    pendingDelta[cid] = "";
+    const arr = ensureArr(cid);
+    const last = arr[arr.length - 1];
+    if (last && last.role === "assistant") last.text += buf;
+    else arr.push({ role: "assistant", text: buf, at: Date.now() });
+  }
+  function flushAllDeltas() {
+    deltaFlushRaf = 0;
+    for (const cid in pendingDelta) flushDelta(cid);
+  }
+  function scheduleDeltaFlush() {
+    if (deltaFlushRaf) return;
+    deltaFlushRaf =
+      typeof requestAnimationFrame !== "undefined"
+        ? requestAnimationFrame(flushAllDeltas)
+        : (setTimeout(flushAllDeltas, 16) as unknown as number);
+  }
+
   /** app 级初始化：注册一次流式监听，按 conversationId 路由进各自缓冲。
    *  返回缓存的就绪 promise：重复调用只注册一次，且每个调用方都能 await 到「监听已挂上」。 */
   function init(): Promise<void> {
@@ -356,10 +390,14 @@ export const useChatStore = defineStore("chatRuntime", () => {
       touchActivity(cid); // 任何流式事件都算心跳:喂给无声死亡看门狗,证明后端仍活着
       const arr = ensureArr(cid);
       if (ev.kind === "delta") {
-        const last = arr[arr.length - 1];
-        if (last && last.role === "assistant") last.text += ev.text ?? "";
-        else arr.push({ role: "assistant", text: ev.text ?? "", at: Date.now() });
-      } else if (ev.kind === "tool") {
+        // 累积进缓冲，交给 rAF 每帧合并落地（见上方 scheduleDeltaFlush 注释）。
+        pendingDelta[cid] = (pendingDelta[cid] ?? "") + (ev.text ?? "");
+        scheduleDeltaFlush();
+        return;
+      }
+      // 任何非 delta 事件落地前，先把已累积的 delta 刷进气泡，保证与 tool/artifact/done 的先后顺序。
+      flushDelta(cid);
+      if (ev.kind === "tool") {
         arr.push({
           role: "tool",
           text: `调用工具:${ev.tool ?? "(unknown)"}`,
@@ -378,7 +416,7 @@ export const useChatStore = defineStore("chatRuntime", () => {
             }
           }
           if (!target) {
-            target = { role: "assistant", text: "", artifacts: [] };
+            target = { role: "assistant", text: "", artifacts: [], at: Date.now() };
             arr.push(target);
           }
           if (!target.artifacts) target.artifacts = [];
@@ -390,7 +428,8 @@ export const useChatStore = defineStore("chatRuntime", () => {
         if (!Number.isNaN(n)) tokensByConv.value[cid] = n;
       } else if (ev.kind === "error") {
         // stderr 行 / 退出错误：仅展示，不作为终态（终态由 done 处理）
-        arr.push({ role: "assistant", text: `[错误] ${ev.text ?? ""}` });
+        // 带上 at 时间戳:与其它气泡一致参与排序/匹配,别成为「无时间的裸气泡」。
+        arr.push({ role: "assistant", text: `[错误] ${ev.text ?? ""}`, at: Date.now() });
       } else if (ev.kind === "done") {
         // 终态：结束运行态 + 工位会话；若用户不在看该对话则打墨蓝未读点
         sendingByConv.value[cid] = false;

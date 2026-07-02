@@ -13,7 +13,7 @@
 //
 // Key discovery order:
 //   1. env MINIMAX_API_KEY
-//   2. ~/Polaris/data/providers.json  (the "minimax" provider's token)
+//   2. ~/ChenNaXingHe/data/providers.json  (the "minimax" provider's token)
 //
 // Tunables via env:
 //   MINIMAX_TTS_MODEL  (default speech-02-turbo; speech-02-hd = higher quality)
@@ -34,7 +34,7 @@ const DEFAULT_LANGUAGE_BOOST = (process.env.MINIMAX_LANGUAGE_BOOST || "").trim()
 
 function discoverKey() {
   if (process.env.MINIMAX_API_KEY) return process.env.MINIMAX_API_KEY.trim();
-  const pj = path.join(os.homedir(), "Polaris", "data", "providers.json");
+  const pj = path.join(os.homedir(), "ChenNaXingHe", "data", "providers.json");
   try {
     const store = JSON.parse(fs.readFileSync(pj, "utf8"));
     const mm = (store.items || []).find(

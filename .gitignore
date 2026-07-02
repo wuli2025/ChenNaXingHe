@@ -72,3 +72,8 @@ easytier-panic.log
 # 本地草稿 / 抓取产物（根级 _scratch_* 文件、人脸裁剪图等，仅本地）
 _scratch*
 _face_crops/
+
+# 本地开发运行日志（_tauri_dev_run.log / _tradeos_*.log 等，运行时生成，勿提交）
+_tauri*.log
+_tradeos*
+_*.log

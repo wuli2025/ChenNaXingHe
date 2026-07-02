@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Polaris",
-  "version": "1.7.0",
-  "identifier": "com.polaris.app",
+  "productName": "ChenNaXingHe",
+  "version": "1.7.1",
+  "identifier": "com.chennaxinghe.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "北极星 · Polaris",
+        "title": "陈娜星河 · ChenNaXingHe",
         "width": 1500,
         "height": 960,
         "minWidth": 960,
@@ -32,10 +32,10 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://gh-proxy.com/https://github.com/wuli2025/chuanying/releases/latest/download/latest.json",
-        "https://github.com/wuli2025/chuanying/releases/latest/download/latest.json"
+        "https://gh-proxy.com/https://github.com/wuli2025/ChenNaXingHe/releases/latest/download/latest.json",
+        "https://github.com/wuli2025/ChenNaXingHe/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQxRERGNjI5NkJGRjEwNEMKUldSTUVQOXJLZmJkMFpCTWczZ0JaNUo3WG5uQktHYlFJRFVTUitmUHZKUjB5b3BEdVlrelJUQVQK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYxMDg0NDQ4RkVBMTc0MUMKUldRY2RLSCtTRVFJOGMrYWFvNHY5TTRJWk9Bb1R3aEh0OTlJZEk5dHNJNEJTVFRXcFJ0N1JMNWwK",
       "windows": {
         "installMode": "passive"
       }
@@ -54,7 +54,7 @@
     ],
     "category": "Productivity",
     "shortDescription": "本地优先 AI 工作台",
-    "longDescription": "Polaris 是一个本地优先的 AI 工作台,集成 Claude Code 对话、维基知识库和 Docker 安全沙箱。",
+    "longDescription": "陈娜星河(ChenNaXingHe) 是一个本地优先的 AI 工作台,集成 Claude Code 对话、维基知识库和跨境电商模块。",
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"

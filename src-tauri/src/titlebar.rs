@@ -8,7 +8,8 @@
 #[cfg(windows)]
 fn colorref(hex: &str) -> Result<u32, String> {
     let h = hex.trim_start_matches('#');
-    if h.len() != 6 {
+    // 必须是 6 个 ASCII 十六进制字符：否则按字节切片会在非 ASCII 输入(如 "#中文")上 panic
+    if h.len() != 6 || !h.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(format!("非法颜色: {hex}"));
     }
     let r = u32::from_str_radix(&h[0..2], 16).map_err(|e| e.to_string())?;

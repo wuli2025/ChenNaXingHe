@@ -16,14 +16,17 @@ const items = ref<ToastItem[]>([]);
 let seq = 0;
 
 function push(kind: ToastKind, text: string, duration?: number) {
-  const t = (text || "").trim();
-  if (!t) return;
+  const raw = (text || "").trim();
+  if (!raw) return;
+  // 先截断成最终展示形态, 再用它去重: 否则 >240 字的错误(入队时被截断存储)会因为
+  // 「已存的截断串 !== 新来的完整串」而绕过去重、每次都堆一条。两侧都用同一 normalized 形态比。
+  const t = raw.length > 240 ? raw.slice(0, 240) + "…" : raw;
   // 相同文案在屏不重复堆叠(高频错误轰炸保护)
   if (items.value.some((i) => i.text === t && i.kind === kind)) return;
   const item: ToastItem = {
     id: ++seq,
     kind,
-    text: t.length > 240 ? t.slice(0, 240) + "…" : t,
+    text: t,
     duration: duration ?? (kind === "error" ? 6000 : 2600),
   };
   items.value.push(item);

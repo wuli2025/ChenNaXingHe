@@ -199,7 +199,7 @@ def main():
         except Exception as e:
             raise SystemExit(
                 f"CloakBrowser 启动失败(本技能铁律必须走它):{e}\n"
-                "先装:pip install cloakbrowser  或  pip install ~/Polaris/plugins/cloakbrowser"
+                "先装:pip install cloakbrowser  或  pip install ~/ChenNaXingHe/plugins/cloakbrowser"
             )
         if not wait_cdp(port):
             raise SystemExit(f"CloakBrowser 的 CDP 端口 {port} 在超时内未就绪")

@@ -360,19 +360,19 @@ export const useWorkflowsStore = defineStore("workflows", () => {
     if (packs.value.length === 0 && !localStorage.getItem(SEED_KEY)) {
       packs.value = seedPacks();
       localStorage.setItem(SEED_KEY, "1");
-      persist();
+      persistNow();
     }
     // v2 增补「写作/技术选型三件套」：对老用户也补一次，删除后不回种
     if (!localStorage.getItem(SEED_V2_KEY)) {
       packs.value = [...seedPacksV2(), ...packs.value];
       localStorage.setItem(SEED_V2_KEY, "1");
-      persist();
+      persistNow();
     }
     // v3 增补「网页演示视频 / Harness 工程实践」两套：对老用户也补一次，删除后不回种
     if (!localStorage.getItem(SEED_V3_KEY)) {
       packs.value = [...seedPacksV3(), ...packs.value];
       localStorage.setItem(SEED_V3_KEY, "1");
-      persist();
+      persistNow();
     }
   }
 
@@ -380,13 +380,17 @@ export const useWorkflowsStore = defineStore("workflows", () => {
   let persistTimer: ReturnType<typeof setTimeout> | undefined;
   function persist() {
     clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(packs.value));
-      } catch {
-        /* storage 不可用 */
-      }
-    }, 200);
+    persistTimer = setTimeout(persistNow, 200);
+  }
+  // 关键写入(种入示例包 / 增删包)走同步落盘:否则 debounce 窗口内崩溃会丢掉刚种入的包
+  // 与最后一次编辑(「删除后不回种」/ 丢失 last edit)。清掉待触发 debounce,立即序列化。
+  function persistNow() {
+    clearTimeout(persistTimer);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(packs.value));
+    } catch {
+      /* storage 不可用 */
+    }
   }
 
   function openCreate() {
@@ -419,7 +423,7 @@ export const useWorkflowsStore = defineStore("workflows", () => {
           steps,
           updatedAt: now,
         };
-        packs.value = [...packs.value];
+        // 上面按下标替换元素已触发响应式；无需再 `packs.value = [...packs.value]` 整列表重代理重渲染。
       }
     } else {
       packs.value = [
@@ -435,12 +439,12 @@ export const useWorkflowsStore = defineStore("workflows", () => {
         ...packs.value,
       ];
     }
-    persist();
+    persistNow(); // 关键增改同步落盘,避免 debounce 窗口崩溃丢失 last edit
   }
 
   function removePack(id: string) {
     packs.value = packs.value.filter((p) => p.id !== id);
-    persist();
+    persistNow(); // 关键删除同步落盘
   }
 
   /** 点「使用」：拼装并请求填入对话框 */

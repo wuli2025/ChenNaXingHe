@@ -48,6 +48,16 @@ const DEFAULT_BRIEF: BriefTemplate = {
 • 避免：提及竞品品牌名、纯念稿广告感`,
 };
 
+/** 深拷贝（优先 structuredClone，兜底 JSON），用于隔离嵌套引用。 */
+function deepClone<T>(v: T): T {
+  try {
+    if (typeof structuredClone === "function") return structuredClone(v);
+  } catch {
+    /* fall through */
+  }
+  return JSON.parse(JSON.stringify(v)) as T;
+}
+
 let singleton: ReturnType<typeof create> | null = null;
 
 function create() {
@@ -152,8 +162,15 @@ function create() {
   }
   function resetSeed() {
     kocData.value = buildSeed();
+    // 同时清空按 id 关联的派生集合，否则会残留指向已删除 KOC 的孤儿条目。
+    trackingList.value = [];
+    briefs.value = {};
+    videoMonitor.value = {};
     lsSave(LS.seeded, true);
     saveKoc();
+    saveTracking();
+    saveBriefs();
+    saveVM();
   }
 
   // 标签
@@ -196,7 +213,8 @@ function create() {
     const k = kocData.value.find((x) => x.id === id);
     if (!k) return false;
     if (trackingList.value.find((t) => t.id === id)) return false;
-    trackingList.value.push({ ...k });
+    // 深拷贝：浅拷贝会共享 events/tags/scoring 等嵌套引用，导致 screening 与 tracking 互相串改。
+    trackingList.value.push(deepClone(k));
     saveTracking();
     addEvent(id, { kind: "tracking", title: "加入 Tracking List" });
     return true;
@@ -347,6 +365,12 @@ function create() {
         useKb: false,
         ...makeCallbacks(toolSink),
       });
+      // 长时 await 期间「删除」仍可用：若该 KOC 已被删，丢弃结果，不写入已脱管对象、不误报成功。
+      if (!kocData.value.some((x) => x.id === id)) {
+        runStatus.value = `⚠️ @${k.username} 评判完成但账号已被删除，结果已丢弃`;
+        log("info", runStatus.value);
+        return null;
+      }
       const judgment: AiJudgment = {
         verdict: data.verdict || "C",
         reasoning: data.reasoning || "",
@@ -399,6 +423,12 @@ function create() {
         ...makeCallbacks(toolSink),
       });
       const script = res.raw.trim();
+      // 生成期间该 KOC 若被删除：丢弃结果，避免写入已脱管对象并误报成功。
+      if (!kocData.value.some((x) => x.id === id)) {
+        runStatus.value = `⚠️ @${k.username} 脚本已生成但账号已被删除，结果已丢弃`;
+        log("info", runStatus.value);
+        return null;
+      }
       saveScript(id, script);
       if (!briefs.value[id]) generateBrief(id);
       else {

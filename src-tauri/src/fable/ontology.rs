@@ -491,16 +491,32 @@ pub fn ontology_extract(app: AppHandle, schema_id: String) -> Result<String, Str
                 return;
             }
         };
-        // 本轮重抽:先清掉同 schema 旧三元组,避免重复累积。
-        conn.execute("DELETE FROM triples WHERE schema_id=?1", [&schema_owned]).ok();
         let made_at = chrono::Local::now().timestamp_millis();
         let mut kept = 0usize;
         let mut dropped = 0usize;
-        let _ = conn.execute_batch("BEGIN");
-        if let Ok(mut stmt) = conn.prepare_cached(
-            "INSERT INTO triples(schema_id,subject,subject_type,predicate,object,object_type,confidence,source_file,made_at)
-             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)",
-        ) {
+        // 删旧 + 插新放进**同一事务**,且不再吞错:
+        //  ① 任一步失败即整体回滚(连接 drop 自动回滚) → 绝不出现「删了旧三元组却没写进新的」的空窗;
+        //  ② 任何环节(开事务 / 清旧 / 建语句 / 写入 / 提交)出错都发 error 事件后返回,而非照发 done(kept=0)。
+        if let Err(e) = conn.execute_batch("BEGIN") {
+            emit_onto(&app, json!({ "kind": "error", "message": format!("落库失败(开启事务): {e}") }));
+            return;
+        }
+        // 本轮重抽:先清掉同 schema 旧三元组,避免重复累积(在事务内,失败随事务回滚)。
+        if let Err(e) = conn.execute("DELETE FROM triples WHERE schema_id=?1", [&schema_owned]) {
+            emit_onto(&app, json!({ "kind": "error", "message": format!("落库失败(清旧三元组): {e}") }));
+            return;
+        }
+        {
+            let mut stmt = match conn.prepare_cached(
+                "INSERT INTO triples(schema_id,subject,subject_type,predicate,object,object_type,confidence,source_file,made_at)
+                 VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    emit_onto(&app, json!({ "kind": "error", "message": format!("落库失败(准备语句): {e}") }));
+                    return;
+                }
+            };
             for t in &parsed {
                 // 置信阈值 0.5(报告里的可靠性闸之一)。
                 if t.confidence > 0.0 && t.confidence < 0.5 {
@@ -512,25 +528,27 @@ pub fn ontology_extract(app: AppHandle, schema_id: String) -> Result<String, Str
                     continue;
                 };
                 let conf = if t.confidence <= 0.0 { 0.6 } else { t.confidence.min(1.0) };
-                if stmt
-                    .execute(rusqlite::params![
-                        schema_owned,
-                        t.subject.trim(),
-                        st,
-                        pred,
-                        t.object.trim(),
-                        ot,
-                        conf,
-                        t.source_file.trim(),
-                        made_at,
-                    ])
-                    .is_ok()
-                {
-                    kept += 1;
+                if let Err(e) = stmt.execute(rusqlite::params![
+                    schema_owned,
+                    t.subject.trim(),
+                    st,
+                    pred,
+                    t.object.trim(),
+                    ot,
+                    conf,
+                    t.source_file.trim(),
+                    made_at,
+                ]) {
+                    emit_onto(&app, json!({ "kind": "error", "message": format!("落库失败(写入三元组): {e}") }));
+                    return;
                 }
+                kept += 1;
             }
         }
-        let _ = conn.execute_batch("COMMIT");
+        if let Err(e) = conn.execute_batch("COMMIT") {
+            emit_onto(&app, json!({ "kind": "error", "message": format!("落库失败(提交): {e}") }));
+            return;
+        }
 
         emit_onto(
             &app,

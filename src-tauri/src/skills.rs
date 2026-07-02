@@ -483,7 +483,7 @@ pub struct UserSkill {
 
 /// 用户 skills 根目录: ~/Polaris/skills/
 fn skills_dir() -> Option<PathBuf> {
-    directories::UserDirs::new().map(|u| u.home_dir().join("Polaris").join("skills"))
+    directories::UserDirs::new().map(|u| u.home_dir().join("ChenNaXingHe").join("skills"))
 }
 
 fn now_secs() -> i64 {
@@ -608,6 +608,11 @@ fn write_skill_file(
     };
     let dir = root.join(id);
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    // frontmatter 是逐行 `key: value`; name/description 里的 CR/LF(或裸 `---` 行) 会截断 YAML、
+    // 甚至提前闭合 frontmatter 把正文吞进头部。把换行压成空格, 保证每字段单行。
+    let name = name.replace(['\r', '\n'], " ");
+    let description = description.replace(['\r', '\n'], " ");
 
     let content = format!(
         "---\nid: {}\nname: {}\ndescription: {}\nsource: {}\nauthor: {}\ncreated_at: {}\n---\n\n{}\n",
@@ -893,16 +898,20 @@ pub struct CreateSkillArgs {
 
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub fn create_skill(args: CreateSkillArgs) -> Result<(), String> {
-    // 校验 id: 只允许小写字母、数字、-、_
-    if !args
-        .id
+    // 校验 id: 先挡空/纯空白 —— `"".chars().all(..)` 恒为 true, 会把 skill.md 写到 skills 根,
+    // 既不显示也删不掉。再校验字符集: 只允许小写字母、数字、-、_。
+    let id = args.id.trim();
+    if id.is_empty() {
+        return Err("Skill ID 不能为空".into());
+    }
+    if !id
         .chars()
         .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
     {
         return Err("Skill ID 只能包含小写字母、数字、-、_".into());
     }
     write_skill_file(
-        &args.id,
+        id,
         &args.name,
         &args.description,
         "user",
@@ -1015,8 +1024,10 @@ fn install_web_video_presentation() -> Result<(), String> {
     let skill = format!("{}{}\n\n{}", fm, addendum, body);
     fs::write(dest.join("skill.md"), skill).map_err(|e| e.to_string())?;
 
-    // 5. 依赖自检（best-effort，不阻断安装）
-    let _ = Command::new("node").arg(pol.join("bootstrap.mjs")).output();
+    // 5. 依赖自检（best-effort，不阻断安装；带超时防 node 脚本卡死吊住安装）
+    let mut boot = Command::new("node");
+    boot.arg(pol.join("bootstrap.mjs"));
+    let _ = output_with_timeout(boot, 120, "node bootstrap");
 
     Ok(())
 }
@@ -1337,11 +1348,71 @@ fn make_temp_dir() -> Result<PathBuf, String> {
     Ok(base)
 }
 
+/// 跑外部命令并设超时: 超时则杀进程返回 Err —— 死远端 / 僵死进程曾能把 import_skill / install
+/// 命令(git clone、curl、tar、node bootstrap)永久挂住。stdout/stderr 各由独立线程读到 EOF,
+/// 避免子进程写满管道反压自锁。镜像 forge.rs::run_with_timeout。
+fn output_with_timeout(
+    mut cmd: Command,
+    secs: u64,
+    what: &str,
+) -> Result<std::process::Output, String> {
+    use std::io::Read;
+    use std::time::{Duration, Instant};
+    let mut child = cmd
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("无法执行 {}：{}（请确认系统已安装 {}）", what, e, what))?;
+    let mut out_pipe = child
+        .stdout
+        .take()
+        .ok_or_else(|| format!("{} 无法读取输出", what))?;
+    let mut err_pipe = child
+        .stderr
+        .take()
+        .ok_or_else(|| format!("{} 无法读取输出", what))?;
+    let (tx_o, rx_o) = std::sync::mpsc::channel();
+    let (tx_e, rx_e) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut b = Vec::new();
+        let _ = out_pipe.read_to_end(&mut b);
+        let _ = tx_o.send(b);
+    });
+    std::thread::spawn(move || {
+        let mut b = Vec::new();
+        let _ = err_pipe.read_to_end(&mut b);
+        let _ = tx_e.send(b);
+    });
+    let deadline = Instant::now() + Duration::from_secs(secs);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(s)) => break s,
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait(); // 回收, 防僵尸
+                    return Err(format!("{} 超时（{}s）被终止", what, secs));
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Err(e) => return Err(format!("{} 等待失败：{}", what, e)),
+        }
+    };
+    let stdout = rx_o.recv().unwrap_or_default();
+    let stderr = rx_e.recv().unwrap_or_default();
+    Ok(std::process::Output {
+        status,
+        stdout,
+        stderr,
+    })
+}
+
 fn run_cmd(cmd: &str, args: &[&str]) -> Result<(), String> {
-    let out = Command::new(cmd)
-        .args(args)
-        .output()
-        .map_err(|e| format!("无法执行 {}：{}（请确认系统已安装 {}）", cmd, e, cmd))?;
+    let mut c = Command::new(cmd);
+    c.args(args);
+    // 120s 兜底: clone / 下载够用, 又不至于卡死死远端。
+    let out = output_with_timeout(c, 120, cmd)?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr);
         return Err(format!("{} 执行失败：{}", cmd, err.trim()));
@@ -1351,7 +1422,13 @@ fn run_cmd(cmd: &str, args: &[&str]) -> Result<(), String> {
 
 fn download(url: &str, dest: &Path) -> Result<(), String> {
     let dest_s = dest.to_string_lossy();
-    run_cmd("curl", &["-L", "--fail", "-s", "-o", dest_s.as_ref(), url])
+    // --max-time 120: curl 自身也设超时, 与外层看门狗双保险 (死连接不至于吊住 120s 才被杀)。
+    run_cmd(
+        "curl",
+        &[
+            "-L", "--fail", "-s", "--max-time", "120", "-o", dest_s.as_ref(), url,
+        ],
+    )
 }
 
 fn unzip(zip: &Path, dest: &Path) -> Result<(), String> {

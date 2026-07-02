@@ -26,8 +26,8 @@ pub fn enabled() -> bool {
 fn ensure_cache_env() {
     if std::env::var_os("FASTEMBED_CACHE_DIR").is_none() {
         let dir = directories::UserDirs::new()
-            .map(|u| u.home_dir().join("Polaris").join("models").join("fastembed"))
-            .unwrap_or_else(|| PathBuf::from("/root/Polaris/models/fastembed"));
+            .map(|u| u.home_dir().join("ChenNaXingHe").join("models").join("fastembed"))
+            .unwrap_or_else(|| PathBuf::from("/root/ChenNaXingHe/models/fastembed"));
         let _ = std::fs::create_dir_all(&dir);
         std::env::set_var("FASTEMBED_CACHE_DIR", dir);
     }

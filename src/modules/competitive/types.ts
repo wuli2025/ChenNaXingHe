@@ -291,8 +291,14 @@ export interface LogLine {
 /** localStorage 持久化的「上次运行」。 */
 export interface PersistedRun {
   mode: Mode;
+  /** 兼容旧记录：当前模式的单一输入（迁移用）。 */
   company: string;
   product: string;
+  /** 分模式输入：A/B 各存一份，避免切换模式后 reload 输入串台。 */
+  companyA?: string;
+  productA?: string;
+  companyB?: string;
+  productB?: string;
   dataA?: ModeAData;
   dataB?: ModeBData;
   at: number;

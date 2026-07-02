@@ -178,7 +178,7 @@ function useDefault() {
         <input
           class="path-in"
           v-model="draft"
-          placeholder="例如 C:\Users\mi\Polaris\PolarisKB"
+          placeholder="例如 C:\Users\mi\ChenNaXingHe\PolarisKB"
           :disabled="busy"
         />
         <button class="btn" @click="pickFolder" :disabled="busy">浏览…</button>

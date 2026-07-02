@@ -27,7 +27,7 @@ function keyOk() {
   if (process.env.MINIMAX_API_KEY) return true;
   try {
     const store = JSON.parse(
-      fs.readFileSync(path.join(os.homedir(), "Polaris", "data", "providers.json"), "utf8"),
+      fs.readFileSync(path.join(os.homedir(), "ChenNaXingHe", "data", "providers.json"), "utf8"),
     );
     return (store.items || []).some((p) => {
       const env = (p.settings_config && p.settings_config.env) || {};

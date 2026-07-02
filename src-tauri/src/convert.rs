@@ -85,10 +85,15 @@ pub fn convert_to_markdown(path: &Path) -> Result<Option<String>, String> {
 
 fn read_text(path: &Path) -> Result<String, String> {
     let len = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
-    let bytes = std::fs::read(path).map_err(|e| format!("读取失败: {e}"))?;
+    // 只读前 TEXT_READ_CAP 字节：超大(多 GB)文件不整体载入内存，仅分配封顶量。
+    let mut f = std::fs::File::open(path).map_err(|e| format!("读取失败: {e}"))?;
+    let mut bytes = Vec::new();
+    f.take(TEXT_READ_CAP)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("读取失败: {e}"))?;
     let mut text = String::from_utf8_lossy(&bytes).into_owned();
     if len > TEXT_READ_CAP {
-        // from_utf8_lossy 已读全部；这里仅在超大时截断展示，避免索引膨胀
+        // 文件超过上限：截断处回退到 UTF-8 字符边界，注明已截断
         let cap = byte_floor_char_boundary(&text, TEXT_READ_CAP as usize);
         text.truncate(cap);
         text.push_str("\n\n…（文件过大，已截断）");

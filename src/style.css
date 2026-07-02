@@ -42,11 +42,27 @@
   --code-bg: #f4f3ee;
   --code-text: #3a3a40;
 
-  --shadow-sm: 0 1px 1px rgba(20, 20, 25, 0.018);
-  --shadow: 0 1px 6px rgba(20, 20, 25, 0.025);
-  --shadow-lg: 0 4px 22px rgba(20, 20, 25, 0.06);
+  /* 苹果式多层柔投影：近处一层收边 + 远处一层大范围柔化，低透明度堆叠出「浮起」感 */
+  --shadow-sm: 0 1px 2px rgba(20, 20, 25, 0.04);
+  --shadow: 0 1px 2px rgba(20, 20, 25, 0.04), 0 6px 16px -8px rgba(20, 20, 25, 0.09);
+  --shadow-lg: 0 2px 6px rgba(20, 20, 25, 0.05),
+    0 18px 44px -14px rgba(20, 20, 25, 0.16);
 
   --hairline: rgba(20, 20, 25, 0.06);
+
+  /* ===== 琉璃玻璃（默认浅色）=====
+     环境光：极淡的角落光晕，让磨砂玻璃后面「有东西可透」；
+     glass：磨砂面板底色 + 统一模糊配方 + 顶部内高光。整套挂在 token 上，
+     深/浅/极光各自覆盖，组件只引用 var()。 */
+  --ambient: radial-gradient(1100px 760px at 6% -12%, rgba(88, 138, 214, 0.1), transparent 58%),
+    radial-gradient(980px 720px at 114% 6%, rgba(176, 138, 214, 0.08), transparent 55%),
+    radial-gradient(1000px 900px at 50% 120%, rgba(167, 140, 79, 0.06), transparent 60%),
+    var(--bg-side);
+  --glass-bg: rgba(252, 251, 247, 0.72);
+  --glass-side: rgba(247, 246, 240, 0.6);
+  --glass-blur: blur(22px) saturate(180%);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.55);
 
   /* ===== v7 琉璃质感（仿 Codex/Kimi 收敛稿）=====
      主区暖白、侧栏略深一档的暖米（Codex 形态：靠色差分区，无分割线）；
@@ -160,10 +176,21 @@ a:hover {
   --code-text: #a9c8ff;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -10px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.35),
+    0 26px 60px -18px rgba(0, 0, 0, 0.62);
 
   --hairline: rgba(255, 255, 255, 0.07);
+
+  /* 深色琉璃：环境光压到极淡冷调，磨砂面板走半透黑，模糊配方降饱和不发糊 */
+  --ambient: radial-gradient(1100px 760px at 6% -12%, rgba(120, 150, 220, 0.07), transparent 58%),
+    radial-gradient(980px 720px at 114% 6%, rgba(150, 120, 200, 0.055), transparent 55%),
+    var(--bg-side);
+  --glass-bg: rgba(35, 35, 34, 0.68);
+  --glass-side: rgba(29, 29, 29, 0.6);
+  --glass-blur: blur(22px) saturate(140%);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.08);
 
   /* Codex 形态：主区略暗、框面/侧栏略亮，侧栏中部微光走 --bg-side-mid */
   --bg-chat: #181818;
@@ -210,6 +237,9 @@ html[data-theme="aurora-dark"] ::selection {
   --bg-side: rgba(255, 255, 255, 0.4);
   --bg-side-mid: rgba(255, 255, 255, 0.56);
   --hairline: rgba(255, 255, 255, 0.78);
+  /* 极光下的磨砂：更白更透，让彩虹极光透上来 */
+  --glass-side: rgba(255, 255, 255, 0.42);
+  --glass-bg: rgba(255, 255, 255, 0.58);
   --border-strong: rgba(150, 130, 210, 0.34);
   --liuli-edge: linear-gradient(
     135deg,
@@ -226,6 +256,9 @@ html[data-theme="aurora-dark"] ::selection {
   --bg-side: rgba(78, 80, 88, 0.34);
   --bg-side-mid: rgba(98, 100, 110, 0.4);
   --hairline: rgba(255, 255, 255, 0.12);
+  /* 极光暗版磨砂：中性灰玻璃，不与墨黑冲突 */
+  --glass-side: rgba(70, 72, 80, 0.34);
+  --glass-bg: rgba(60, 62, 70, 0.46);
   --liuli-edge: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.2),

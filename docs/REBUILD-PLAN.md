@@ -2,7 +2,7 @@
 
 > 把原 Polaris「本地优先 AI 工作台」精简为一个**以 Claude Code 为唯一后端大脑**的营销智能体核心，
 > 顶部切换三个营销应用场景，其余能力收进「设置/更多」。更新仓库迁移到
-> `https://github.com/wuli2025/chuanying`。
+> `https://github.com/wuli2025/ChenNaXingHe`。
 
 ## 1. 决策摘要（按用户语音指令解码）
 
@@ -15,7 +15,7 @@
 - **技能中心**：`skills.rs` / `SkillCenter.vue`。
 - **自动化**：`automation` / `Automation.vue`。
 - **语音输入 / TTS 下载**：`voice.rs` / `VoiceSettings.vue` / `VoiceOverlay.vue`。
-- **自动更新**：`updater.rs`（仓库已切到 chuanying）。
+- **自动更新**：`updater.rs`（仓库已切到 ChenNaXingHe）。
 
 ### 删除的分支（branches removed）
 - 文件中心 `FileCenter.vue` / `fileTasks.ts` / `fable::files`
@@ -72,7 +72,7 @@ Gemini/Tavily/luckyapi 换成本应用的 Claude Code：
   → 每个 workflow 按阶段 gating，阶段产物结构化存档，提供「让 AI 复核本阶段」动作。
 
 ## 5. 执行阶段
-1. ✅ 更新仓库 → chuanying（tauri.conf.json / updater.rs / UpdatePanel.vue / docs）。
+1. ✅ 更新仓库 → ChenNaXingHe（tauri.conf.json / updater.rs / UpdatePanel.vue / docs）。
 2. 新外壳 + ViewKey 精简 + 设置聚合（App.vue / stores/app.ts / 顶部导航）。
 3. 共享 agent runner（useAgentRunner）。
 4. 三个营销模块（PMKT / KOC / 竞品分析）。

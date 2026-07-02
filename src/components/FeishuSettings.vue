@@ -3,6 +3,7 @@
 // 配置 App ID/Secret → 启动长连接网关 → 飞书 @机器人/私聊 走 Polaris 真对话管线
 // (Claude Code 带工具执行、消息落库 UI 可见) → 回复发回飞书。支持开机自动启动 + 防断守护。
 import { onMounted, onUnmounted, ref } from "vue";
+import DOMPurify from "dompurify";
 import { feishu, type FeishuConfig, type FeishuTestResult } from "../tauri";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 
@@ -34,8 +35,26 @@ const qrError = ref("");
 const gwState = ref<string>("stopped"); // stopped|starting|installing|connected|reconnecting
 const gwBusy = ref(false);
 const gwLog = ref<string[]>([]);
+// 后端 feishu_* 命令族可能未实现(浏览器/未配置)→ 加载失败时置 true,给「不可用」优雅态。
+const unavailable = ref(false);
 let unlistenLog: UnlistenFn | null = null;
 let unlistenStatus: UnlistenFn | null = null;
+// gwBusy 兜底释放:若状态事件迟迟不来(如卡在 starting→reconnecting),超时自动解禁按钮。
+let gwBusyTimer: ReturnType<typeof setTimeout> | null = null;
+function armGwBusyRelease() {
+  if (gwBusyTimer) clearTimeout(gwBusyTimer);
+  gwBusyTimer = setTimeout(() => {
+    gwBusy.value = false;
+    gwBusyTimer = null;
+  }, 15000);
+}
+function releaseGwBusy() {
+  gwBusy.value = false;
+  if (gwBusyTimer) {
+    clearTimeout(gwBusyTimer);
+    gwBusyTimer = null;
+  }
+}
 
 async function load() {
   cfg.value = await feishu.getConfig();
@@ -80,7 +99,11 @@ async function openScan() {
   qrLoading.value = true;
   try {
     const r = await feishu.createQr();
-    qrSvg.value = r.svg;
+    // 二维码是 SVG,经 v-html 进特权 webview → 必须消毒(拦 <script>/on*),仅保留 SVG 绘图。
+    // 走 SVG profile(应用统一 sanitizeHtml 是 html-only,会误删 <svg>,故此处直接用 DOMPurify)。
+    qrSvg.value = DOMPurify.sanitize(r.svg, {
+      USE_PROFILES: { svg: true, svgFilters: true },
+    });
   } catch (e: any) {
     qrError.value = `${e}`;
   } finally {
@@ -105,12 +128,13 @@ function pushLog(t: string) {
 }
 async function startGateway() {
   gwBusy.value = true;
+  armGwBusyRelease(); // 状态事件迟迟不来也不会永久卡住按钮
   try {
     await save();
     await feishu.gatewayStart();
   } catch (e: any) {
     pushLog(`启动失败：${e?.message || e}`);
-    gwBusy.value = false;
+    releaseGwBusy();
   }
 }
 async function stopGateway() {
@@ -120,7 +144,7 @@ async function stopGateway() {
   } catch (e: any) {
     pushLog(`停止失败：${e?.message || e}`);
   } finally {
-    gwBusy.value = false;
+    releaseGwBusy();
   }
 }
 // 切「开机自动启动」即时存盘
@@ -140,20 +164,35 @@ const stateLabel = () =>
           : "○ 未启动";
 
 onMounted(async () => {
-  await load();
+  // feishu_* 命令族在部分后端/浏览器未实现:load() 抛错不能中断后续监听器注册,
+  // 否则 onMounted 里的 unhandled rejection 会让下面的事件订阅整段跳过。
+  try {
+    await load();
+  } catch (e) {
+    unavailable.value = true;
+    savedMsg.value = `飞书功能未配置 / 不可用：${(e as any)?.message || e}`;
+  }
   try {
     const s = await feishu.gatewayStatus();
     gwState.value = s.running ? "connected" : "stopped";
   } catch {
-    /* 浏览器模式 */
+    /* 浏览器模式 / 未实现 */
   }
-  unlistenStatus = await feishu.onGatewayStatus((state) => {
-    gwState.value = state;
-    if (state === "connected" || state === "stopped") gwBusy.value = false;
-  });
-  unlistenLog = await feishu.onGatewayLog((text) => pushLog(text));
+  try {
+    unlistenStatus = await feishu.onGatewayStatus((state) => {
+      gwState.value = state;
+      // connected/stopped 是稳定态;reconnecting 也解禁 —— 否则 starting→reconnecting 循环会永久卡住按钮。
+      if (state === "connected" || state === "stopped" || state === "reconnecting") {
+        releaseGwBusy();
+      }
+    });
+    unlistenLog = await feishu.onGatewayLog((text) => pushLog(text));
+  } catch {
+    /* 事件订阅不可用:忽略 */
+  }
 });
 onUnmounted(() => {
+  if (gwBusyTimer) clearTimeout(gwBusyTimer);
   if (unlistenLog) unlistenLog();
   if (unlistenStatus) unlistenStatus();
 });
@@ -169,6 +208,9 @@ onUnmounted(() => {
       <div class="sub">
         飞书里 <b>@机器人</b>（或私聊）的指令，会经长连接进来交给 <b>Claude Code</b>（在「飞书机器人」项目里、带工具执行、可操作软件），
         过程在 Polaris 里实时可见，结果发回飞书。
+      </div>
+      <div v-if="unavailable" class="result err" style="margin-top: 12px">
+        飞书功能当前未配置 / 不可用（后端命令未实现或浏览器模式）。配置与联调请在桌面版进行。
       </div>
     </div>
 

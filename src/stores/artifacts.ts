@@ -40,15 +40,19 @@ export const useArtifactsStore = defineStore("artifacts", () => {
   async function open(path: string) {
     const name = path.split(/[\\/]/).pop() || path;
     current.value = { path, name };
+    const target = current.value; // 身份令牌:await 期间用户可能又点了别的产物
     loading.value = true;
     error.value = null;
     payload.value = null;
     try {
-      payload.value = await api.read(path);
+      const p = await api.read(path);
+      // 慢的旧读取回来时若已切到别的产物,丢弃本次结果,别盖掉当前正在看的那份(同 saveContent 守卫)。
+      if (current.value !== target) return;
+      payload.value = p;
     } catch (e: any) {
-      error.value = e?.message ?? String(e);
+      if (current.value === target) error.value = e?.message ?? String(e);
     } finally {
-      loading.value = false;
+      if (current.value === target) loading.value = false;
     }
   }
 

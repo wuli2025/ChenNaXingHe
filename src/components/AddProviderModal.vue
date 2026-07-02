@@ -13,6 +13,13 @@ const filter = ref("");
 const revealKey = ref(false);
 const saving = ref(false);
 const localErr = ref<string | null>(null);
+// 当前预填的 key 是后端脱敏掩码(server flavor)：不把掩码当真 key,存回时剔除以免覆盖真实密钥。
+const keyMasked = ref(false);
+
+// 脱敏 token 长这样：尾 4 位前缀若干圆点(U+2022)，如 ••••wxyz。真 key 不含圆点。
+function looksMasked(v: unknown): boolean {
+  return typeof v === "string" && /•/.test(v);
+}
 
 // 选中的预设 id（"" = 自定义配置）
 const selectedId = ref<string>("");
@@ -82,7 +89,10 @@ function applyProvider(p: ProviderView) {
   form.websiteUrl = p.websiteUrl || "";
   form.tokenField = p.tokenField || "ANTHROPIC_AUTH_TOKEN";
   form.baseUrl = p.baseUrl || "";
-  form.apiKey = p.authToken || "";
+  // 后端脱敏(masked)或 authToken 本身就是掩码 → 不把掩码塞进可编辑的 key 输入框
+  // (否则用户不改就会把掩码当真 key 存回,覆盖真实密钥)。留空 + 提示已配置。
+  keyMasked.value = !!p.masked || looksMasked(p.authToken);
+  form.apiKey = keyMasked.value ? "" : p.authToken || "";
   form.model =
     (p.settingsConfig &&
       typeof p.settingsConfig === "object" &&
@@ -109,6 +119,7 @@ function selectCustom() {
   form.apiKey = "";
   form.model = "";
   form.configJson = '{\n  "env": {}\n}';
+  keyMasked.value = false;
   localErr.value = null;
 }
 
@@ -131,24 +142,40 @@ function parseCfg(): any {
 function writeCfg(cfg: any) {
   form.configJson = JSON.stringify(cfg, null, 2);
 }
-function setEnv(key: string, val: string) {
-  const cfg = parseCfg() ?? { env: {} };
+/** JSON 编辑器当前无效时:不覆写配置(保住用户手编内容),只报错并跳过本次字段同步。返回 null 表示应中止。 */
+function cfgForEdit(): any | null {
+  const cfg = parseCfg();
+  if (cfg === null) {
+    localErr.value = "配置 JSON 无效，已保留你手动编辑的内容；修正 JSON 后再改此字段";
+    return null;
+  }
   if (!cfg.env || typeof cfg.env !== "object") cfg.env = {};
+  return cfg;
+}
+function setEnv(key: string, val: string) {
+  const cfg = cfgForEdit();
+  if (!cfg) return;
   if (val) cfg.env[key] = val;
   else delete cfg.env[key];
   writeCfg(cfg);
 }
 
 function onApiKey() {
+  // 用户开始输入自己的 key → 不再是掩码态
+  keyMasked.value = false;
   setEnv(form.tokenField, form.apiKey.trim());
+}
+// 手动编辑配置 JSON:恢复为合法 JSON 后撤下「JSON 无效」提示
+function onConfigEdit() {
+  if (localErr.value && parseCfg() !== null) localErr.value = null;
 }
 function onBaseUrl() {
   setEnv("ANTHROPIC_BASE_URL", form.baseUrl.trim());
 }
 function onModel() {
   // 一个值钉四档:填了全写,清空全删
-  const cfg = parseCfg() ?? { env: {} };
-  if (!cfg.env || typeof cfg.env !== "object") cfg.env = {};
+  const cfg = cfgForEdit();
+  if (!cfg) return;
   const m = form.model.trim();
   for (const k of MODEL_KEYS) {
     if (m) cfg.env[k] = m;
@@ -158,8 +185,8 @@ function onModel() {
 }
 function onTokenFieldSwitch(field: string) {
   // 切换字段：把旧字段的值搬到新字段
-  const cfg = parseCfg() ?? { env: {} };
-  if (!cfg.env) cfg.env = {};
+  const cfg = cfgForEdit();
+  if (!cfg) return;
   delete cfg.env["ANTHROPIC_AUTH_TOKEN"];
   delete cfg.env["ANTHROPIC_API_KEY"];
   if (form.apiKey.trim()) cfg.env[field] = form.apiKey.trim();
@@ -186,8 +213,8 @@ const toggles = computed(() => {
   };
 });
 function toggle(key: string, checked: boolean) {
-  const cfg = parseCfg() ?? { env: {} };
-  if (!cfg.env || typeof cfg.env !== "object") cfg.env = {};
+  const cfg = cfgForEdit();
+  if (!cfg) return;
   switch (key) {
     case "hideAttribution":
       if (checked) cfg.attribution = { commit: "", pr: "" };
@@ -230,6 +257,14 @@ async function submit() {
   if (cfg === null) {
     localErr.value = "配置 JSON 格式有误";
     return;
+  }
+  // 脱敏保护:server flavor 下 provider_list 返回的是掩码 token(如 ••••wxyz)。
+  // 用户没输入新 key 时,env 里仍是掩码 —— 剔除它,绝不把掩码当真 key 存回覆盖真实密钥。
+  // (用户若输入了新 key,onApiKey 已把真值写进 env,此处不会命中。)
+  if (cfg.env && typeof cfg.env === "object") {
+    for (const k of Object.keys(cfg.env)) {
+      if (looksMasked(cfg.env[k])) delete cfg.env[k];
+    }
   }
   saving.value = true;
   const id = await store.save({
@@ -340,7 +375,7 @@ function dotColor(p: ProviderView) {
                 <input
                   v-model="form.apiKey"
                   :type="revealKey ? 'text' : 'password'"
-                  placeholder="只需要填这里，下方配置会自动填充"
+                  :placeholder="keyMasked ? '已配置密钥（已隐藏）· 如需更换在此输入新密钥' : '只需要填这里，下方配置会自动填充'"
                   autocomplete="off"
                   @input="onApiKey"
                 />
@@ -394,7 +429,7 @@ function dotColor(p: ProviderView) {
                 <span>{{ t.label }}</span>
               </label>
             </div>
-            <textarea v-model="form.configJson" class="json-editor" spellcheck="false" rows="6" />
+            <textarea v-model="form.configJson" class="json-editor" spellcheck="false" rows="6" @input="onConfigEdit" />
           </template>
 
           <div v-if="localErr" class="err">{{ localErr }}</div>

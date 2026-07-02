@@ -123,7 +123,7 @@ function reset() {
             <td>
               <b>{{ k.name || k.username }}</b>
               <div class="sub">@{{ k.username }}</div>
-              <a v-if="k.url" :href="k.url" target="_blank" class="lnk">主页 ↗</a>
+              <a v-if="k.url && /^https?:\/\//.test(k.url)" :href="k.url" target="_blank" rel="noopener" class="lnk">主页 ↗</a>
             </td>
             <td class="contact">
               <a v-if="k.whatsapp" :href="`https://wa.me/${k.whatsapp.replace(/\D/g, '')}`" target="_blank">📱 {{ k.whatsapp }}</a>

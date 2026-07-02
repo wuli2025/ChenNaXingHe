@@ -27,12 +27,21 @@ function loadProfile(): KbProfile | null {
   return null;
 }
 
+/** storage 被禁用的 WebView 里裸 getItem 会抛 → store 初始化崩、app 起不来。安全读取兜底。 */
+function loadSchema(): string {
+  try {
+    return localStorage.getItem(SCHEMA_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
 export const useWizardStore = defineStore("wizard", () => {
   const open = ref(false);
   // 已选画像(null = 还没选过 → 向导首步让用户选)。持久化:下次开软件记得用户是个人还是企业。
   const profile = ref<KbProfile | null>(loadProfile());
   // 企业路径选定的行业 schema id(如 finance / medical / ecommerce …)。
-  const schemaId = ref<string>(localStorage.getItem(SCHEMA_KEY) || "");
+  const schemaId = ref<string>(loadSchema());
 
   // 个人 → 聚类(B);企业 → 框架抽取(D)。
   const method = computed<"cluster" | "schema">(() =>

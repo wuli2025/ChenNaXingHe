@@ -23,7 +23,8 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 
 #[derive(Clone)]
@@ -50,7 +51,7 @@ pub async fn serve() -> anyhow::Result<()> {
     // claude 自动信任整棵树。桌面版靠 `CARGO_MANIFEST_DIR` 的父级，但那是编译期路径，
     // 容器运行时不存在 → 这里显式把进程工作目录设到数据根，避免 claude 落到 `/`。
     if let Some(u) = directories::UserDirs::new() {
-        let data_root = u.home_dir().join("Polaris");
+        let data_root = u.home_dir().join("ChenNaXingHe");
         let _ = std::fs::create_dir_all(&data_root);
         if let Err(e) = std::env::set_current_dir(&data_root) {
             eprintln!("[polaris-server] 设工作目录失败({}): {e}", data_root.display());
@@ -75,10 +76,11 @@ pub async fn serve() -> anyhow::Result<()> {
     let auth_token = std::env::var("POLARIS_AUTH_TOKEN")
         .ok()
         .filter(|s| !s.is_empty());
-    if auth_token.is_some() {
+    let has_token = auth_token.is_some();
+    if has_token {
         println!("[polaris-server] 已启用访问口令 (POLARIS_AUTH_TOKEN)");
     } else {
-        println!("[polaris-server] ⚠ 未设访问口令，服务对所有可达网络开放");
+        eprintln!("[polaris-server] ⚠ 未设访问口令 (POLARIS_AUTH_TOKEN)，仅绑定回环地址 127.0.0.1，拒绝一切非本机访问");
     }
 
     let web_dir = std::env::var("POLARIS_WEB_DIR").unwrap_or_else(|_| "/srv/web".to_string());
@@ -95,7 +97,7 @@ pub async fn serve() -> anyhow::Result<()> {
         .route("/api/invoke", post(invoke))
         .route("/api/upload", post(upload))
         .route("/api/file", get(serve_file))
-        .route("/api/health", get(|| async { "ok" }))
+        .route("/api/health", get(|| async { Json(json!({ "ok": true })) }))
         .route("/api/status", get(status))
         .route("/ws", get(ws_handler))
         .fallback(get(spa_fallback))
@@ -108,8 +110,10 @@ pub async fn serve() -> anyhow::Result<()> {
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(8080);
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    println!("[polaris-server] 监听 http://0.0.0.0:{port} (前端目录: {})", web_dir.display());
+    // 安全：未设访问口令时只绑回环 127.0.0.1，杜绝「空口令 + 0.0.0.0」在局域网/公网上裸奔。
+    let bind_ip = if has_token { [0, 0, 0, 0] } else { [127, 0, 0, 1] };
+    let addr = SocketAddr::from((bind_ip, port));
+    println!("[polaris-server] 监听 http://{addr} (前端目录: {})", web_dir.display());
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app_router).await?;
@@ -120,10 +124,14 @@ pub async fn serve() -> anyhow::Result<()> {
 //
 // 给群晖运维/监控用的水位接口: 容器内存(贴近 mem_limit/OOM 风险)、宿主内存、数据盘用量
 // (防写满)、claude 配置在位、推理端点(R3)状态。全部 best-effort: 读不到的项返回
-// available:false 而非报错, 非 Linux 环境(开发机)也能编译运行。与 /api/health 一样不需口令
-// (只暴露粗粒度水位, 不含敏感数据)。
+// available:false 而非报错, 非 Linux 环境(开发机)也能编译运行。
+// 安全：暴露磁盘路径/内存/配置在位/口令是否设置等基础设施细节，故须口令鉴权（与 /api/health 不同，
+// health 仅返回 {"ok":true} 供存活探测，不含任何敏感字段）。
 
-async fn status(State(state): State<AppState>) -> Response {
+async fn status(State(state): State<AppState>, headers: HeaderMap) -> Response {
+    if !check_auth(&state, &headers) {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error":"未授权"}))).into_response();
+    }
     let auth_set = state.auth_token.is_some();
     // 含 df 子进程 + 推理端点探测(阻塞/网络), 丢到阻塞线程池, 勿卡 async worker。
     let v = tokio::task::spawn_blocking(move || collect_status(auth_set))
@@ -134,7 +142,7 @@ async fn status(State(state): State<AppState>) -> Response {
 
 fn collect_status(auth_set: bool) -> Value {
     let data_root = directories::UserDirs::new()
-        .map(|u| u.home_dir().join("Polaris"))
+        .map(|u| u.home_dir().join("ChenNaXingHe"))
         .unwrap_or_else(|| PathBuf::from("/root/Polaris"));
     json!({
         "ok": true,
@@ -263,7 +271,8 @@ fn claude_config_status() -> Value {
 
 fn check_auth(state: &AppState, headers: &HeaderMap) -> bool {
     let Some(expected) = state.auth_token.as_ref() else {
-        return true; // 未设口令 → 放行
+        // 未设口令 → 启动时已强制仅绑回环 127.0.0.1（仅本机可达），此处放行。
+        return true;
     };
     let got = headers
         .get("authorization")
@@ -275,7 +284,75 @@ fn check_auth(state: &AppState, headers: &HeaderMap) -> bool {
                 .and_then(|v| v.to_str().ok())
                 .map(|s| s.to_string())
         });
-    got.as_deref() == Some(expected.as_str())
+    match got {
+        Some(g) => ct_eq(g.as_bytes(), expected.as_bytes()),
+        None => false,
+    }
+}
+
+/// 常量时间比较：避免通过响应时序侧信道逐字节爆破口令。长度不同直接短路（长度非机密）。
+fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+// ── 鉴权失败限流 / 锁定（防弱口令暴力破解）──
+// 全进程单一计数器（未把 ConnectInfo 逐层穿透，故不按 IP 分桶）：窗口内失败达阈值即进入冷却期，
+// 冷却期内所有受保护路由的鉴权请求一律返回 429。冷却结束自动重置。
+
+const AUTH_MAX_FAILS: u32 = 10;
+const AUTH_WINDOW: Duration = Duration::from_secs(60);
+const AUTH_LOCK: Duration = Duration::from_secs(60);
+
+struct AuthLimiter {
+    fail_count: u32,
+    window_start: Instant,
+    locked_until: Option<Instant>,
+}
+
+fn auth_limiter() -> &'static Mutex<AuthLimiter> {
+    static L: OnceLock<Mutex<AuthLimiter>> = OnceLock::new();
+    L.get_or_init(|| {
+        Mutex::new(AuthLimiter {
+            fail_count: 0,
+            window_start: Instant::now(),
+            locked_until: None,
+        })
+    })
+}
+
+/// true → 当前处于锁定冷却期，调用方应返回 429。锁定到期时自动重置计数。
+fn auth_is_locked() -> bool {
+    let mut l = auth_limiter().lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(until) = l.locked_until {
+        if Instant::now() < until {
+            return true;
+        }
+        l.locked_until = None;
+        l.fail_count = 0;
+        l.window_start = Instant::now();
+    }
+    false
+}
+
+/// 记录一次鉴权失败：窗口滚动 + 达阈值则进入冷却期。
+fn auth_record_failure() {
+    let now = Instant::now();
+    let mut l = auth_limiter().lock().unwrap_or_else(|e| e.into_inner());
+    if now.duration_since(l.window_start) > AUTH_WINDOW {
+        l.window_start = now;
+        l.fail_count = 0;
+    }
+    l.fail_count += 1;
+    if l.fail_count >= AUTH_MAX_FAILS {
+        l.locked_until = Some(now + AUTH_LOCK);
+    }
 }
 
 // ───────────────────────── /api/invoke 分发 ─────────────────────────
@@ -292,7 +369,11 @@ async fn invoke(
     headers: HeaderMap,
     Json(req): Json<InvokeReq>,
 ) -> Response {
+    if auth_is_locked() {
+        return (StatusCode::TOO_MANY_REQUESTS, Json(json!({"error":"鉴权失败次数过多，请稍后再试"}))).into_response();
+    }
     if !check_auth(&state, &headers) {
+        auth_record_failure();
         return (StatusCode::UNAUTHORIZED, Json(json!({"error":"未授权 (口令错误)"}))).into_response();
     }
     let cmd = req.cmd;
@@ -642,7 +723,7 @@ fn dispatch_sync(cmd: &str, a: &Value, app: AppHandle) -> Result<Value, String> 
             ok(provider::provider_save(input)?)
         }
         "provider_delete" => ok(provider::provider_delete(req_str(a, "id")?)?),
-        "usage_summary" => ok(provider::usage_summary()?),
+        "usage_summary" => ok(provider::usage_summary_sync()?),
         "provider_balance" => ok(provider::provider_balance(req_str(a, "id")?)?),
         "codex_status" => ok(provider::codex_status()?),
         "codex_start_login" => ok(provider::codex_start_login()?),
@@ -737,7 +818,15 @@ async fn ws_handler(
 ) -> Response {
     // WS 鉴权走 query token（浏览器 WS 不便带自定义 header）。
     if let Some(expected) = state.auth_token.as_ref() {
-        if params.get("token").map(String::as_str) != Some(expected.as_str()) {
+        if auth_is_locked() {
+            return (StatusCode::TOO_MANY_REQUESTS, "鉴权失败次数过多，请稍后再试").into_response();
+        }
+        let ok = params
+            .get("token")
+            .map(|t| ct_eq(t.as_bytes(), expected.as_bytes()))
+            .unwrap_or(false);
+        if !ok {
+            auth_record_failure();
             return (StatusCode::UNAUTHORIZED, "未授权").into_response();
         }
     }
@@ -776,7 +865,11 @@ async fn upload(
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Response {
+    if auth_is_locked() {
+        return (StatusCode::TOO_MANY_REQUESTS, Json(json!({"error":"鉴权失败次数过多，请稍后再试"}))).into_response();
+    }
     if !check_auth(&state, &headers) {
+        auth_record_failure();
         return (StatusCode::UNAUTHORIZED, Json(json!({"error":"未授权"}))).into_response();
     }
     let base = upload_dir();
@@ -808,7 +901,7 @@ async fn upload(
 
 fn upload_dir() -> PathBuf {
     if let Some(u) = directories::UserDirs::new() {
-        u.home_dir().join("Polaris").join("uploads-inbox")
+        u.home_dir().join("ChenNaXingHe").join("uploads-inbox")
     } else {
         PathBuf::from("/tmp/polaris-uploads")
     }
@@ -864,11 +957,21 @@ async fn serve_file(
     Query(q): Query<FileQuery>,
 ) -> Response {
     // 鉴权：header（Authorization/x-polaris-token）或 query ?token=（导航请求兜底）。
+    if auth_is_locked() {
+        return (StatusCode::TOO_MANY_REQUESTS, "鉴权失败次数过多，请稍后再试").into_response();
+    }
     let authed = match state.auth_token.as_ref() {
         None => true,
-        Some(exp) => q.token.as_deref() == Some(exp.as_str()) || check_auth(&state, &headers),
+        Some(exp) => {
+            q.token
+                .as_deref()
+                .map(|t| ct_eq(t.as_bytes(), exp.as_bytes()))
+                .unwrap_or(false)
+                || check_auth(&state, &headers)
+        }
     };
     if !authed {
+        auth_record_failure();
         return (StatusCode::UNAUTHORIZED, "未授权").into_response();
     }
     let path = PathBuf::from(&q.path);
@@ -879,6 +982,11 @@ async fn serve_file(
         Err(_) => return (StatusCode::NOT_FOUND, "文件不存在").into_response(),
     };
     if !allowed.iter().any(|root| crate::kb::path_contains(root, &canon)) {
+        return (StatusCode::FORBIDDEN, "路径不在允许范围").into_response();
+    }
+    // 安全闸(收窄)：即便落在允许根内，也拒绝 <ChenNaXingHe>/data/（明文 API Key: providers.json、
+    // 运行态 state.json 等）。产物/KB 仍可正常预览。
+    if is_denied_path(&canon) {
         return (StatusCode::FORBIDDEN, "路径不在允许范围").into_response();
     }
     match tokio::fs::read(&canon).await {
@@ -923,7 +1031,7 @@ fn allowed_roots() -> Vec<PathBuf> {
         v.push(c);
     }
     if let Some(u) = directories::UserDirs::new() {
-        if let Ok(c) = std::fs::canonicalize(u.home_dir().join("Polaris")) {
+        if let Ok(c) = std::fs::canonicalize(u.home_dir().join("ChenNaXingHe")) {
             v.push(c);
         }
     }
@@ -931,6 +1039,24 @@ fn allowed_roots() -> Vec<PathBuf> {
         v.push(c);
     }
     v
+}
+
+/// 敏感路径拒绝表：`<ChenNaXingHe>/data/` 整棵子树（含明文 provider API Key、运行态），
+/// 以及名为 providers.json / state.json 的文件（兜底，防 data 目录一时无法 canonicalize）。
+/// 传入的 `canon` 必须已 canonicalize。
+fn is_denied_path(canon: &Path) -> bool {
+    if let Some(u) = directories::UserDirs::new() {
+        let data_dir = u.home_dir().join("ChenNaXingHe").join("data");
+        if let Ok(c) = std::fs::canonicalize(&data_dir) {
+            if crate::kb::path_contains(&c, canon) {
+                return true;
+            }
+        }
+    }
+    matches!(
+        canon.file_name().and_then(|s| s.to_str()),
+        Some("providers.json") | Some("state.json")
+    )
 }
 
 fn mime_for(p: &Path) -> &'static str {

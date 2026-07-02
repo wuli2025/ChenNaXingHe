@@ -94,7 +94,7 @@ struct VoiceStore {
 static STORE: Lazy<RwLock<VoiceStore>> = Lazy::new(|| RwLock::new(VoiceStore::default()));
 
 fn data_dir() -> Option<PathBuf> {
-    UserDirs::new().map(|u| u.home_dir().join("Polaris").join("data"))
+    UserDirs::new().map(|u| u.home_dir().join("ChenNaXingHe").join("data"))
 }
 fn store_path() -> Option<PathBuf> {
     data_dir().map(|d| d.join("voice.json"))
@@ -150,10 +150,22 @@ fn seed_lexicon() -> VoiceLexicon {
 
 /// 启动时调用:读盘;首次(无文件)写入种子词表。
 pub fn init() {
-    let loaded: Option<VoiceStore> = store_path()
-        .filter(|p| p.exists())
-        .and_then(|p| fs::read_to_string(p).ok())
-        .and_then(|t| serde_json::from_str(&t).ok());
+    // 区分「无文件」与「文件损坏」: 若把解析失败当成无文件, 下面会 persist 种子词表, 直接
+    // 覆盖掉用户学到的词库 / 权重。文件存在但解析失败 → 先改名备份原文件, 再用种子继续(可恢复)。
+    let path = store_path();
+    let mut loaded: Option<VoiceStore> = None;
+    if let Some(p) = path.as_ref().filter(|p| p.exists()) {
+        match fs::read_to_string(p) {
+            Ok(t) if !t.trim().is_empty() => match serde_json::from_str::<VoiceStore>(&t) {
+                Ok(s) => loaded = Some(s),
+                Err(e) => {
+                    eprintln!("[voice] voice.json 解析失败({e}); 备份原文件并以种子词表继续");
+                    backup_corrupt_config(p);
+                }
+            },
+            _ => {} // 读不出或空文件: 按无文件处理
+        }
+    }
     match loaded {
         Some(s) => {
             *STORE.write() = s;
@@ -163,6 +175,25 @@ pub fn init() {
             s.lexicon = seed_lexicon();
             *STORE.write() = s;
             persist();
+        }
+    }
+}
+
+/// 把损坏的配置文件改名为 `<name>.corrupt-<n>` 备份, 而非被种子词表直接覆盖 —— 用户还能从
+/// 备份里抠回学到的词库。找第一个不存在的编号, best-effort(失败只打日志)。
+fn backup_corrupt_config(p: &Path) {
+    for n in 0..1000 {
+        let mut name = match p.file_name() {
+            Some(f) => f.to_os_string(),
+            None => return,
+        };
+        name.push(format!(".corrupt-{n}"));
+        let bak = p.with_file_name(name);
+        if !bak.exists() {
+            if let Err(e) = fs::rename(p, &bak) {
+                eprintln!("[voice] 备份损坏配置失败: {e}");
+            }
+            return;
         }
     }
 }

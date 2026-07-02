@@ -34,6 +34,8 @@ import {
   Workflow,
   PanelRightOpen,
   PanelRightClose,
+  Maximize2,
+  Minimize2,
   BookOpen,
   Layers,
   Hand,
@@ -366,6 +368,13 @@ const dictating = ref(false);
 const voiceBusy = ref(false); // 浏览器路径:停录后上传+识别的 ~1s,期间禁重复点击
 let dictateBase = ""; // 听写开始时输入框已有内容，新转写续在其后
 const voiceUnlisteners: Array<() => void> = [];
+// await listen 解析前若组件已卸载，onBeforeUnmount 已跑过（那时数组里还没这个 unlisten），
+// 晚到的监听器就漏了。统一走收集器：已卸载则立即退订，否则纳入回收数组。
+let voiceDisposed = false;
+function trackUnlisten(un: () => void) {
+  if (voiceDisposed) un();
+  else voiceUnlisteners.push(un);
+}
 let webRec: WebVoiceRecorder | null = null;
 
 async function toggleDictate() {
@@ -443,7 +452,7 @@ onMounted(async () => {
   // 从「专家团」页点「召唤」后会切回本视图(ChatPanel 重新挂载)→ 在此消费召唤意图。
   consumePendingSummon();
   // 流式：说话中把当前转写实时续到输入框（从听写起点之后替换）
-  voiceUnlisteners.push(
+  trackUnlisten(
     await listen<{ text?: string }>("voice:partial", (p) => {
       if (dictating.value && p && typeof p.text === "string") {
         input.value = dictateBase + p.text;
@@ -452,7 +461,7 @@ onMounted(async () => {
     })
   );
   // 结束：终稿（防污染后）落定到输入框
-  voiceUnlisteners.push(
+  trackUnlisten(
     await listen<{ text?: string; error?: string; cancelled?: boolean }>("voice:dictation", (f) => {
       dictating.value = false;
       if (f?.error) {
@@ -472,7 +481,11 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  voiceDisposed = true;
   window.removeEventListener("keydown", onGlobalKeydown);
+  // 专家团状态轮询此前只由 agentMode watcher 停；组件卸载(抽屉切走/热更新)不经 watcher，
+  // 3s 轮询会永远跑下去 → 这里兜底停掉（stopAgentsPoll 内部已判空、可重复调用）。
+  stopAgentsPoll();
   for (const u of voiceUnlisteners) u();
   if (webRec) {
     webRec.cancel();
@@ -590,7 +603,7 @@ onMounted(async () => {
   // (见 tauri.ts),所以读 p.kind;旧代码读 p.payload.kind 多包一层、永远取不到。
   // 捕获 unlisten 并纳入 voiceUnlisteners(onBeforeUnmount 统一回收):此前未解绑,
   // KeepAlive 反复挂载会逐月累积上千个 echo:dream 监听器及其闭包 → 内存爬升。
-  voiceUnlisteners.push(
+  trackUnlisten(
     await listen("echo:dream", async (p: any) => {
       if ((p?.kind ?? p?.payload?.kind) === "done") {
         await loadBriefings();
@@ -1099,7 +1112,14 @@ async function onPaste(e: ClipboardEvent) {
 }
 
 const { isOver: dropOver } = useFileDrop({
-  active: () => app.view === "chat",
+  // 按真实活动视图 moduleTab 路由(app.view 是遗留字段、几乎恒为 "chat" 会误吞落区):
+  // 仅当对话抽屉真的展开、且主区不是知识库/技能中心/外贸(它们各自处理或不接收落区)时,
+  // 由对话面板认领落区,保证同一次拖拽只被一个 handler 认领。
+  active: () =>
+    app.chatOpen &&
+    app.moduleTab !== "kb" &&
+    app.moduleTab !== "skill" &&
+    app.moduleTab !== "trade",
   onDrop: onDropFiles,
 });
 
@@ -1276,9 +1296,20 @@ async function send() {
   attachments.value = [];
   histIdx = -1;
 
-  const convId = await ensureConversation();
-  if (!convId) {
-    input.value = text; // 创建对话失败:把文字还给用户,别让人白打一通
+  // ensureConversation()（及其内部 createProject/createConversation）失败会抛异常，
+  // 而非返回 null。若不接住：既没错误提示、又已清空的输入/附件白白丢失，还会冒出一个
+  // 未处理的 Promise 拒绝（send 是 onKeydown/@click 里 fire-and-forget 调的）。
+  let convId: string;
+  try {
+    const cid = await ensureConversation();
+    if (!cid) throw new Error("无法创建对话");
+    convId = cid;
+  } catch (e) {
+    // 创建对话失败：把文字和附件都还给用户，别让人白打一通；并弹出错误提示。
+    input.value = text;
+    attachments.value = attached;
+    nextTick(autoGrow);
+    toast.error(`发送失败：${humanizeError(e)}`);
     return;
   }
 
@@ -1305,28 +1336,33 @@ async function send() {
     !goalMode.value &&
     !orchestrateMode.value &&
     (batchMode.value || detectLongTask(prompt));
-  if (wantBatch) {
-    await longTaskStore.runBatchBuild(convId, prompt, display, {
+  // 消息此时已推入对话（气泡已建），不再回填输入框；仅接住异常避免未处理的 Promise 拒绝。
+  try {
+    if (wantBatch) {
+      await longTaskStore.runBatchBuild(convId, prompt, display, {
+        permissionMode: permMode.value,
+        skillIds: Array.from(skillsStore.enabledSkills),
+        useKb: kbMode.value || undefined,
+        providerId: sendProviderId,
+      });
+      return;
+    }
+
+    // 交给 chat store：推 user 气泡 + 调后端 + 记录 reqId/sending（按对话 id，多开）
+    await chatStore.send(convId, prompt, display, attached, {
       permissionMode: permMode.value,
       skillIds: Array.from(skillsStore.enabledSkills),
+      // 目标模式下，本条输入框内容即完成条件
+      goal: goalMode.value && text ? text : undefined,
+      dynamicWorkflow: orchestrateMode.value || undefined,
       useKb: kbMode.value || undefined,
+      agentMode: agentMode.value,
+      workMode: workMode.value,
       providerId: sendProviderId,
     });
-    return;
+  } catch (e) {
+    toast.error(`发送失败：${humanizeError(e)}`);
   }
-
-  // 交给 chat store：推 user 气泡 + 调后端 + 记录 reqId/sending（按对话 id，多开）
-  await chatStore.send(convId, prompt, display, attached, {
-    permissionMode: permMode.value,
-    skillIds: Array.from(skillsStore.enabledSkills),
-    // 目标模式下，本条输入框内容即完成条件
-    goal: goalMode.value && text ? text : undefined,
-    dynamicWorkflow: orchestrateMode.value || undefined,
-    useKb: kbMode.value || undefined,
-    agentMode: agentMode.value,
-    workMode: workMode.value,
-    providerId: sendProviderId,
-  });
 }
 
 async function cancel() {
@@ -1520,7 +1556,7 @@ async function deleteCurrentConv() {
 </script>
 
 <template>
-  <div class="chat" :class="{ 'drag-active': dropOver }">
+  <div class="chat" :class="{ 'drag-active': dropOver, wide: app.drawerCollapsed }">
     <!-- 拖拽上传覆盖层 -->
     <div v-if="dropOver" class="drop-overlay">
       <div class="drop-card">
@@ -1615,11 +1651,12 @@ async function deleteCurrentConv() {
       </Transition>
       <button
         class="drawer-toggle"
-        :title="app.drawerCollapsed ? '展开文件抽屉' : '收起文件抽屉'"
+        :class="{ wide: app.drawerCollapsed }"
+        :title="app.drawerCollapsed ? '还原对话宽度' : '扩大对话（收起右侧抽屉，正文铺满）'"
         @click="app.toggleDrawer()"
       >
         <component
-          :is="app.drawerCollapsed ? PanelRightOpen : PanelRightClose"
+          :is="app.drawerCollapsed ? Minimize2 : Maximize2"
           :size="17"
           :stroke-width="1.7"
         />
@@ -2144,6 +2181,11 @@ async function deleteCurrentConv() {
   background: var(--selection-bg);
   color: var(--text);
 }
+/* 已处于「扩大」态：高亮提示，再点一下还原 */
+.drawer-toggle.wide {
+  background: var(--selection-bg);
+  color: var(--primary);
+}
 
 /* 已置顶标记（标题前的小别针） */
 .t-pin {
@@ -2371,6 +2413,19 @@ async function deleteCurrentConv() {
 .turn {
   max-width: 880px;
   margin: 0 auto 22px;
+  transition: max-width 0.28s ease;
+}
+
+/* 「扩大对话」：右上角收起右侧抽屉后，正文不再卡在 880，铺到更宽，
+   配合下方 1394 的输入卡，整段对话真正阔起来 */
+.chat.wide .turn,
+.chat.wide .hist-skeleton,
+.chat.wide .hist-error,
+.chat.wide .earlier-wrap {
+  max-width: 1300px;
+}
+.chat.wide .hero-wrap {
+  max-width: 960px;
 }
 
 /* ── 历史骨架 / 加载失败 / 折叠 ── */

@@ -8,7 +8,7 @@ import {
   defineAsyncComponent,
 } from "vue";
 // ── 常驻 / 首屏关键：静态导入 ──
-import TopNav from "./components/TopNav.vue";
+import SideNav from "./components/SideNav.vue";
 import SplashScreen from "./components/SplashScreen.vue";
 import Onboarding from "./components/Onboarding.vue";
 import EnvDoctor from "./components/EnvDoctor.vue"; // 既是设置项也是启动 env 网关，留静态
@@ -25,15 +25,24 @@ const AddProviderModal = defineAsyncComponent(() => import("./components/AddProv
 const WorkflowPackModal = defineAsyncComponent(() => import("./components/WorkflowPackModal.vue"));
 const AutomationModal = defineAsyncComponent(() => import("./components/AutomationModal.vue"));
 const UsageBoard = defineAsyncComponent(() => import("./components/UsageBoard.vue"));
+// 主区 tab 组件(知识库 / 技能中心)与右侧对话抽屉 —— 首次切到/展开才挂载
+const WikiBrowse = defineAsyncComponent(() => import("./components/WikiBrowse.vue"));
+const SkillCenter = defineAsyncComponent(() => import("./components/SkillCenter.vue"));
+const ChatPanel = defineAsyncComponent(() => import("./components/ChatPanel.vue"));
 // 三个营销应用场景：直接内嵌桌面原版 HTML 模板（public/tools/*.html），iframe 加载，
 // 保证「与模板 1:1 一模一样的效果」。首次切到才挂载，之后 v-show 保活。
+// 外贸 OS 已改造为原生桌面模块（src/modules/trade），直连后端官方 Claude Code，不再走 iframe。
+// koc/competitive/pmkt 仍内嵌桌面原版 HTML 模板（public/tools/*.html）。
 const TOOL_SRC: Record<string, string> = {
   koc: "tools/koc.html",
   competitive: "tools/competitive.html",
   pmkt: "tools/pmkt.html",
 };
+// 外贸 OS 原生模块：首次切到才挂载（懒加载 12 模块），之后 v-show 保活。
+const TradeModule = defineAsyncComponent(() => import("./modules/trade/TradeModule.vue"));
 
 import { checkForUpdate } from "./composables/useUpdater";
+import { useAgentRunner } from "./composables/useAgentRunner";
 import { useAppStore } from "./stores/app";
 import { useProvidersStore } from "./stores/providers";
 import { useChatStore } from "./stores/chat";
@@ -46,8 +55,52 @@ const chatStore = useChatStore();
 const workflows = useWorkflowsStore();
 const automation = useAutomationStore();
 
-// 当前 tab → 对应模板 HTML。单 iframe 直接随 tab 切换 src，零保活、零中间层，切了必生效。
-const frameSrc = computed(() => TOOL_SRC[app.moduleTab] ?? TOOL_SRC.koc);
+// 每个工具一个常驻 iframe：首次切到才挂载（懒加载，不在启动时白跑三套内联 JS），之后 v-show 保活。
+// 治理「每次切 tab 都重载 168KB 的 koc.html、重跑全部内联 JS、丢页内状态」的卡顿——切回变瞬时。
+const visited = ref<Record<string, boolean>>({ [app.moduleTab]: true });
+watch(
+  () => app.moduleTab,
+  (t) => {
+    if (t && !visited.value[t]) visited.value = { ...visited.value, [t]: true };
+  }
+);
+
+// ─────────── 右侧对话抽屉 ───────────
+// 首次展开后用 v-show 保活,避免来回收起/展开重建 ChatPanel、丢输入/滚动位置。
+const chatEverOpened = ref(false);
+watch(
+  () => app.chatOpen,
+  (open) => {
+    if (open) chatEverOpened.value = true;
+  },
+  { immediate: true }
+);
+// 拖左缘改抽屉宽度:拖拽中每帧只更新内存值,松手落盘。
+let dockDragging = false;
+let dockRight = 0;
+function startDockResize(e: MouseEvent) {
+  e.preventDefault();
+  const dock = (e.currentTarget as HTMLElement).closest(".chat-dock");
+  dockRight = dock ? dock.getBoundingClientRect().right : window.innerWidth;
+  dockDragging = true;
+  document.body.style.userSelect = "none";
+  document.body.style.cursor = "col-resize";
+  window.addEventListener("mousemove", onDockResize);
+  window.addEventListener("mouseup", endDockResize);
+}
+function onDockResize(e: MouseEvent) {
+  if (!dockDragging) return;
+  app.setChatDockWidth(dockRight - e.clientX, false);
+}
+function endDockResize() {
+  if (!dockDragging) return;
+  dockDragging = false;
+  document.body.style.userSelect = "";
+  document.body.style.cursor = "";
+  app.setChatDockWidth(app.chatDockWidth, true);
+  window.removeEventListener("mousemove", onDockResize);
+  window.removeEventListener("mouseup", endDockResize);
+}
 
 // ─────────── 应用级生命周期 ───────────
 let unMdDelegate: (() => void) | null = null;
@@ -61,6 +114,8 @@ onMounted(() => {
   });
   // Docker/Web 模式断线提示
   if (!isTauri) unWsStatus = onWsStatus((ok) => (wsDown.value = !ok));
+  // 外贸 OS iframe ↔ Claude Code 桥
+  window.addEventListener("message", onTradeBridge);
   document.addEventListener("visibilitychange", onVisibilityTrim);
   trimTimer = window.setInterval(() => {
     try {
@@ -76,9 +131,12 @@ function onVisibilityTrim() {
 onBeforeUnmount(() => {
   unMdDelegate?.();
   unWsStatus?.();
+  window.removeEventListener("message", onTradeBridge);
   if (trimTimer !== undefined) clearInterval(trimTimer);
   window.removeEventListener("mousemove", onAuroraPointer);
   document.removeEventListener("visibilitychange", onVisibilityTrim);
+  window.removeEventListener("mousemove", onDockResize);
+  window.removeEventListener("mouseup", endDockResize);
   if (edgeRaf) cancelAnimationFrame(edgeRaf);
 });
 
@@ -121,6 +179,45 @@ watch(
   { immediate: true }
 );
 
+// ─────────── 外贸 OS iframe ↔ Claude Code 桥 ───────────
+// 外贸 OS 工具跑在沙箱 iframe 里，够不到 Tauri 后端。这里用 postMessage 把它的
+// 对话请求路由到 useAgentRunner.run()（= 唯一业务大脑 Claude Code，chat.rs spawn
+// claude CLI，stream-json）。仅在 Tauri 桌面端（有真后端）握手成功；浏览器预览下
+// 收不到 ready，工具自动回落本地演示引擎。每个 reqId 一次独立 run，流式回传 delta/tool。
+const tradeRunner = useAgentRunner();
+function onTradeBridge(e: MessageEvent) {
+  // 安全:桥能驱动 Claude Code(有文件系统访问)。营销工具 iframe(tools/*.html)与本应用
+  // 同源(相对路径加载),因此只接受同源消息;任何跨源 frame/脚本一律早退拒绝。
+  if (e.origin !== window.location.origin) return;
+  const d = e.data;
+  if (!d || d.__tradeos !== true) return;
+  const win = e.source as Window | null;
+  // 回复只投给发消息的窗口、且限定同源 targetOrigin(不再广播 "*"),避免结果外泄。
+  const reply = (m: Record<string, unknown>) =>
+    win?.postMessage({ __tradeos: true, ...m }, window.location.origin);
+  if (d.type === "hello") {
+    if (isTauri) reply({ type: "ready" }); // 只有真后端才接管；否则让工具用本地演示
+    return;
+  }
+  if (d.type === "run" && typeof d.prompt === "string") {
+    if (!isTauri) {
+      reply({ type: "error", reqId: d.reqId, message: "no-backend" });
+      return;
+    }
+    tradeRunner
+      .run({
+        prompt: d.prompt,
+        useKb: !!d.useKb,
+        onDelta: (_t, full) => reply({ type: "delta", reqId: d.reqId, full }),
+        onTool: (tool, detail) => reply({ type: "tool", reqId: d.reqId, tool, detail }),
+      })
+      .then((r) => reply({ type: "done", reqId: d.reqId, full: r.raw }))
+      .catch((err) =>
+        reply({ type: "error", reqId: d.reqId, message: String(err?.message || err) })
+      );
+  }
+}
+
 // 全局快捷键
 useHotkeys();
 
@@ -144,7 +241,7 @@ function onEnvDone() {
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :style="{ gridTemplateColumns: app.sidebarWidth + 'px 1fr' }">
     <!-- 极光琉璃画框主题 -->
     <template v-if="app.theme === 'aurora-light' || app.theme === 'aurora-dark'">
       <div class="aurora" aria-hidden="true">
@@ -153,11 +250,45 @@ function onEnvDone() {
       <div class="grain" aria-hidden="true"></div>
     </template>
 
-    <TopNav />
+    <SideNav />
 
     <main class="content">
-      <!-- 三个营销工具：单 iframe 直接内嵌桌面原版 HTML 模板，src 随 tab 切换，效果与模板完全一致 -->
-      <iframe class="tpl-frame" :src="frameSrc" title="营销工具模板"></iframe>
+      <!-- 主区舞台：知识库 / 技能中心 / 三个营销工具，随顶栏 tab 整屏切换 -->
+      <div class="stage">
+        <div v-if="app.moduleTab === 'kb'" class="view"><WikiBrowse /></div>
+        <div v-else-if="app.moduleTab === 'skill'" class="view"><SkillCenter /></div>
+        <!-- 外贸 OS：原生桌面模块（12 模块 + 人工审核看板），首次切到才挂载、之后 v-show 保活 -->
+        <div v-if="visited['trade']" v-show="app.moduleTab === 'trade'" class="view"><TradeModule /></div>
+        <!-- koc/competitive/pmkt：常驻 iframe，首次切到才挂载，之后 v-show 保活 → 切回瞬时、不重载 -->
+        <template v-if="app.moduleTab !== 'kb' && app.moduleTab !== 'skill'">
+          <template v-for="(src, key) in TOOL_SRC" :key="key">
+            <iframe
+              v-if="visited[key]"
+              v-show="app.moduleTab === key"
+              class="tpl-frame"
+              :src="src"
+              :title="key"
+            ></iframe>
+          </template>
+        </template>
+      </div>
+
+      <!-- 右侧对话抽屉：可拖宽、可收起，与主区并列；统管对话 / 策略 / 表格 / 知识库 -->
+      <Transition name="dock-slide">
+        <aside
+          v-show="app.chatOpen && app.moduleTab !== 'trade'"
+          class="chat-dock"
+          :style="{ width: app.chatDockWidth + 'px' }"
+        >
+          <div
+            class="dock-resize"
+            title="拖拽调节对话栏宽度"
+            @mousedown="startDockResize"
+          ></div>
+          <!-- 首次展开才挂载,之后随抽屉收起仍保活(不丢输入/滚动) -->
+          <ChatPanel v-if="chatEverOpened" />
+        </aside>
+      </Transition>
     </main>
 
     <!-- 自动更新提示条 -->
@@ -196,11 +327,14 @@ function onEnvDone() {
 <style scoped>
 .shell {
   height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-side);
+  /* 左侧栏 + 主区：两列网格（仿 polaris-app）。列宽随侧栏收起/展开过渡 */
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  /* 极淡角落环境光：让侧栏/内容磨砂玻璃后面「有光可透」，出琉璃感 */
+  background: var(--ambient, var(--bg-side));
   border-radius: 12px;
   overflow: hidden;
+  transition: grid-template-columns 180ms ease;
 }
 .content {
   position: relative;
@@ -210,25 +344,64 @@ function onEnvDone() {
   background: var(--bg-chat);
   margin: 8px;
   border: 1px solid var(--hairline);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-}
-/* 对话模块两栏：左对话主区(flex) + 右看板(固定) */
-.chat-wrap {
-  position: absolute;
-  inset: 0;
+  border-radius: 14px;
+  /* 多层柔投影 + 顶部一线内高光：面板像一块微微浮起的玻璃 */
+  box-shadow: var(--shadow-lg), var(--glass-hi);
+  /* 主区舞台 + 右侧对话抽屉并列 */
   display: flex;
-  min-height: 0;
-}
-.chat-main {
-  flex: 1 1 auto;
   min-width: 0;
 }
-/* 三个营销模块：铺满内容区 */
-.mod-host {
+/* 主区舞台：知识库 / 技能中心 / 营销工具铺满剩余空间 */
+.stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.view {
   position: absolute;
   inset: 0;
   overflow: hidden;
+}
+/* 右侧对话抽屉：与主区并列，宽度可拖拽 */
+.chat-dock {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  border-left: 1px solid var(--hairline);
+  background: var(--bg-chat);
+}
+.chat-dock :deep(.chat) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* 抽屉左缘拖拽手柄 */
+.dock-resize {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 7px;
+  height: 100%;
+  z-index: 5;
+  cursor: col-resize;
+}
+.dock-resize:hover {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--primary-soft, rgba(120, 120, 160, 0.18))
+  );
+}
+/* 抽屉滑入 / 滑出 */
+.dock-slide-enter-active,
+.dock-slide-leave-active {
+  transition: transform 0.24s ease, opacity 0.24s ease;
+}
+.dock-slide-enter-from,
+.dock-slide-leave-to {
+  transform: translateX(16px);
+  opacity: 0;
 }
 .tpl-frame {
   display: block;

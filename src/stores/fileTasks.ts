@@ -59,12 +59,17 @@ export const useFileTasksStore = defineStore("fileTasks", () => {
     detail[id] = msg;
   }
 
-  let wired = false;
+  let wiring: Promise<void> | null = null;
   const unlisteners: Array<() => void> = [];
   // 全局只注册一次;脱离组件生命周期,App 启动时调一次,之后永久在线。
-  async function ensureListeners() {
-    if (wired) return;
-    wired = true;
+  // 缓存「就绪 promise」而非一个 wired 布尔:并发第二个调用方 await 的是「监听真正挂上」这一刻,
+  // 而不是仅仅看到标志位已置真就早退(那样它会在 listen 完成前就发起任务 → 漏掉最早的事件)。
+  function ensureListeners(): Promise<void> {
+    if (wiring) return wiring;
+    wiring = wireListeners();
+    return wiring;
+  }
+  async function wireListeners() {
     unlisteners.push(
       await listen<{ kind: string; files?: number; message?: string; unreachable?: string[] }>(
         "fable:inventory",
@@ -241,12 +246,19 @@ export const useFileTasksStore = defineStore("fileTasks", () => {
     if (id === "index") {
       try { localStorage.setItem("polaris.indexAutoPaused", "1"); } catch { /* ignore */ }
     }
-    try {
-      await fc.fableCancel();
-    } catch {
-      /* 取消是尽力而为,失败也不抛给用户 */
+    // ⚠️ 后端限制:fableCancel() 翻的是**单个全局 AtomicBool**,并无 per-task 取消。
+    // 只有盘点/建索引会轮询它优雅停;对其它任务(AI 归类/整理名/构建体系)调它没意义,反而会
+    // 误停正在跑的盘点/索引。故仅在停「盘点/建索引」时才翻全局标志;其余任务只做面板乐观收起
+    // (后台那一轮自然跑完,不动已落库数据)。若将来后端支持 per-task 取消,这里应改用带 id 的取消。
+    if (id === "inventory" || id === "index") {
+      try {
+        await fc.fableCancel();
+      } catch {
+        /* 取消是尽力而为,失败也不抛给用户 */
+      }
+    } else {
+      finish(id, "已停止");
     }
-    if (id !== "inventory" && id !== "index") finish(id, "已停止");
   }
 
   // 任一归类(离线 / AI)进行中。

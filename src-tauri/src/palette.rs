@@ -36,13 +36,14 @@ fn clamp01(x: f64) -> f64 {
 
 fn parse_hex(s: &str) -> Option<Rgb> {
     let s = s.trim().trim_start_matches('#');
-    let s = if s.len() == 3 {
+    let s = if s.len() == 3 && s.bytes().all(|b| b.is_ascii_hexdigit()) {
         // #abc → #aabbcc
         s.chars().flat_map(|c| [c, c]).collect::<String>()
     } else {
         s.to_string()
     };
-    if s.len() != 6 {
+    // 必须是 6 个 ASCII 十六进制字符：否则按字节切片会在非 ASCII 输入(如 "#中文")上 panic
+    if s.len() != 6 || !s.bytes().all(|b| b.is_ascii_hexdigit()) {
         return None;
     }
     let r = u8::from_str_radix(&s[0..2], 16).ok()?;

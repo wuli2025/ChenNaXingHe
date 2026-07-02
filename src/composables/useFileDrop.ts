@@ -22,6 +22,9 @@ export interface UseFileDropOptions {
 export function useFileDrop(opts: UseFileDropOptions) {
   const isOver = ref(false);
   let unlisten: (() => void) | null = null;
+  // 若组件在 await listen 解析前就已卸载,onUnmounted 会先跑(那时 unlisten 还是 null),
+  // 晚到的监听器就漏了。用 disposed 标记:解析后发现已卸载,立即退订。
+  let disposed = false;
 
   onMounted(async () => {
     if (!isTauri) {
@@ -66,7 +69,7 @@ export function useFileDrop(opts: UseFileDropOptions) {
       return;
     }
     try {
-      unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+      const un = await getCurrentWebview().onDragDropEvent((event) => {
         const payload = event.payload as {
           type: "enter" | "over" | "drop" | "leave";
           paths?: string[];
@@ -92,12 +95,16 @@ export function useFileDrop(opts: UseFileDropOptions) {
             break;
         }
       });
+      // 解析期间若已卸载,立即退订,避免晚到的监听器泄漏
+      if (disposed) un();
+      else unlisten = un;
     } catch {
       // 拿不到 webview(极少数环境)时静默降级,不影响其余功能
     }
   });
 
   onUnmounted(() => {
+    disposed = true;
     if (unlisten) unlisten();
   });
 

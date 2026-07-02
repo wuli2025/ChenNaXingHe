@@ -82,6 +82,11 @@ async function ensureAgentProject(): Promise<string> {
     }
     return p.id;
   })();
+  // 别把「失败的 promise」永久缓存:一次 createProject 瞬时失败若被记住,本会话之后每次 run
+  // 都会拿到同一个 rejected promise 而永远跑不起来。失败即清空,让下次调用重试。
+  projectPromise.catch(() => {
+    projectPromise = null;
+  });
   return projectPromise;
 }
 
@@ -164,7 +169,11 @@ export function useAgentRunner() {
           fn();
         };
         const onAbort = () => {
-          chatApi.cancel(reqId).catch(() => {});
+          // 若用户在 chatApi.send resolve(拿到 reqId)之前就取消: reqId 还是空串, cancel("")
+          // 是个 no-op → 后端会继续流式跑。此时记一个 pendingAbort, 等 send resolve 拿到真正的
+          // reqId 后立刻补发取消(见下方 .then)。
+          if (reqId) chatApi.cancel(reqId).catch(() => {});
+          else pendingAbort = true;
           finish(() => reject(new Error("已取消")));
         };
         const watchdog = window.setInterval(() => {
@@ -174,6 +183,7 @@ export function useAgentRunner() {
         }, 15_000);
 
         let reqId = "";
+        let pendingAbort = false;
         listen<ChatStreamEvent>("chat:stream", (ev) => {
           if (ev.conversationId !== convId) return;
           lastBeat = Date.now();
@@ -212,6 +222,8 @@ export function useAgentRunner() {
           })
           .then((id) => {
             reqId = id;
+            // 用户在拿到 reqId 之前已按取消:此刻才有 reqId 可用 → 立刻取消,别让后端空跑。
+            if (pendingAbort && reqId) chatApi.cancel(reqId).catch(() => {});
           })
           .catch((e) => finish(() => reject(e)));
       });

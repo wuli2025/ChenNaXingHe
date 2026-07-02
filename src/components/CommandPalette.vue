@@ -9,6 +9,8 @@ import {
   Target,
   BarChart3,
   KeyRound,
+  Puzzle,
+  MessageSquare,
 } from "@lucide/vue";
 import SearchGlass from "./icons/SearchGlass.vue";
 import { useAppStore } from "../stores/app";
@@ -29,11 +31,13 @@ watch(paletteOpen, (open) => {
 
 interface Action { id: string; label: string; icon: any; run: () => void }
 const ACTIONS: Action[] = [
+  { id: "m-chat", label: "打开对话", icon: MessageSquare, run: () => app.openChat() },
+  { id: "m-kb", label: "知识库", icon: BookOpen, run: () => app.setModuleTab("kb") },
+  { id: "m-skill", label: "技能中心", icon: Puzzle, run: () => app.setModuleTab("skill") },
   { id: "m-koc", label: "KOC 筛选", icon: Target, run: () => app.setModuleTab("koc") },
   { id: "m-competitive", label: "竞品分析", icon: BarChart3, run: () => app.setModuleTab("competitive") },
   { id: "m-pmkt", label: "营销策略", icon: Workflow, run: () => app.setModuleTab("pmkt") },
   { id: "s-provider", label: "API 供应商", icon: KeyRound, run: () => app.openSettings("provider") },
-  { id: "s-kb", label: "知识库", icon: BookOpen, run: () => app.openSettings("kb") },
   { id: "s-env", label: "环境配置", icon: Stethoscope, run: () => app.openSettings("env") },
   { id: "s-general", label: "设置", icon: SettingsIcon, run: () => app.openSettings("general") },
 ];

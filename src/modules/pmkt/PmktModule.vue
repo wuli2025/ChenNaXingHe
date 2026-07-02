@@ -202,7 +202,7 @@ async function runStage(n: StageNo) {
       return;
     }
     state.inputs = { ...inputs, _runId: Date.now() };
-    state.step1 = state.step2 = state.step3 = state.step4 = null;
+    // 不在此清空既有步骤：若本轮 run 失败会留白屏。改为在成功拿到新结果后再作废下游步骤。
   }
 
   if (!state.inputs) {
@@ -238,15 +238,20 @@ async function runStage(n: StageNo) {
     );
 
   try {
+    // 每步成功后作废其下游步骤：它们基于旧的上游结果，重跑上游后必须失效，
+    // 否则会把陈旧结果当作「当前」展示，且 saveToHistory 的 stepsComplete 计数也随之失真。
     if (n === 1) {
       const { data } = await runJson<Step1Data>({ prompt, goal });
       state.step1 = data;
+      state.step2 = state.step3 = state.step4 = null;
     } else if (n === 2) {
       const { data } = await runJson<Step2Data>({ prompt });
       state.step2 = data;
+      state.step3 = state.step4 = null;
     } else if (n === 3) {
       const { data } = await runJson<Step3Data>({ prompt });
       state.step3 = data;
+      state.step4 = null;
     } else {
       const { data } = await runJson<Step4Data>({ prompt });
       state.step4 = data;

@@ -17,11 +17,11 @@ browser-use 默认会启自带的浏览器（Patchright）。**本项目禁止**
 
 ## 怎么用（一条命令）
 
-脚本在 `~/Polaris/skills/browser-use/scripts/browser_use_runner.py`
-（Windows：`%USERPROFILE%\Polaris\skills\browser-use\scripts\browser_use_runner.py`）。
+脚本在 `~/ChenNaXingHe/skills/browser-use/scripts/browser_use_runner.py`
+（Windows：`%USERPROFILE%\ChenNaXingHe\skills\browser-use\scripts\browser_use_runner.py`）。
 
 ```bash
-uv run --no-project ~/Polaris/skills/browser-use/scripts/browser_use_runner.py \
+uv run --no-project ~/ChenNaXingHe/skills/browser-use/scripts/browser_use_runner.py \
   "用大白话写清楚要达成的目标" \
   --start-url "https://起始页（可选）" \
   --out "<结果输出目录>" \
@@ -35,7 +35,7 @@ uv run --no-project ~/Polaris/skills/browser-use/scripts/browser_use_runner.py \
 
 ## runner 替你做了什么
 
-1. **确保依赖**：缺 `browser-use` 就 `pip install browser-use`；缺 CloakBrowser 提示 `pip install cloakbrowser`（或离线 `pip install ~/Polaris/plugins/cloakbrowser`）。
+1. **确保依赖**：缺 `browser-use` 就 `pip install browser-use`；缺 CloakBrowser 提示 `pip install cloakbrowser`（或离线 `pip install ~/ChenNaXingHe/plugins/cloakbrowser`）。
 2. **起隐身浏览器**：用 CloakBrowser 启一个带 `--remote-debugging-port` 的隐身 Chromium，等 CDP 就绪。**在异步循环之外同步启动/关闭**，规避「Sync API inside asyncio loop」崩溃。
 3. **接上智能体**：browser-use 经 `cdp_url` 连到这个端口（兼容新旧版的 `Browser(cdp_url=)` / `BrowserConfig(cdp_url=)` 入参）。
 4. **选 LLM**：从进程环境变量取 Polaris 当前供应商凭证（`ANTHROPIC_*` 或 `OPENAI_*`），无需另配 key。可用 `--model` 覆盖。

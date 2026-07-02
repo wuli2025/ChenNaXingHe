@@ -55,7 +55,7 @@ import sys
 import time
 
 # ───────────────────────── CloakBrowser（默认浏览器，drop-in 替换 Playwright）─────────────────────────
-# 离线源码副本已随 Polaris 附带：pip install ~/Polaris/plugins/cloakbrowser
+# 离线源码副本已随 Polaris 附带：pip install ~/ChenNaXingHe/plugins/cloakbrowser
 try:
     from cloakbrowser import launch, launch_persistent_context  # type: ignore
 except Exception:  # pragma: no cover —— 没装就退回原生 playwright，便于本地调试
@@ -136,7 +136,7 @@ SELECTORS = {
 }
 
 MP_HOME = "https://mp.weixin.qq.com/"
-SESSION_DIR = os.path.expanduser("~/Polaris/sessions/wechat")
+SESSION_DIR = os.path.expanduser("~/ChenNaXingHe/sessions/wechat")
 
 
 # ───────────────────────── 壹伴样式引擎（浏览器内执行；预览 / 直传 / 换肤共用同一份）─────────────────────────

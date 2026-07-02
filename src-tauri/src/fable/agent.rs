@@ -16,7 +16,7 @@ pub fn resolve_cli() -> Option<String> {
     let exe = if cfg!(windows) { "polaris-forge.exe" } else { "polaris-forge" };
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(u) = directories::UserDirs::new() {
-        candidates.push(u.home_dir().join("Polaris").join("bin").join(exe));
+        candidates.push(u.home_dir().join("ChenNaXingHe").join("bin").join(exe));
     }
     candidates.push(PathBuf::from("/usr/local/bin/polaris-forge"));
     for c in &candidates {

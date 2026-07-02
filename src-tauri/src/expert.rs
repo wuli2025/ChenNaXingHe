@@ -422,7 +422,7 @@ fn project_claude_md_path(project_id: &str) -> Option<std::path::PathBuf> {
     let user = UserDirs::new()?;
     Some(
         user.home_dir()
-            .join("Polaris")
+            .join("ChenNaXingHe")
             .join("projects")
             .join(project_id)
             .join("CLAUDE.md"),

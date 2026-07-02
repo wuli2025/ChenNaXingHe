@@ -26,6 +26,9 @@ export const isTauri =
 type BackendMode = "http" | "stub";
 let backendMode: BackendMode | null = null;
 let probePromise: Promise<void> | null = null;
+// 上次探测失败的时间戳:失败不永久缓存,但短暂退避避免每次 invoke 都猛敲 /api/health。
+let lastProbeFail = 0;
+const PROBE_BACKOFF_MS = 3000;
 
 /** 访问口令：URL ?token= 优先落盘 localStorage，之后从 localStorage 读。 */
 function authToken(): string | null {
@@ -63,14 +66,22 @@ export function backendFileUrl(
 }
 
 async function ensureBackend(): Promise<void> {
+  // 只永久缓存「成功」判定(http)。探测失败不写死 backendMode,下次调用会重试,
+  // 避免一次网络抖动就把整个会话钉死在 stub 模式(chat_send 等静默返回假数据)。
   if (backendMode) return;
   if (!probePromise) {
+    // 刚失败过 → 退避期内暂不重探(本次先走 stub 兜底),退避期满再重试。
+    if (Date.now() - lastProbeFail < PROBE_BACKOFF_MS) return;
     probePromise = (async () => {
       try {
         const r = await fetch("/api/health", { cache: "no-store" });
-        backendMode = r.ok ? "http" : "stub";
+        if (r.ok) backendMode = "http";
+        else lastProbeFail = Date.now();
       } catch {
-        backendMode = "stub";
+        lastProbeFail = Date.now();
+      } finally {
+        // 失败(backendMode 仍为空)则清掉 probePromise,让下次调用重新探测。
+        if (!backendMode) probePromise = null;
       }
     })();
   }
@@ -150,7 +161,16 @@ function ensureWs(): void {
       try {
         const { topic, payload } = JSON.parse(e.data);
         const set = wsListeners.get(topic);
-        if (set) for (const cb of set) cb(payload);
+        if (set)
+          for (const cb of set) {
+            // 每个订阅者独立 try/catch:一个抛错的监听器不能饿死其它监听器,
+            // 也不能被外层 parse 的 catch 吞掉(否则整帧被当成 malformed 静默丢弃)。
+            try {
+              cb(payload);
+            } catch (err) {
+              console.error(`[ws] listener error on "${topic}":`, err);
+            }
+          }
       } catch {
         /* ignore malformed frame */
       }
@@ -1320,6 +1340,9 @@ export interface ProviderView {
   authToken: string;
   /** 完整 settings_config（env + includeCoAuthoredBy/attribution 等） */
   settingsConfig: any;
+  /** true = authToken / settingsConfig 里的 key 已被后端脱敏为尾 4 位掩码（server/NAS flavor）。
+   *  desktop flavor 恒为 false（编辑弹窗能读回真实 key）。前端据此避免把掩码当真 key 存回。 */
+  masked?: boolean;
 }
 export interface ProviderListResult {
   providers: ProviderView[];

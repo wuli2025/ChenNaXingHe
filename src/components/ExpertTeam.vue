@@ -68,14 +68,28 @@ function applyFilter() {
   filteredExperts.value = list;
 }
 
-// id → 头像（本地映射，零额外 IPC）；未就绪时落 emoji+渐变占位
+// id → 头像（本地映射，零额外 IPC）；未就绪时落 emoji+渐变占位。
+// 性能：100+ 张卡片的 v-for 每次重渲染（含搜索框每次按键）都会逐卡调用本函数，过去每次都重建
+// SVG 字符串 + encodeURIComponent。这里按 id 记忆化结果 → 后续调用 O(1) 命中。key 里带「占位/就绪」
+// 前缀：avatarSlots 由 IPC 异步加载，加载完前缀变化会自然算出真实头像，无需 watch 失效缓存。
+const avatarCache = new Map<string, string>();
 function avatarUrl(id: string, icon: string): string {
   const slots = avatarSlots.value;
-  if (slots.length) return slots[avatarSlot(id)] ?? "";
-  const colors = ["#d4b06a", "#b07bff", "#5fd39a", "#6ea8ff", "#e6c984", "#c79cff"];
-  const color = colors[icon.charCodeAt(0) % colors.length];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="28" fill="${color}"/><text x="50%" y="56%" font-size="22" text-anchor="middle" dominant-baseline="middle">${icon}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  const ready = slots.length > 0;
+  const key = (ready ? "r:" : "p:") + id;
+  const cached = avatarCache.get(key);
+  if (cached !== undefined) return cached;
+  let url: string;
+  if (ready) {
+    url = slots[avatarSlot(id)] ?? "";
+  } else {
+    const colors = ["#d4b06a", "#b07bff", "#5fd39a", "#6ea8ff", "#e6c984", "#c79cff"];
+    const color = colors[icon.charCodeAt(0) % colors.length];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56"><circle cx="28" cy="28" r="28" fill="${color}"/><text x="50%" y="56%" font-size="22" text-anchor="middle" dominant-baseline="middle">${icon}</text></svg>`;
+    url = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  }
+  avatarCache.set(key, url);
+  return url;
 }
 
 // 下载某专家/团的 CLAUDE.md
@@ -170,7 +184,7 @@ const emit = defineEmits<{
     <div class="section-title">🧭 业务专家团 · 一句话组队</div>
     <div class="team-grid">
       <button v-for="tm in teams" :key="tm.id" class="team-card" @click="emit('select-team', tm.id)">
-        <img class="team-avatar" :src="avatarUrl(tm.leadId, tm.icon)" :alt="tm.name" />
+        <img class="team-avatar" :src="avatarUrl(tm.leadId, tm.icon)" :alt="tm.name" loading="lazy" decoding="async" />
         <div class="team-body">
           <div class="team-name">{{ tm.icon }} {{ tm.name }}</div>
           <div class="team-tag">{{ tm.tagline }}</div>
@@ -209,7 +223,7 @@ const emit = defineEmits<{
         :title="exp.description"
         @click="emit('select-expert', exp.id)"
       >
-        <img class="exp-avatar" :src="avatarUrl(exp.id, exp.icon)" :alt="exp.name" />
+        <img class="exp-avatar" :src="avatarUrl(exp.id, exp.icon)" :alt="exp.name" loading="lazy" decoding="async" />
         <div class="exp-info">
           <div class="exp-name-row">
             <span class="exp-name">{{ exp.name }}</span>

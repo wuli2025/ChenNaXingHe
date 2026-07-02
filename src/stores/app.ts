@@ -9,6 +9,16 @@ import {
 } from "../tauri";
 import { useChatStore } from "./chat";
 
+/** storage 被禁用的 WebView 里,裸 localStorage.getItem 会在 store 初始化(模块顶层 ref 求值)
+ *  时抛异常 → 整个应用挂不起来。统一走安全读取:拿不到就返回 null,绝不抛。 */
+function lsGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 export type ViewKey =
   | "chat"
   | "wiki"
@@ -29,15 +39,18 @@ export type ViewKey =
   | "media_ops"
   | "web_studio";
 
-/** 顶部模块切换（新外壳）：对话核心 + 三个营销应用场景。 */
-export type ModuleTab = "chat" | "koc" | "competitive" | "pmkt";
+/**
+ * 顶部模块切换（新外壳）：知识库 / 技能中心 / 三个营销应用场景。
+ * 对话系统不再是主区 tab，改为右侧可收纳抽屉（chatOpen）。
+ */
+export type ModuleTab = "trade" | "kb" | "skill" | "koc" | "competitive" | "pmkt";
 
 export const useAppStore = defineStore("app", () => {
   const view = ref<ViewKey>("chat");
   const sidebarCollapsed = ref(false);
 
   // ── 新外壳：顶部模块 tab + 设置/更多 overlay ──
-  const moduleTab = ref<ModuleTab>("koc");
+  const moduleTab = ref<ModuleTab>("trade");
   function setModuleTab(m: ModuleTab) {
     moduleTab.value = m;
   }
@@ -53,6 +66,31 @@ export const useAppStore = defineStore("app", () => {
   }
   // 右抽屉(成品预览)默认收起 → 把横向空间让给主区;点对话里的成品 chip 或顶栏抽屉按钮即展开
   const drawerCollapsed = ref(true);
+
+  // ── 对话系统：右侧可收纳抽屉 ──
+  // 默认收起,把主区让给知识库/技能中心/营销工具;点顶栏「对话」按钮滑出,可拖宽。
+  const chatOpen = ref(false);
+  function toggleChat() {
+    chatOpen.value = !chatOpen.value;
+  }
+  function openChat() {
+    chatOpen.value = true;
+  }
+  // 抽屉宽度可拖拽(320–960px),记住选择
+  const CHAT_W_KEY = "polaris.chatDockWidth.v1";
+  const chatDockWidth = ref(
+    Math.min(960, Math.max(320, parseInt(lsGet(CHAT_W_KEY) || "440") || 440))
+  );
+  // persist=false:拖拽中每帧只更新内存值;松手时再 persist=true 落盘。
+  function setChatDockWidth(w: number, persist = true) {
+    chatDockWidth.value = Math.min(960, Math.max(320, Math.round(w)));
+    if (!persist) return;
+    try {
+      localStorage.setItem(CHAT_W_KEY, String(chatDockWidth.value));
+    } catch {
+      /* storage 不可用 */
+    }
+  }
 
   // 置顶对话：仅前端持久化（localStorage），侧栏排序时置顶优先
   const PINNED_KEY = "polaris.pinnedConvs.v1";
@@ -181,7 +219,7 @@ export const useAppStore = defineStore("app", () => {
   // 侧栏宽度可拖拽调节(200–420px),记住选择
   const SIDEBAR_W_KEY = "polaris.sidebarWidth.v1";
   const sidebarUserWidth = ref(
-    Math.min(420, Math.max(200, parseInt(localStorage.getItem(SIDEBAR_W_KEY) || "260") || 260))
+    Math.min(420, Math.max(200, parseInt(lsGet(SIDEBAR_W_KEY) || "260") || 260))
   );
   // persist=false：拖拽中每帧调用,只更新内存值(避免 60fps 同步写盘卡顿);
   // 松手时再 persist=true 落一次盘。
@@ -267,9 +305,11 @@ export const useAppStore = defineStore("app", () => {
       expandedProjects.value.delete(projectId);
       expandedProjects.value = new Set(expandedProjects.value);
     }
-    // 当前项目被归档 → 回退到第一个剩余项目
+    // 当前项目被归档 → 回退到第一个剩余项目;并清掉 currentConvId,否则聊天区仍指向已归档
+    // 项目里的那条对话(与 deleteConversation/archiveConversation 的收尾一致)。
     if (currentProjectId.value === projectId) {
       currentProjectId.value = projects.value[0]?.id ?? null;
+      currentConvId.value = null;
     }
   }
 
@@ -378,6 +418,11 @@ export const useAppStore = defineStore("app", () => {
     closeSettings,
     sidebarCollapsed,
     drawerCollapsed,
+    chatOpen,
+    toggleChat,
+    openChat,
+    chatDockWidth,
+    setChatDockWidth,
     sidebarWidth,
     setSidebarWidth,
     drawerWidth,

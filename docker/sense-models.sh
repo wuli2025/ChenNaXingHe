@@ -13,7 +13,7 @@
 # - 体积合计约 470MB;slim 镜像不要跑本脚本。
 set -eu
 
-MODELS="${POLARIS_HOME:-$HOME}/Polaris/models"
+MODELS="${POLARIS_HOME:-$HOME}/ChenNaXingHe/models"
 
 fetch() {
   # fetch <目标文件> <镜像url> <官源url>

@@ -13,6 +13,23 @@ const DEFAULT_ON: string[] = [];
 const LEGACY_DEFAULTS = ["deep-research", "skill-creator", "cloak-browser", "browser-use"];
 const PURGE_KEY = "polaris:legacy-defaults-purged.v1";
 
+// storage 被禁用的 WebView 里,裸 localStorage 读写会在 store 初始化(setup 里的
+// seedDefaults/purgeLegacyDefaults)时抛异常 → 整个应用挂不起来。统一走安全读写,绝不抛。
+function lsGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function lsSet(key: string, val: string) {
+  try {
+    localStorage.setItem(key, val);
+  } catch {
+    /* storage 不可用 */
+  }
+}
+
 export const useSkillsStore = defineStore("skills", () => {
   const enabledSkills = ref<Set<string>>(new Set());
 
@@ -56,11 +73,11 @@ export const useSkillsStore = defineStore("skills", () => {
     });
     enabledSkills.value = next;
     saveToStorage();
-    localStorage.setItem(SEED_KEY, JSON.stringify(Array.from(seededSet)));
+    lsSet(SEED_KEY, JSON.stringify(Array.from(seededSet)));
   }
 
   function saveToStorage() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(enabledSkills.value)));
+    lsSet(STORAGE_KEY, JSON.stringify(Array.from(enabledSkills.value)));
   }
 
   function toggle(id: string) {
@@ -97,7 +114,7 @@ export const useSkillsStore = defineStore("skills", () => {
 
   /** 一次性清掉历史默认开启的技能（老安装迁移）：只动旧默认那几个，其余保留。 */
   function purgeLegacyDefaults() {
-    if (localStorage.getItem(PURGE_KEY)) return;
+    if (lsGet(PURGE_KEY)) return;
     const next = new Set(enabledSkills.value);
     let changed = false;
     for (const id of LEGACY_DEFAULTS) {
@@ -107,7 +124,7 @@ export const useSkillsStore = defineStore("skills", () => {
       enabledSkills.value = next;
       saveToStorage();
     }
-    localStorage.setItem(PURGE_KEY, "1");
+    lsSet(PURGE_KEY, "1");
   }
 
   // 初始化时加载 + 种入默认插件 + 清掉历史默认项

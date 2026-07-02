@@ -14,7 +14,7 @@ const props = withDefaults(
   { source: "kb", embedded: false },
 );
 // 布局稳定(或空/兜底)时通知 App 收起加载条
-const emit = defineEmits<{ ready: [] }>();
+const emit = defineEmits<{ ready: []; error: [message: string] }>();
 const isFiles = props.source === "files";
 
 // fcose 力导向引擎: 中心引力 → 有机圆盘云团 (银河感), 自动打包孤立分量
@@ -28,7 +28,9 @@ const container = ref<HTMLDivElement | null>(null);
 const stats = ref({ docs: 0, folders: 0, edges: 0, memories: 0 });
 const empty = ref(false);
 const showFolders = ref(true);
-const spinning = ref(true); // 初始即自动旋转
+// 性能：自动旋转每帧都给全部节点（最多 2500 个）重写坐标 → cytoscape 持续重算+重绘整张画布，
+// 是图谱可见时的常驻 CPU/GPU 负载（风扇狂转）。默认关闭，需要时用旋转按钮手动开。
+const spinning = ref(false);
 const query = ref("");
 const selected = ref<{
   title: string;
@@ -459,7 +461,18 @@ function runSearch() {
 }
 
 onMounted(async () => {
-  graphData = isFiles ? await filesApi.graph() : await kb.graph();
+  // 兜底计时器必须在 await 之前注册：否则 kb.graph() 拒绝时整个 hook 一起拒绝，
+  // 计时器根本没登记、emit('ready') 也没跑 → 父级加载条永远卡住。
+  setTimeout(() => emit("ready"), 3500);
+  try {
+    graphData = isFiles ? await filesApi.graph() : await kb.graph();
+  } catch (e: any) {
+    // 取图失败：置空态并通知父级（报错 + 收起加载条），不让整个 hook 拒绝。
+    empty.value = true;
+    emit("error", e?.message ?? String(e));
+    emit("ready");
+    return;
+  }
   empty.value = graphData.nodes.length === 0;
   stats.value = {
     docs: graphData.nodes.filter((n) => n.kind === "doc").length,
@@ -473,8 +486,6 @@ onMounted(async () => {
   }
   await nextTick();
   render(); // render 内 layoutstop 时 emit('ready')，App 据此收起加载条
-  // 兜底：极端情况下 layoutstop 未触发，也不让加载条一直卡住
-  setTimeout(() => emit("ready"), 3500);
 });
 
 // KeepAlive：切回本视图时恢复自转；切走时暂停自转 raf + 星场 CSS 动画

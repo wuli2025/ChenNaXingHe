@@ -5,7 +5,7 @@ aria2c multi-connection segmented download with graceful fallback. Pure stdlib
 (no third-party deps), runs the same on Windows / macOS / Linux / busybox NAS.
 
 Strategy:
-  1. ensure_aria2(): locate aria2c on PATH / ~/Polaris/bin, else install per-platform.
+  1. ensure_aria2(): locate aria2c on PATH / ~/ChenNaXingHe/bin, else install per-platform.
   2. HEAD-probe the URL for Content-Length + Accept-Ranges.
   3. Decide: file < 10MB or server has no Range support -> single connection;
      otherwise aria2 -x16 -s16 -k1M (the golden multi-connection flags).
@@ -34,7 +34,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-BIN_DIR = Path.home() / "Polaris" / "bin"
+BIN_DIR = Path.home() / "ChenNaXingHe" / "bin"
 EXE = "aria2c.exe" if os.name == "nt" else "aria2c"
 ARIA2_VER = "1.37.0"
 SMALL = 10 * 1024 * 1024  # below this, multi-connection isn't worth it

@@ -29,7 +29,6 @@
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -133,6 +132,10 @@ pub struct EnvStreamEvent {
 static CHILDREN: once_cell::sync::Lazy<Arc<Mutex<HashMap<String, Child>>>> =
     once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 static REQ_COUNTER: AtomicU64 = AtomicU64::new(0);
+/// 串行化本模块对**全局进程 env** 的写入 —— glibc/macOS 上并发 setenv/getenv 是 UB。
+/// `prime_path_for_claude` 在后台线程改 PATH, 会与前台 `env_check` 的 getenv 撞车。
+static ENV_MUTATE_LOCK: once_cell::sync::Lazy<Mutex<()>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(()));
 
 fn next_req_id() -> String {
     let ts = SystemTime::now()
@@ -153,6 +156,42 @@ fn to_fwd(p: &std::path::Path) -> String {
     p.to_string_lossy().replace('\\', "/")
 }
 
+/// Unix: 让子进程成为**新进程组组长** (setpgid)。这样超时/取消时可 `kill(-pgid)` 把它扇出的
+/// npm/msiexec/node 等子孙一并带走 —— 只 kill 外壳 shell (powershell/cmd/sh) 会留下孤儿。
+/// Windows 靠 `taskkill /T` 带走整树, 无需分组, 此处 no-op。
+#[cfg_attr(windows, allow(unused_variables))]
+fn new_process_group(cmd: &mut Command) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
+}
+
+/// 尽力杀掉子进程**整棵树**并回收。只 `child.kill()` 仅杀外壳 shell, 会留 npm/msiexec 孙进程
+/// 成孤儿 (Unix 上不 wait 还留僵尸)。Windows 用 `taskkill /T /F`; Unix 杀进程组 (子进程 spawn 时
+/// 已 `new_process_group` 建组)。收尾一律 `kill()`+`wait()` 兜底并回收。
+fn kill_child_tree(child: &mut Child) {
+    #[cfg(windows)]
+    {
+        let mut cmd = Command::new("taskkill");
+        cmd.args(["/PID", &child.id().to_string(), "/T", "/F"]);
+        no_window(&mut cmd);
+        let _ = cmd.output();
+    }
+    #[cfg(not(windows))]
+    {
+        // 负 pid = 进程组; 失败退化为杀单进程。
+        let pid = child.id();
+        let _ = Command::new("kill")
+            .args(["-KILL", &format!("-{pid}")])
+            .output()
+            .or_else(|_| Command::new("kill").args(["-KILL", &pid.to_string()]).output());
+    }
+    let _ = child.kill(); // 兜底杀本体 (taskkill 通常已带走它)
+    let _ = child.wait(); // 回收, 防 Unix 僵尸
+}
+
 /// 跑一个子命令, 最多等 `timeout`; 超时则 kill 子进程并返回 None。
 /// 探测类调用 (npm view / npm prefix / 版本号 / where / 读注册表 PATH 等) 用它兜底:
 /// 网络卡死或进程僵死时不让 `env_check` 这条同步 Tauri 命令永久阻塞。
@@ -161,6 +200,7 @@ fn output_with_timeout(mut cmd: Command, timeout: Duration) -> Option<std::proce
     cmd.stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    new_process_group(&mut cmd);
     let mut child = cmd.spawn().ok()?;
     let mut out_pipe = child.stdout.take()?;
     let mut err_pipe = child.stderr.take()?;
@@ -182,9 +222,8 @@ fn output_with_timeout(mut cmd: Command, timeout: Duration) -> Option<std::proce
             Ok(Some(s)) => break s,
             Ok(None) => {
                 if start.elapsed() >= timeout {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    return None; // 超时: 杀掉并放弃
+                    kill_child_tree(&mut child); // 超时: 杀整树 (含子孙) 并回收后放弃
+                    return None;
                 }
                 std::thread::sleep(Duration::from_millis(25));
             }
@@ -597,14 +636,15 @@ fn read_user_path() -> Option<String> {
     None
 }
 
-/// dir 是否(忽略大小写/尾斜杠)出现在分号分隔的 PATH 串里。
+/// dir 是否(忽略大小写/尾斜杠)出现在 PATH 串里。按**平台分隔符**切分 (Windows `;` / Unix `:`),
+/// 用 `std::env::split_paths` —— 之前恒按 `;` 切, Unix 上永不命中导致 PATH 每次 env_check 无限膨胀。
 fn path_contains_dir(path_str: &str, dir: &str) -> bool {
     let norm = |s: &str| s.trim().trim_end_matches(['\\', '/']).to_lowercase();
     let target = norm(dir);
     if target.is_empty() {
         return false;
     }
-    path_str.split(';').any(|p| norm(p) == target)
+    std::env::split_paths(path_str).any(|p| norm(&p.to_string_lossy()) == target)
 }
 
 /// 把 dir 前插进**当前进程 PATH** (若尚不在其中)。仅改本进程、不碰注册表; 返回是否真加了。
@@ -614,6 +654,9 @@ fn prepend_process_path(dir: &str) -> bool {
     if dir.is_empty() {
         return false;
     }
+    // 持锁覆盖「读 PATH → 判重 → 写 PATH」整个读改写: 既串行化 setenv (glibc/macOS 并发 UB),
+    // 又避免两个线程各自 prepend 造成丢更新。
+    let _guard = ENV_MUTATE_LOCK.lock();
     let proc_path = std::env::var("PATH").unwrap_or_default();
     if path_contains_dir(&proc_path, dir) {
         return false;
@@ -890,6 +933,8 @@ fn login_shell_path() -> Option<String> {
 #[cfg(not(windows))]
 fn merge_login_path_into_process(login_path: &str) {
     use std::collections::HashSet;
+    // 持锁覆盖读改写: 串行化 setenv (并发 getenv/setenv 是 UB) 并防丢更新。
+    let _guard = ENV_MUTATE_LOCK.lock();
     let cur = std::env::var("PATH").unwrap_or_default();
     let have: HashSet<String> = cur.split(':').map(|s| s.trim_end_matches('/').to_string()).collect();
     let adds: Vec<&str> = login_path
@@ -941,6 +986,7 @@ fn prime_path_for_claude_inner() {
     #[cfg(windows)]
     if std::env::var_os("CLAUDE_CODE_GIT_BASH_PATH").is_none() {
         if let Some(bash) = git_bash_path() {
+            let _guard = ENV_MUTATE_LOCK.lock();
             std::env::set_var("CLAUDE_CODE_GIT_BASH_PATH", bash);
         }
     }
@@ -1706,7 +1752,7 @@ pub fn env_update_claude(app: AppHandle) -> Result<String, String> {
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub fn env_cancel(req_id: String) -> Result<(), String> {
     if let Some(mut child) = CHILDREN.lock().remove(&req_id) {
-        let _ = child.kill();
+        kill_child_tree(&mut child); // 杀整树: 连 npm/msiexec 子孙一起带走并回收, 不留孤儿/僵尸
     }
     Ok(())
 }
@@ -1779,8 +1825,39 @@ fn emit(app: &AppHandle, ev: EnvStreamEvent) {
     let _ = app.emit("env:stream", ev);
 }
 
+/// 逐行读取子进程管道并**按行流式**回调: 按字节读、遇 `\n` 切行、`from_utf8_lossy` 解码。
+/// zh-CN Windows 上 powershell/npm 常输出 GBK, `BufRead::lines()` 的 UTF-8 校验会**整行丢弃**
+/// → 诊断日志空白。这里改 lossy 解码 (与 `probe_version` 一致), 坏字节降级为 U+FFFD 而非丢行。
+fn for_each_lossy_line<R: std::io::Read>(mut r: R, mut f: impl FnMut(String)) {
+    let mut buf: Vec<u8> = Vec::with_capacity(1024);
+    let mut chunk = [0u8; 4096];
+    let flush = |bytes: &[u8], f: &mut dyn FnMut(String)| {
+        let s = String::from_utf8_lossy(bytes);
+        f(s.trim_end_matches('\r').to_string());
+    };
+    loop {
+        match r.read(&mut chunk) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => {
+                for &b in &chunk[..n] {
+                    if b == b'\n' {
+                        flush(&buf, &mut f);
+                        buf.clear();
+                    } else {
+                        buf.push(b);
+                    }
+                }
+            }
+        }
+    }
+    if !buf.is_empty() {
+        flush(&buf, &mut f); // 收尾: 最后一行可能无换行
+    }
+}
+
 /// 起子进程, 双线程读 stdout/stderr → `env:stream` 日志; 退出后(可选)修 PATH, 再发 done。
 fn stream_install(app: AppHandle, req_id: String, mut cmd: Command, fix_path_after: bool, label: &str) {
+    new_process_group(&mut cmd); // Unix 分组: 取消/超时时能连 npm/msiexec 子孙一起杀
     let mut child = match cmd.spawn() {
         Ok(c) => c,
         Err(e) => {
@@ -1807,11 +1884,9 @@ fn stream_install(app: AppHandle, req_id: String, mut cmd: Command, fix_path_aft
         let app_e = app.clone();
         let req_e = req_id.clone();
         std::thread::spawn(move || {
-            let reader = BufReader::new(stderr);
-            for line in reader.lines() {
-                let Ok(line) = line else { continue };
+            for_each_lossy_line(stderr, |line| {
                 if line.trim().is_empty() {
-                    continue;
+                    return;
                 }
                 emit(
                     &app_e,
@@ -1823,7 +1898,7 @@ fn stream_install(app: AppHandle, req_id: String, mut cmd: Command, fix_path_aft
                         message: None,
                     },
                 );
-            }
+            });
         });
     }
 
@@ -1831,11 +1906,9 @@ fn stream_install(app: AppHandle, req_id: String, mut cmd: Command, fix_path_aft
     let label = label.to_string();
     std::thread::spawn(move || {
         if let Some(stdout) = stdout {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines() {
-                let Ok(line) = line else { continue };
+            for_each_lossy_line(stdout, |line| {
                 if line.trim().is_empty() {
-                    continue;
+                    return;
                 }
                 emit(
                     &app,
@@ -1847,7 +1920,7 @@ fn stream_install(app: AppHandle, req_id: String, mut cmd: Command, fix_path_aft
                         message: None,
                     },
                 );
-            }
+            });
         }
 
         let child_opt = CHILDREN.lock().remove(&req_id);

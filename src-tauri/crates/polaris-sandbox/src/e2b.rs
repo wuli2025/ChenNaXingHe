@@ -51,7 +51,7 @@ pub struct CubeStatus {
 }
 
 fn config_path() -> Option<PathBuf> {
-    let dir = UserDirs::new()?.home_dir().join("Polaris").join("sandbox");
+    let dir = UserDirs::new()?.home_dir().join("ChenNaXingHe").join("sandbox");
     let _ = std::fs::create_dir_all(&dir);
     Some(dir.join("cube-sandbox.json"))
 }

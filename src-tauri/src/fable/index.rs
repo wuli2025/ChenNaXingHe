@@ -472,12 +472,14 @@ pub fn build_index(
             // ── 向量层(认意思腿):P1-4 只覆盖「精华」文本(按类型/大小分流)──
             // 无 key 时整块跳过:chunked 保持 0,补 key 后再点构建即补建向量(认字腿已先行覆盖)。
             if embed_ok && chunked == 0 {
+                // 重处理本文件前先无条件清旧 chunk:mtime 变更会把 chunked 重置为 0,而变更后本文件
+                // 可能已不再可嵌入(类型/大小变了)或正文变空 —— 那样就不会进下面的嵌入分支,若不在此
+                // 处先删,旧向量会残留、向量检索继续命中已删内容。放在 embeddable 判定前 → 两条路都清干净。
+                conn.execute("DELETE FROM chunks WHERE file_id=?1", [file_id])
+                    .map_err(|e| e.to_string())?;
                 if embeddable(&ext, size) && !text.is_empty() {
                     let chunks = chunk_text(&text);
                     if !chunks.is_empty() {
-                        // 重嵌入前清旧 chunk(mtime 变更后 chunked 被重置的场景)
-                        conn.execute("DELETE FROM chunks WHERE file_id=?1", [file_id])
-                            .map_err(|e| e.to_string())?;
                         let groups: Vec<&[String]> = chunks.chunks(EMBED_BATCH).collect();
                         // ── 并发嵌入各批 ──
                         // embed_texts 纯网络调用、无共享态 → 多批可并发取证。长文档(几十上百批)

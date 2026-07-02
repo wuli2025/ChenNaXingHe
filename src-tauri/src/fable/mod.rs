@@ -85,7 +85,7 @@ pub fn db_path() -> Option<PathBuf> {
             return Some(PathBuf::from(p));
         }
     }
-    UserDirs::new().map(|u| u.home_dir().join("Polaris").join("data").join("fable.db"))
+    UserDirs::new().map(|u| u.home_dir().join("ChenNaXingHe").join("data").join("fable.db"))
 }
 
 /// 打开(或建)fable.db:WAL + busy_timeout,每个线程开自己的连接

@@ -21,8 +21,12 @@ import {
   CircleAlert,
   Star,
   Wallet,
+  Copy,
+  ClipboardPaste,
+  TriangleAlert,
 } from "@lucide/vue";
 import { useProvidersStore } from "../stores/providers";
+import { toast } from "../composables/useToast";
 import type {
   ProviderView,
   TokenBucket,
@@ -36,6 +40,20 @@ const store = useProvidersStore();
 
 const open = ref(false);
 const filter = ref("");
+
+// 导入 / 导出 配置面板（取代旧的 alert 占位）
+const ioOpen = ref(false);
+const ioMode = ref<"export" | "import">("export");
+const ioText = ref("");
+const ioBusy = ref(false);
+const ioCopied = ref(false);
+
+// 应用内删除确认（取代原生 confirm）
+const removeTarget = ref<ProviderView | null>(null);
+const removeBusy = ref(false);
+
+// 键盘导航：当前高亮行索引（-1 = 无）
+const navIndex = ref(-1);
 
 // Codex 授权 (原生 Device Code OAuth)
 const codexOpen = ref(false);
@@ -69,6 +87,7 @@ onMounted(() => {
 });
 
 watch(open, (v) => {
+  navIndex.value = -1;
   if (v) {
     store.refresh();
     store.refreshUsage();
@@ -97,10 +116,31 @@ onBeforeUnmount(() => {
   stopCodexPoll();
 });
 function onEsc(e: KeyboardEvent) {
-  if (e.key !== "Escape") return;
-  if (claudeOpen.value) claudeOpen.value = false;
-  else if (codexOpen.value) codexOpen.value = false;
-  else open.value = false;
+  if (e.key === "Escape") {
+    if (removeTarget.value) removeTarget.value = null;
+    else if (ioOpen.value) ioOpen.value = false;
+    else if (claudeOpen.value) claudeOpen.value = false;
+    else if (codexOpen.value) codexOpen.value = false;
+    else open.value = false;
+    return;
+  }
+  // 列表键盘导航：仅在主面板态（无授权/IO/确认卡）接管上下/回车
+  if (codexOpen.value || claudeOpen.value || ioOpen.value || removeTarget.value) return;
+  const list = flatNav.value;
+  if (!list.length) return;
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    navIndex.value = (navIndex.value + 1) % list.length;
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    navIndex.value = (navIndex.value - 1 + list.length) % list.length;
+  } else if (e.key === "Enter" && navIndex.value >= 0) {
+    const p = list[navIndex.value];
+    if (p) {
+      e.preventDefault();
+      onRowClick(p);
+    }
+  }
 }
 
 /** 联动/隔离切换;后端会顺带把全局 settings.json 写入当前供应商(开)或清回官方(关) */
@@ -168,6 +208,12 @@ const filtered = computed(() => {
   );
 });
 
+/** 键盘导航的扁平顺序：搜索时用命中列表，否则常用+全部依次 */
+const flatNav = computed<ProviderView[]>(() =>
+  filter.value.trim() ? filtered.value : [...recentList.value, ...restList.value]
+);
+watch(filter, () => (navIndex.value = -1));
+
 const current = computed(() => store.current);
 const todayTotal = computed(() => store.usage?.today.total ?? 0);
 const currentBalance = computed<ProviderBalance | null>(
@@ -226,7 +272,9 @@ async function onRowClick(p: ProviderView) {
     open.value = false;
     return;
   }
-  await store.switchTo(p.id);
+  const ok = await store.switchTo(p.id);
+  if (ok) toast.success(`已切换到 ${p.name}`);
+  else toast.error(store.error || `切换到 ${p.name} 失败`);
 }
 
 function editProvider(p: ProviderView) {
@@ -241,17 +289,107 @@ function openBoard() {
   store.openUsage();
   open.value = false;
 }
-function importExport() {
-  // 占位:先给轻提示;下版接真 UI
-  alert(
-    "导入/导出:把 ~/.claude/settings.json 拖入或复制 env 块即可。\n" +
-    "下一版提供完整 UI(目前供应商增删改已覆盖大部分场景)。"
-  );
+/** 导出：把所有已配置(含 key)的供应商序列化成可迁移 JSON */
+function openExport() {
+  const payload = {
+    _type: "polaris.providers",
+    _version: 1,
+    exportedAt: new Date().toISOString(),
+    providers: store.providers
+      .filter((p) => p.hasKey || p.kind === "custom")
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        note: p.note,
+        websiteUrl: p.websiteUrl,
+        tokenField: p.tokenField,
+        settingsConfig: p.settingsConfig ?? {},
+      })),
+  };
+  ioMode.value = "export";
+  ioText.value = JSON.stringify(payload, null, 2);
+  ioCopied.value = false;
+  ioOpen.value = true;
 }
-async function removeProvider(p: ProviderView) {
-  const verb = p.isPreset ? "清除配置" : "删除";
-  if (!confirm(`${verb}「${p.name}」?`)) return;
-  await store.remove(p.id);
+function openImport() {
+  ioMode.value = "import";
+  ioText.value = "";
+  ioOpen.value = true;
+}
+async function copyExport() {
+  try {
+    await navigator.clipboard.writeText(ioText.value);
+    ioCopied.value = true;
+    toast.success("配置已复制到剪贴板");
+    setTimeout(() => (ioCopied.value = false), 1600);
+  } catch {
+    toast.error("剪贴板不可用，请手动全选复制");
+  }
+}
+/** 导入：解析 JSON → 逐个保存供应商 */
+async function runImport() {
+  const raw = ioText.value.trim();
+  if (!raw) return;
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    toast.error("不是有效的 JSON，请检查粘贴内容");
+    return;
+  }
+  const list: any[] = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.providers)
+    ? parsed.providers
+    : null;
+  if (!list || !list.length) {
+    toast.error("未找到可导入的供应商配置");
+    return;
+  }
+  ioBusy.value = true;
+  let okCount = 0;
+  try {
+    for (const item of list) {
+      if (!item?.name || !item?.settingsConfig) continue;
+      const id = await store.save({
+        id: item.id,
+        name: String(item.name),
+        note: item.note ?? "",
+        websiteUrl: item.websiteUrl ?? "",
+        tokenField: item.tokenField ?? "",
+        settingsConfig: item.settingsConfig,
+      });
+      if (id) okCount++;
+    }
+  } finally {
+    ioBusy.value = false;
+  }
+  if (okCount) {
+    toast.success(`成功导入 ${okCount} 个供应商配置`);
+    ioOpen.value = false;
+    await store.refresh();
+  } else {
+    toast.error("导入失败：配置格式不被识别");
+  }
+}
+
+/** 删除：先在应用内弹确认卡，确认后再删（替代原生 confirm 阻塞） */
+function askRemove(p: ProviderView) {
+  removeTarget.value = p;
+}
+async function confirmRemove() {
+  const p = removeTarget.value;
+  if (!p) return;
+  removeBusy.value = true;
+  try {
+    await store.remove(p.id);
+    toast.success(`已${p.isPreset ? "清除配置" : "删除"}：${p.name}`);
+  } catch (e) {
+    toast.error(String(e));
+  } finally {
+    removeBusy.value = false;
+    removeTarget.value = null;
+  }
 }
 function openSite(url: string) {
   if (url) window.open(url, "_blank");
@@ -309,6 +447,11 @@ function resetCodexAuth() {
   codexErr.value = null;
   codexCopied.value = false;
 }
+/** 关闭 Codex 授权卡(× / 关闭):同时停掉后台每 ~5s 的 codex_poll_login 轮询,别让它在卡片关掉后继续空转。 */
+function closeCodexCard() {
+  codexOpen.value = false;
+  resetCodexAuth();
+}
 function openCodexVerify() {
   if (codexDevice.value) window.open(codexDevice.value.verificationUri, "_blank");
 }
@@ -316,8 +459,10 @@ async function routeCodex() {
   codexErr.value = null;
   const ok = await store.switchTo("codex");
   await store.refreshCodexProxy();
-  if (ok) codexOpen.value = false;
-  else codexErr.value = store.error || "切换失败";
+  if (ok) {
+    codexOpen.value = false;
+    toast.success("已切换到 ChatGPT (Codex)");
+  } else codexErr.value = store.error || "切换失败";
 }
 async function copyUserCode() {
   if (!codexDevice.value) return;
@@ -560,7 +705,7 @@ function subtitleOf(p: ProviderView): string {
                       v-for="p in filtered"
                       :key="p.id"
                       class="prov-row"
-                      :class="{ on: p.id === store.currentId, pending: store.switching === p.id }"
+                      :class="{ on: p.id === store.currentId, pending: store.switching === p.id, navsel: flatNav[navIndex]?.id === p.id }"
                       @click="onRowClick(p)"
                     >
                       <span class="row-bar" v-if="p.id === store.currentId" />
@@ -596,7 +741,7 @@ function subtitleOf(p: ProviderView): string {
                             v-if="(p.isPreset && p.hasKey && p.kind === 'key') || p.kind === 'custom'"
                             class="mini-act danger"
                             :title="p.isPreset ? '清除配置' : '删除'"
-                            @click.stop="removeProvider(p)"
+                            @click.stop="askRemove(p)"
                           >
                             <Trash2 :size="12" :stroke-width="1.8" />
                           </button>
@@ -618,7 +763,7 @@ function subtitleOf(p: ProviderView): string {
                         v-for="p in recentList"
                         :key="p.id"
                         class="prov-row"
-                        :class="{ on: p.id === store.currentId, pending: store.switching === p.id }"
+                        :class="{ on: p.id === store.currentId, pending: store.switching === p.id, navsel: flatNav[navIndex]?.id === p.id }"
                         @click="onRowClick(p)"
                       >
                         <span class="row-bar" v-if="p.id === store.currentId" />
@@ -654,7 +799,7 @@ function subtitleOf(p: ProviderView): string {
                               v-if="(p.isPreset && p.hasKey && p.kind === 'key') || p.kind === 'custom'"
                               class="mini-act danger"
                               :title="p.isPreset ? '清除配置' : '删除'"
-                              @click.stop="removeProvider(p)"
+                              @click.stop="askRemove(p)"
                             >
                               <Trash2 :size="12" :stroke-width="1.8" />
                             </button>
@@ -673,7 +818,7 @@ function subtitleOf(p: ProviderView): string {
                         v-for="p in restList"
                         :key="p.id"
                         class="prov-row"
-                        :class="{ on: p.id === store.currentId, pending: store.switching === p.id }"
+                        :class="{ on: p.id === store.currentId, pending: store.switching === p.id, navsel: flatNav[navIndex]?.id === p.id }"
                         @click="onRowClick(p)"
                       >
                         <span class="row-bar" v-if="p.id === store.currentId" />
@@ -709,7 +854,7 @@ function subtitleOf(p: ProviderView): string {
                               v-if="(p.isPreset && p.hasKey && p.kind === 'key') || p.kind === 'custom'"
                               class="mini-act danger"
                               :title="p.isPreset ? '清除配置' : '删除'"
-                              @click.stop="removeProvider(p)"
+                              @click.stop="askRemove(p)"
                             >
                               <Trash2 :size="12" :stroke-width="1.8" />
                             </button>
@@ -733,7 +878,7 @@ function subtitleOf(p: ProviderView): string {
                       <ShieldCheck :size="14" :stroke-width="2" />
                       Codex (ChatGPT) 授权
                     </div>
-                    <button class="icon-btn sm" @click="codexOpen = false">
+                    <button class="icon-btn sm" @click="closeCodexCard">
                       <X :size="13" />
                     </button>
                   </div>
@@ -952,14 +1097,96 @@ function subtitleOf(p: ProviderView): string {
                   <button class="util" title="管理供应商" @click="addCustom">
                     <KeyRound :size="12" :stroke-width="1.8" /> 管理
                   </button>
-                  <button class="util" title="导入配置" @click="importExport">
+                  <button class="util" title="从 JSON 导入供应商配置" @click="openImport">
                     <Download :size="12" :stroke-width="1.8" /> 导入
                   </button>
-                  <button class="util" title="导出配置" @click="importExport">
+                  <button class="util" title="导出全部供应商配置为 JSON" @click="openExport">
                     <Upload :size="12" :stroke-width="1.8" /> 导出
                   </button>
                 </div>
               </section>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 导入 / 导出 配置弹层 -->
+    <Teleport to="body">
+      <Transition name="io-fade">
+        <div v-if="ioOpen" class="io-mask" @click.self="ioOpen = false">
+          <div class="io-card">
+            <header class="io-head">
+              <span class="io-title">
+                <component :is="ioMode === 'export' ? Upload : ClipboardPaste" :size="15" :stroke-width="2" />
+                {{ ioMode === "export" ? "导出供应商配置" : "导入供应商配置" }}
+              </span>
+              <button class="icon-btn sm" @click="ioOpen = false"><X :size="14" /></button>
+            </header>
+            <p class="io-hint">
+              {{
+                ioMode === "export"
+                  ? "下方为当前所有已配置供应商的可迁移 JSON，复制后可在另一台设备的「导入」中粘贴还原。"
+                  : "把导出的 JSON 粘贴到下方，点「导入」即可批量还原供应商（同名/同 id 会被覆盖更新）。"
+              }}
+            </p>
+            <textarea
+              v-model="ioText"
+              class="io-text"
+              :readonly="ioMode === 'export'"
+              spellcheck="false"
+              :placeholder="ioMode === 'import' ? '在此粘贴供应商配置 JSON…' : ''"
+            />
+            <div class="io-actions">
+              <button class="ed-cancel" @click="ioOpen = false">关闭</button>
+              <button
+                v-if="ioMode === 'export'"
+                class="ed-save"
+                @click="copyExport"
+              >
+                <component :is="ioCopied ? Check : Copy" :size="13" :stroke-width="2" />
+                {{ ioCopied ? "已复制" : "复制到剪贴板" }}
+              </button>
+              <button
+                v-else
+                class="ed-save"
+                :disabled="ioBusy || !ioText.trim()"
+                @click="runImport"
+              >
+                <span v-if="ioBusy" class="spinner" />
+                <Download v-else :size="13" :stroke-width="2" />
+                {{ ioBusy ? "导入中…" : "导入" }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 删除确认弹层（应用内，非阻塞） -->
+    <Teleport to="body">
+      <Transition name="io-fade">
+        <div v-if="removeTarget" class="io-mask" @click.self="removeTarget = null">
+          <div class="confirm-card">
+            <div class="confirm-ic"><TriangleAlert :size="22" :stroke-width="1.8" /></div>
+            <div class="confirm-title">
+              {{ removeTarget.isPreset ? "清除此供应商配置？" : "删除此供应商？" }}
+            </div>
+            <div class="confirm-name">{{ removeTarget.name }}</div>
+            <div class="confirm-desc">
+              {{
+                removeTarget.isPreset
+                  ? "将清除已保存的 API Key 与配置，预设条目仍保留，可随时重新填写。"
+                  : "此自定义供应商及其配置将被永久移除，操作不可撤销。"
+              }}
+            </div>
+            <div class="confirm-actions">
+              <button class="ed-cancel" :disabled="removeBusy" @click="removeTarget = null">取消</button>
+              <button class="ed-danger" :disabled="removeBusy" @click="confirmRemove">
+                <span v-if="removeBusy" class="spinner" />
+                <Trash2 v-else :size="13" :stroke-width="2" />
+                {{ removeTarget.isPreset ? "清除配置" : "删除" }}
+              </button>
             </div>
           </div>
         </div>
@@ -1137,6 +1364,7 @@ function subtitleOf(p: ProviderView): string {
 .prov-row { position: relative; display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 8px; cursor: pointer; transition: background 120ms ease; }
 .prov-row:hover { background: var(--selection-bg); }
 .prov-row.on { background: var(--primary-soft); }
+.prov-row.navsel { box-shadow: inset 0 0 0 1.5px var(--primary); background: var(--selection-bg); }
 .prov-row.pending { opacity: 0.6; }
 .row-bar { position: absolute; left: 0; top: 6px; bottom: 6px; width: 2.5px; border-radius: 2px; background: var(--primary); }
 .prov-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
@@ -1239,4 +1467,68 @@ function subtitleOf(p: ProviderView): string {
 .dock-fade-enter-from .panel, .dock-fade-leave-to .panel { opacity: 0; transform: translateY(10px) scale(0.97); }
 .ed-fade-enter-active, .ed-fade-leave-active { transition: opacity 160ms ease, transform 160ms ease; }
 .ed-fade-enter-from, .ed-fade-leave-to { opacity: 0; transform: translateY(-4px); }
+
+/* ── 导入/导出 + 删除确认 弹层 ───────────────────────── */
+.io-mask {
+  position: fixed; inset: 0; z-index: 9700;
+  background: var(--overlay, rgba(20, 20, 25, 0.42));
+  backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.io-card {
+  width: min(560px, 94vw);
+  display: flex; flex-direction: column; gap: 11px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  padding: 16px 18px 18px;
+}
+.io-head { display: flex; align-items: center; justify-content: space-between; }
+.io-title { display: inline-flex; align-items: center; gap: 7px; font-family: var(--serif); font-size: 14px; font-weight: 600; color: var(--ink); letter-spacing: 0.5px; }
+.io-hint { margin: 0; font-size: 11.5px; line-height: 1.7; color: var(--text-2); }
+.io-text {
+  width: 100%; min-height: 240px; resize: vertical;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
+  color: var(--text); background: var(--bg-soft);
+  border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px;
+}
+.io-text:focus { outline: none; border-color: var(--primary); }
+.io-text[readonly] { color: var(--text-2); }
+.io-actions, .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.confirm-card {
+  width: min(380px, 92vw);
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  padding: 24px 22px 18px;
+}
+.confirm-ic {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--vermilion-soft); color: var(--vermilion);
+  margin-bottom: 2px;
+}
+.confirm-title { font-family: var(--serif); font-size: 15px; font-weight: 600; color: var(--ink); letter-spacing: 0.5px; }
+.confirm-name { font-size: 13px; font-weight: 600; color: var(--primary-deep); font-family: var(--mono); }
+.confirm-desc { font-size: 11.5px; line-height: 1.7; color: var(--text-2); margin-bottom: 8px; }
+.confirm-actions { width: 100%; margin-top: 2px; }
+.confirm-actions .ed-cancel { flex: 1; justify-content: center; padding: 9px; }
+.ed-danger {
+  flex: 1; justify-content: center;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 9px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+  border: 1px solid var(--vermilion); background: var(--vermilion); color: #fff;
+  transition: filter 0.14s ease;
+}
+.ed-danger:hover:not(:disabled) { filter: brightness(0.92); }
+.ed-danger:disabled { opacity: 0.6; cursor: default; }
+
+.io-fade-enter-active, .io-fade-leave-active { transition: opacity 180ms ease; }
+.io-fade-enter-active .io-card, .io-fade-enter-active .confirm-card { transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.io-fade-enter-from, .io-fade-leave-to { opacity: 0; }
+.io-fade-enter-from .io-card, .io-fade-enter-from .confirm-card { transform: translateY(12px) scale(0.97); }
 </style>

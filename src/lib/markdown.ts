@@ -238,10 +238,20 @@ export function installMarkdownDelegation(
       return;
     }
     const a = target.closest("a[href]") as HTMLAnchorElement | null;
-    if (a && /^https?:\/\//i.test(a.getAttribute("href") || "")) {
-      // 外链一律交给系统浏览器,别在 webview 里导航走丢
+    if (a) {
+      const href = (a.getAttribute("href") || "").trim();
+      // 纯页内锚点(#foo):不会替换 index.html,交给浏览器默认滚动。
+      if (!href || href.startsWith("#")) return;
+      // 关键:拦截所有带 href 的点击 —— 绝不允许 webview 内导航替换掉 index.html(否则整个 app 变白)。
       e.preventDefault();
-      openExternal(a.getAttribute("href")!);
+      if (/^javascript:/i.test(href)) return; // 阻断 javascript: 伪协议
+      if (/^https?:\/\//i.test(href)) {
+        openExternal(href); // http(s) 外链:系统浏览器打开
+      } else if (/^(mailto:|tel:)/i.test(href)) {
+        openExternal(href); // 邮件/电话:交给系统处理(webview 内 default 未必可靠)
+      }
+      // 其余(相对路径 ./report.html、file: 等):已 preventDefault,直接忽略,不导航。
+      // 无可用的产物/文件打开机制回调,故此处只做拦截防走丢。
     }
   };
   root.addEventListener("click", handler);

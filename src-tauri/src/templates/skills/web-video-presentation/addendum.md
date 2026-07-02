@@ -33,7 +33,7 @@ node "PKG/polaris/scaffold.mjs" ./presentation --theme=<用户选的主题id>
 
 原 SKILL 的默认 provider 用 `mmx-cli`（要 `npm i -g mmx-cli` + `mmx auth login`）。
 **本集成已替换为直连 MiniMax T2A 的 Node 合成器**，它**自动**从 Polaris 供应商坞
-（`~/Polaris/data/providers.json` 的 `minimax` 供应商）取 key —— 用户只要在供应商坞
+（`~/ChenNaXingHe/data/providers.json` 的 `minimax` 供应商）取 key —— 用户只要在供应商坞
 启用过「MiniMax（粉丝福利）」，配音就零配置可用（已实测：sk-cp- key 直接通过 T2A
 鉴权，返回 mp3）。
 

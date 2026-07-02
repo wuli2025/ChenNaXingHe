@@ -9,9 +9,10 @@ import { useAppStore } from "../stores/app";
 
 // 精简后的「设置 / 更多」：只保留高频、轻量、稳定的能力，去掉会拖慢/卡顿的重模块
 // （知识图谱 / 经验中心 / 技能中心 / 自动化 / 语音 TTS 已移除）。
+// 知识库已移出「更多」：它在顶栏有独立整屏 tab，在此 overlay 里再挂一份会重复加载
+// 整个 PolarisKB（几十篇 md + 双链溯源），导致点「更多」卡死/崩溃，故此处不再挂载。
 const ProviderDock = defineAsyncComponent(() => import("./ProviderDock.vue"));
 const Settings = defineAsyncComponent(() => import("./Settings.vue"));
-const WikiBrowse = defineAsyncComponent(() => import("./WikiBrowse.vue"));
 const EnvDoctor = defineAsyncComponent(() => import("./EnvDoctor.vue"));
 const UpdatePanel = defineAsyncComponent(() => import("./UpdatePanel.vue"));
 
@@ -20,7 +21,6 @@ const app = useAppStore();
 const sections = [
   { key: "provider", label: "API 供应商" },
   { key: "general", label: "通用设置" },
-  { key: "kb", label: "知识库" },
   { key: "env", label: "环境配置" },
   { key: "update", label: "检查更新" },
 ];
@@ -54,9 +54,6 @@ const active = computed(() =>
             <ProviderDock />
           </div>
           <Settings v-else-if="active === 'general'" />
-          <div v-else-if="active === 'kb'" class="kb-host">
-            <WikiBrowse />
-          </div>
           <EnvDoctor v-else-if="active === 'env'" />
           <UpdatePanel v-else-if="active === 'update'" />
         </div>
@@ -153,10 +150,6 @@ const active = computed(() =>
   min-width: 0;
   overflow: auto;
   position: relative;
-}
-.kb-host {
-  position: relative;
-  height: 100%;
 }
 .provider-pane {
   padding: 16px;

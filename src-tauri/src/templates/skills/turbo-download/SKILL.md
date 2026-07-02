@@ -13,17 +13,17 @@ created_at: 1749800000
 
 ## 怎么用（一条命令，三端通用）
 
-脚本在 `~/Polaris/skills/turbo-download/scripts/fast_download.py`（Windows: `%USERPROFILE%\Polaris\skills\turbo-download\scripts\fast_download.py`）。**纯 Python 标准库、零第三方依赖。**
+脚本在 `~/ChenNaXingHe/skills/turbo-download/scripts/fast_download.py`（Windows: `%USERPROFILE%\ChenNaXingHe\skills\turbo-download\scripts\fast_download.py`）。**纯 Python 标准库、零第三方依赖。**
 
 **单个大文件**：
 ```bash
-uv run --no-project ~/Polaris/skills/turbo-download/scripts/fast_download.py \
+uv run --no-project ~/ChenNaXingHe/skills/turbo-download/scripts/fast_download.py \
   "<URL>" -d "<目标目录>" -o "<文件名(可选)>"
 ```
 
 **一批文件**（urls.txt 每行一个 URL）：
 ```bash
-uv run --no-project ~/Polaris/skills/turbo-download/scripts/fast_download.py \
+uv run --no-project ~/ChenNaXingHe/skills/turbo-download/scripts/fast_download.py \
   -i urls.txt -d "<目标目录>"
 ```
 
@@ -31,7 +31,7 @@ uv run --no-project ~/Polaris/skills/turbo-download/scripts/fast_download.py \
 - 没有 uv 的环境（如群晖 NAS busybox）直接 `python3 fast_download.py ...` 也行——脚本只用标准库。
 
 ## 脚本替你做了什么（不用自己拼命令）
-1. **找/装 aria2c**：先看 PATH 和 `~/Polaris/bin` 缓存；没有就**按平台自动装**——Windows 走 winget/scoop/choco 或下官方便携版；macOS 走 `brew install aria2`；Linux/NAS 按 CPU 架构下 abcfy2 musl **全静态**二进制（零依赖，群晖/容器都能跑）。
+1. **找/装 aria2c**：先看 PATH 和 `~/ChenNaXingHe/bin` 缓存；没有就**按平台自动装**——Windows 走 winget/scoop/choco 或下官方便携版；macOS 走 `brew install aria2`；Linux/NAS 按 CPU 架构下 abcfy2 musl **全静态**二进制（零依赖，群晖/容器都能跑）。
 2. **探测**：HEAD 拿 `Content-Length` + `Accept-Ranges`。文件 <10MB 或服务器不支持 Range（多连接无意义）→ 自动单线；否则 `-x16 -s16 -k1M` 多连接。
 3. **断点续传**：永远带 `-c`，中断重跑不从头。
 4. **三级优雅回退**：aria2 多连接 → aria2 单线 → `curl` → `urllib`。任意一层成了就停，**保证再差也能下下来**。

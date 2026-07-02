@@ -107,7 +107,7 @@ pub fn init(_app: &AppHandle) -> Result<()> {
 fn default_kb_root() -> Result<PathBuf> {
     let user = UserDirs::new().ok_or_else(|| anyhow::anyhow!("no user dir"))?;
     let home = user.home_dir();
-    Ok(home.join("Polaris").join("PolarisKB"))
+    Ok(home.join("ChenNaXingHe").join("PolarisKB"))
 }
 
 // ───────────────────────── 名人资料包 (KB Packs) ─────────────────────────
@@ -165,8 +165,22 @@ pub fn kb_pack_list() -> Vec<KbPackMeta> {
 }
 
 /// 安装资料包：拷资料到 `raw/<名人>/` + 重扫索引 + 装配套 skill。返回索引文件总数。
-#[cfg_attr(feature = "desktop", tauri::command)]
+// desktop: 拷资料/重扫/装 skill 都是重 IO, 直接跑在 WebView 主线程会触发 Windows AppHangB1
+// 强杀。挪到 blocking 线程池(镜像 kb_scan 的做法); server flavor 仍走同步核。
+#[cfg(feature = "desktop")]
+#[tauri::command]
+pub async fn kb_pack_install(app: AppHandle, id: String) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || kb_pack_install_inner(app, id))
+        .await
+        .map_err(|e| format!("安装资料包任务异常退出: {e}"))?
+}
+
+#[cfg(not(feature = "desktop"))]
 pub fn kb_pack_install(app: AppHandle, id: String) -> Result<usize, String> {
+    kb_pack_install_inner(app, id)
+}
+
+fn kb_pack_install_inner(app: AppHandle, id: String) -> Result<usize, String> {
     let pack = pack_catalog()
         .into_iter()
         .find(|p| p.id == id)
@@ -389,7 +403,8 @@ static RE_YAML_KV: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?m)^(\w+)\s*:\s*(.+)$").unwrap());
 
 fn parse_doc(abs_path: &Path, rel: &Path) -> Option<KbDoc> {
-    let body = fs::read_to_string(abs_path).ok()?;
+    // 有界读: GB 级文件走 8 MiB 截读护栏, 避免解析索引时整块直读 OOM(与 read_doc_body 同口径)。
+    let body = read_text_capped(abs_path)?;
 
     // 提取 frontmatter
     let (fm, body_only) = match RE_FRONTMATTER.captures(&body) {
@@ -651,12 +666,17 @@ pub fn kb_compile(app: AppHandle) -> Result<String, String> {
         // 长度上限, 也不会因 prompt 以 `-` 开头被当成 flag —— 实测 argv 路径在某些 shell 下
         // 会触发 claude 的「Input must be provided」直接退 1, stdin 管道稳。
         let mut cmd = Command::new(&claude_bin);
+        // 安全: 用 acceptEdits(而非 bypassPermissions)。compile 确实需要 Write/Edit 来写
+        // wiki/ 页面, 但 raw/ 是**未经信任的摄入内容**, 提示词注入可能诱导模型往 KB 外写任意
+        // 文件。acceptEdits 只**自动放行工作目录(current_dir = KB 根)内**的写改, 越出 KB 根的
+        // 写操作仍需交互授权 —— headless(--print)下无人应答即被拒, 从而把写盘面锁死在 KB 根内。
+        // bypassPermissions 会跳过这层「工作区外需授权」的护栏, 故弃用。
         cmd.args([
             "--print",
             "--output-format",
             "stream-json",
             "--verbose",
-            "--permission-mode=bypassPermissions",
+            "--permission-mode=acceptEdits",
             "--allowedTools",
             "Read,Write,Edit,Glob,Grep",
         ])
@@ -1327,8 +1347,22 @@ fn split_link_inner(inner: &str) -> (String, String) {
 
 /// 「智能去重」: 规则粗筛 + 只读 claude 细判 + Rust 合并。
 /// 立即返回 run_id; 进度走 `kb:dedup`, 完成发 `done` (附合并页数)。
-#[cfg_attr(feature = "desktop", tauri::command)]
+// desktop: 规则粗筛要读一遍全库 wiki 正文(大 NAS 库上是重 IO), 不能占着 WebView 主线程,
+// 否则 Windows 会 AppHangB1 强杀。挪到 blocking 线程池(镜像 kb_scan);server flavor 走同步核。
+#[cfg(feature = "desktop")]
+#[tauri::command]
+pub async fn kb_dedup(app: AppHandle) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || kb_dedup_inner(app))
+        .await
+        .map_err(|e| format!("去重任务异常退出: {e}"))?
+}
+
+#[cfg(not(feature = "desktop"))]
 pub fn kb_dedup(app: AppHandle) -> Result<String, String> {
+    kb_dedup_inner(app)
+}
+
+fn kb_dedup_inner(app: AppHandle) -> Result<String, String> {
     let root = KB_ROOT.read().clone();
     if root.as_os_str().is_empty() || !root.exists() {
         return Err("知识库根目录不存在".into());
@@ -1682,14 +1716,16 @@ pub fn kb_context_block_scoped(scope: Option<&str>) -> String {
         let nav_budget = (KB_CTX_BUDGET as f32 * KB_CTX_NAV_RATIO) as usize;
         let per_page = (KB_CTX_BUDGET as f32 * KB_CTX_PER_PAGE_RATIO) as usize;
         // 导航页按需读正文算长度(导航页数量极少,IO 开销可忽略)
+        // 用 map(不是 filter_map)保持与 nav_docs **逐项对齐**: 某页读失败退化为空串
+        // (len 0), 而非被丢弃 —— 否则下面 nav_docs.zip(nav_bodies) 会错位, 把正文配到错的页。
         let nav_bodies: Vec<(String, usize)> = nav_docs
             .iter()
-            .filter_map(|d| {
-                read_doc_body(&d.rel_path).map(|b| {
-                    let trimmed = b.trim().to_string();
-                    let len = trimmed.chars().count();
-                    (trimmed, len)
-                })
+            .map(|d| {
+                let trimmed = read_doc_body(&d.rel_path)
+                    .map(|b| b.trim().to_string())
+                    .unwrap_or_default();
+                let len = trimmed.chars().count();
+                (trimmed, len)
             })
             .collect();
         let nav_total: usize = nav_bodies.iter().map(|(_, len)| len).sum();
@@ -1943,6 +1979,11 @@ pub struct KbHit {
 const MAX_SEARCH_DOCS: usize = 2000;
 
 /// PRD §8.8 关键词加权评分: 标题 +10 / category +8 / 正文 +1
+// TODO(perf): 本命令在 desktop 下仍同步跑在 WebView 主线程, 大库(读到 2000 篇正文)可能触发
+// AppHangB1。无法像 kb_scan 那样改成 async spawn_blocking: chat.rs 的 `forced_recall_block`
+// (同步 fn)在 desktop 构建里也直接调 `kb::kb_search(..)`, 若把它改成 async 会破坏该调用方,
+// 而本次改动范围限定只能改 kb.rs。要根治需把 chat.rs 那处改调 `kb_search_sync`(重活已有界:
+// MAX_SEARCH_DOCS=2000 + 单篇 8 MiB 截读), 再把本命令拆成 desktop-async / non-desktop-sync。
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub fn kb_search(query: String, top_k: Option<usize>) -> Vec<KbHit> {
     kb_search_sync(query, top_k)
@@ -2138,8 +2179,22 @@ pub fn kb_ingest(source_path: String) -> Result<String, String> {
 
 /// 知识库拖拽上传:批量(可含目录,自动展开)。每个文件转 markdown 入 raw/,
 /// 全部处理完只重扫一次索引。返回逐文件结果(失败不影响其余)。
-#[cfg_attr(feature = "desktop", tauri::command)]
+// desktop: 归档最多 5 万文件(含 PDF/docx 抽取, 极重), 必须挪出 WebView 主线程, 否则
+// Windows AppHangB1 强杀。镜像 kb_scan 用 blocking 线程池;server flavor 走同步核。
+#[cfg(feature = "desktop")]
+#[tauri::command]
+pub async fn kb_upload_files(paths: Vec<String>) -> Vec<KbUploadResult> {
+    tauri::async_runtime::spawn_blocking(move || kb_upload_files_inner(paths))
+        .await
+        .unwrap_or_default()
+}
+
+#[cfg(not(feature = "desktop"))]
 pub fn kb_upload_files(paths: Vec<String>) -> Vec<KbUploadResult> {
+    kb_upload_files_inner(paths)
+}
+
+fn kb_upload_files_inner(paths: Vec<String>) -> Vec<KbUploadResult> {
     // 完整性:用户勾选的文件必须**全部**归档,不能像旧版那样到 500 就静默丢弃(界面还提示
     // 「正在归档 N 个」却只进 500 个)。上限抬到 50000(远超资源扫描表 20000 行上限,故勾选多少
     // 归多少);仅作防呆护栏拦住「拖进一个含几十万文件的超大目录」这类病态输入。
@@ -2238,8 +2293,22 @@ pub struct KbConvertReport {
 }
 
 /// 批量转换: 路径(文件或文件夹, 文件夹递归展开)下的非视频类文件 → markdown 入 raw/ 并增量索引。
-#[cfg_attr(feature = "desktop", tauri::command)]
+// desktop: 批量 PDF/docx→md 抽取极重, 挪出 WebView 主线程避免 Windows AppHangB1 强杀。
+// 镜像 kb_scan 用 blocking 线程池;server flavor 走同步核。
+#[cfg(feature = "desktop")]
+#[tauri::command]
+pub async fn kb_convert_batch(paths: Vec<String>) -> Result<KbConvertReport, String> {
+    tauri::async_runtime::spawn_blocking(move || kb_convert_batch_inner(paths))
+        .await
+        .map_err(|e| format!("批量转换任务异常退出: {e}"))?
+}
+
+#[cfg(not(feature = "desktop"))]
 pub fn kb_convert_batch(paths: Vec<String>) -> Result<KbConvertReport, String> {
+    kb_convert_batch_inner(paths)
+}
+
+fn kb_convert_batch_inner(paths: Vec<String>) -> Result<KbConvertReport, String> {
     const MAX_FILES: usize = 2000;
     let root = KB_ROOT.read().clone();
     let raw_dir = root.join("raw");
@@ -2362,12 +2431,39 @@ fn ingest_cache_path(root: &Path) -> PathBuf {
     root.join(".polaris_ingest_cache.json")
 }
 
+/// 单文件流式指纹的整块读上限。超过此值(如 20GB 视频/数据集)绝不整块 `fs::read` 进内存
+/// (会 OOM), 改用 (长度 + mtime) 做指纹 —— 内容一变几乎必改 len 或 mtime, 足够变更检测。
+const FP_STREAM_CAP: u64 = 64 * 1024 * 1024;
+
 /// 计算文件内容指纹 (siphash, 仅用于变更检测)。读失败返回 None。
+/// 护栏: 先看文件大小 —— ≤64 MiB 分块流式喂 hasher(1 MiB 缓冲, 不一次性读全量);
+/// 超过 64 MiB 用 (长度 + mtime) 代替全量内容, 避免巨型媒体文件把内存撑爆。指纹稳定确定。
 fn content_fingerprint(src: &Path) -> Option<String> {
     use std::hash::Hasher;
-    let bytes = fs::read(src).ok()?;
+    use std::io::Read;
+    let meta = fs::metadata(src).ok()?;
+    let len = meta.len();
     let mut h = std::collections::hash_map::DefaultHasher::new();
-    h.write(&bytes);
+    h.write_u64(len);
+    if len > FP_STREAM_CAP {
+        // 超大文件: 用 mtime 佐证长度, 不读内容(mtime 取不到就只凭长度, 不致整体失败)。
+        if let Ok(mtime) = meta.modified() {
+            if let Ok(dur) = mtime.duration_since(UNIX_EPOCH) {
+                h.write_u128(dur.as_nanos());
+            }
+        }
+        return Some(format!("{:x}", h.finish()));
+    }
+    // 常规文件: 有界缓冲分块流式哈希, 内存占用恒为 1 MiB, 与整块 read 得同一字节序列。
+    let mut f = fs::File::open(src).ok()?;
+    let mut buf = vec![0u8; 1024 * 1024];
+    loop {
+        let n = f.read(&mut buf).ok()?;
+        if n == 0 {
+            break;
+        }
+        h.write(&buf[..n]);
+    }
     Some(format!("{:x}", h.finish()))
 }
 
@@ -2624,7 +2720,7 @@ pub struct KbEdge {
     pub rel: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct KbGraph {
     pub nodes: Vec<KbNode>,
     pub edges: Vec<KbEdge>,
@@ -2670,8 +2766,22 @@ fn resolve_rel(base_dir: Option<&Path>, link: &str) -> Option<String> {
 /// 散点根因 (PRD §8 设计回顾): 原实现只认 `[[wikilink]]`, 未链接的文档=孤点。
 /// 现按真实目录层级 (raw/X/卷/篇) 自动生成"目录中枢节点"和树状边, 使任意
 /// 知识库无需手工双链即可呈现连通图谱; 双链与 Markdown 链接作为额外关系叠加。
-#[cfg_attr(feature = "desktop", tauri::command)]
+// desktop: 大库图谱构建(遍历全 INDEX 建节点/边)是 CPU 密集, 挪出 WebView 主线程避免
+// Windows AppHangB1 强杀。镜像 kb_scan 用 blocking 线程池;server flavor 走同步核。
+#[cfg(feature = "desktop")]
+#[tauri::command]
+pub async fn kb_graph() -> KbGraph {
+    tauri::async_runtime::spawn_blocking(kb_graph_inner)
+        .await
+        .unwrap_or_default()
+}
+
+#[cfg(not(feature = "desktop"))]
 pub fn kb_graph() -> KbGraph {
+    kb_graph_inner()
+}
+
+fn kb_graph_inner() -> KbGraph {
     use std::collections::HashSet;
     let idx = INDEX.read();
 
@@ -3074,8 +3184,22 @@ fn scan_text_for_injection(text: &str) -> Vec<KbThreatHit> {
 }
 
 /// 信源安全扫描: 遍历 KB 内全部可读文本文件, 扫提示词注入痕迹。纯规则、不改文件。
-#[cfg_attr(feature = "desktop", tauri::command)]
+// desktop: 全库 WalkDir + 逐文件扫注入痕迹是重 IO, 挪出 WebView 主线程避免 Windows
+// AppHangB1 强杀。镜像 kb_scan 用 blocking 线程池;server flavor 走同步核。
+#[cfg(feature = "desktop")]
+#[tauri::command]
+pub async fn kb_scan_sources() -> KbThreatReport {
+    tauri::async_runtime::spawn_blocking(kb_scan_sources_inner)
+        .await
+        .unwrap_or_default()
+}
+
+#[cfg(not(feature = "desktop"))]
 pub fn kb_scan_sources() -> KbThreatReport {
+    kb_scan_sources_inner()
+}
+
+fn kb_scan_sources_inner() -> KbThreatReport {
     use std::collections::HashSet;
     let root = KB_ROOT.read().clone();
     let mut report = KbThreatReport::default();
@@ -3196,7 +3320,8 @@ pub fn render_kb_context(query: &str, top_k: usize) -> String {
     let root = KB_ROOT.read().clone();
     for (i, h) in hits.iter().enumerate() {
         let full = root.join(&h.path);
-        let body = fs::read_to_string(&full).unwrap_or_default();
+        // 只需前 ~4000 字符; 用有界读护栏, GB 级文件不整块直读(避免 OOM)。
+        let body = read_text_capped(&full).unwrap_or_default();
         let trimmed: String = body.chars().take(4000).collect();
         out.push_str(&format!(
             "### [{}] {}\n来源: `{}`\n\n{}\n\n---\n\n",

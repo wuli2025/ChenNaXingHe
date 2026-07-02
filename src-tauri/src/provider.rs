@@ -232,6 +232,12 @@ static STORE_PATH: Lazy<RwLock<PathBuf>> = Lazy::new(|| RwLock::new(PathBuf::new
 /// Tauri 命令可并发跑在线程池上, 两个 provider_switch 同时进来若不串行化, 会交错写同一份
 /// settings.json → 撕裂成半截。此锁保证整条 RMW 原子, 与 atomic_write 一起根治配置损坏。
 static IO_LOCK: Lazy<parking_lot::Mutex<()>> = Lazy::new(|| parking_lot::Mutex::new(()));
+/// 串行化对全局进程 env 的所有「读-改」。
+/// `std::env::set_var`/`remove_var` 本身非线程安全(其它线程正 spawn 子进程 —— 复制父进程
+/// env 块 —— 时改它是 UB / 撕裂 env)。凡是改受管 env 的 [`apply_process_env`], 以及依赖读
+/// 全局 env 决定子进程作用域的 [`scope_child_claude`], 全部持此锁, 保证一次切换写与一次
+/// 子进程作用域读永不交错。
+static ENV_LOCK: Lazy<parking_lot::Mutex<()>> = Lazy::new(|| parking_lot::Mutex::new(()));
 
 /// 还原构建期注入的「粉丝福利」MiniMax key。
 /// 二进制内为 XOR 混淆字节, 此处解出明文; 未注入(本地 dev 构建)时返回空串。
@@ -380,7 +386,7 @@ fn codex_route_config(port: u16) -> Value {
 
 pub fn init(_app: &AppHandle) -> Result<()> {
     let user = UserDirs::new().ok_or_else(|| anyhow::anyhow!("no user dir"))?;
-    let dir = user.home_dir().join("Polaris").join("data");
+    let dir = user.home_dir().join("ChenNaXingHe").join("data");
     fs::create_dir_all(&dir)?;
     let path = dir.join("providers.json");
     *STORE_PATH.write() = path.clone();
@@ -558,6 +564,11 @@ pub struct ProviderView {
     pub has_key: bool,
     pub auth_token: String,
     pub settings_config: Value,
+    /// true = `auth_token` / `settings_config` 里的 key 已被脱敏为尾 4 位掩码
+    /// (server/NAS flavor 下恒为 true, 防止任一已登录客户端从 provider_list 批量导出全部明文 key)。
+    /// desktop flavor 恒为 false, 编辑弹窗仍能读回真实 key。
+    #[serde(default)]
+    pub masked: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -632,7 +643,46 @@ fn make_view(
         has_key,
         auth_token: token,
         settings_config: cfg,
+        masked: false,
     }
+}
+
+/// 把明文 token 脱敏成尾 4 位掩码(如 `sk-…wxyz`)。空串原样返回(前端据此仍显示「未配置」)。
+/// 太短(≤4 位)一律显示为定长掩码, 不泄露实际长度。
+#[cfg(not(feature = "desktop"))]
+fn mask_token(tok: &str) -> String {
+    let t = tok.trim();
+    if t.is_empty() {
+        return String::new();
+    }
+    let chars: Vec<char> = t.chars().collect();
+    if chars.len() <= 4 {
+        return "••••".to_string();
+    }
+    let tail: String = chars[chars.len() - 4..].iter().collect();
+    format!("••••{tail}")
+}
+
+/// server flavor 专用: 把一个 view 里所有明文 key 脱敏。
+/// 同时覆盖 `auth_token` 与 `settings_config.env` 里的三类 token 键 —— 两处都带明文,
+/// 只脱敏 auth_token 而漏了 settings_config 等于没脱敏。
+#[cfg(not(feature = "desktop"))]
+fn mask_view(mut v: ProviderView) -> ProviderView {
+    v.auth_token = mask_token(&v.auth_token);
+    if let Some(env) = v
+        .settings_config
+        .get_mut("env")
+        .and_then(|e| e.as_object_mut())
+    {
+        for field in [DEFAULT_TOKEN_FIELD, API_KEY_FIELD, v.token_field.as_str()] {
+            if let Some(val) = env.get(field).and_then(|x| x.as_str()) {
+                let masked = mask_token(val);
+                env.insert(field.to_string(), Value::String(masked));
+            }
+        }
+    }
+    v.masked = true;
+    v
 }
 
 fn build_views(store: &Store) -> Vec<ProviderView> {
@@ -909,6 +959,10 @@ pub fn provider_list() -> Result<ProviderListResult, String> {
     let store = STORE.read().clone();
     let providers = build_views(&store);
     let current_id = detect_current(&providers, &store);
+    // server/NAS flavor: 恒脱敏 —— 返回明文 key 给任一已登录客户端 = 可被批量导出全部凭据。
+    // desktop flavor 不脱敏, AddProviderModal 编辑时仍能读回真实 key(current_id 已在脱敏前算完)。
+    #[cfg(not(feature = "desktop"))]
+    let providers: Vec<ProviderView> = providers.into_iter().map(mask_view).collect();
     Ok(ProviderListResult {
         providers,
         current_id,
@@ -949,6 +1003,9 @@ fn cfg_for_view(v: &ProviderView) -> Result<Value, String> {
 /// 先按 MANAGED_ENV_KEYS 全清, 再把新 cfg.env 写进当前进程 —— 切换结果确定。
 /// 隔离模式下这就是切换的**唯一**生效通道。
 fn apply_process_env(cfg: &Value) {
+    // 全程持锁: 整段清+套对并发的子进程作用域读(scope_child_claude)原子, 子进程绝不会
+    // 观察到半更新的 env(既防撕裂, 也避 set_var/remove_var 与他线程读的数据竞争 UB)。
+    let _env = ENV_LOCK.lock();
     for k in MANAGED_ENV_KEYS {
         std::env::remove_var(k);
     }
@@ -972,7 +1029,7 @@ fn apply_process_env(cfg: &Value) {
 
 /// 隔离模式下第三方/Codex 任务的私有 claude 配置目录。
 pub fn private_claude_home() -> Option<PathBuf> {
-    UserDirs::new().map(|u| u.home_dir().join("Polaris").join("claude-home"))
+    UserDirs::new().map(|u| u.home_dir().join("ChenNaXingHe").join("claude-home"))
 }
 
 /// 所有已存供应商 key 的「尾 20 字符」—— claude 在 .claude.json 的
@@ -1054,6 +1111,9 @@ fn ensure_private_home(home: &Path, store: &Store) -> Result<(), String> {
 /// 点统一调这一个入口; 不满足深隔离条件(联动 / 官方档 / env 没有 base_url)时什么都不做,
 /// 子进程照旧用共享 ~/.claude。
 pub fn scope_child_claude(cmd: &mut Command) {
+    // Auto 档靠继承全局进程 env 决定子进程用哪家; 与 apply_process_env 的清+套互斥, 避免
+    // 读到一次切换写到一半的受管 env(set_var/remove_var 非线程安全, 见 ENV_LOCK)。
+    let _env = ENV_LOCK.lock();
     let store = STORE.read().clone();
     if store.link_global {
         return;
@@ -1968,8 +2028,12 @@ fn line_cost(u: &Usage, model: &str) -> f64 {
         / 1_000_000.0
 }
 
-#[cfg_attr(feature = "desktop", tauri::command)]
-pub fn usage_summary() -> Result<UsageSummary, String> {
+/// 同步核:递归扫 `~/.claude/projects/**/*.jsonl` 全量逐行解析聚合 token。
+/// 库一大就是几十~上百 MB 的行级 JSON 解析(开销正比于全部会话日志字节数)。
+/// desktop 端由下面的 async 包装挪到 spawn_blocking,绝不在 WebView 主线程上跑——
+/// 否则每次开「更多」/ 切供应商触发 refreshUsage 都会把整窗冻死(库越大冻越久)。
+/// server flavor 无 UI 主线程,需要时直调本同步核即可。
+pub fn usage_summary_sync() -> Result<UsageSummary, String> {
     // 共享 ~/.claude/projects + 隔离模式的私有账本, 两处都算 —— 深隔离只是把
     // 第三方会话从外部监控的视野里挪走, Polaris 自己的看板仍要看全。
     let mut dirs: Vec<PathBuf> = Vec::new();
@@ -2096,6 +2160,16 @@ pub fn usage_summary() -> Result<UsageSummary, String> {
         year,
         daily,
     })
+}
+
+/// desktop 端命令:把上面的全量重扫挪到 blocking 线程池,避免冻结窗口主线程。
+/// 用量数字稍后台算完再回填,UI 全程保持响应(开「更多」不再卡死)。
+#[cfg(feature = "desktop")]
+#[tauri::command]
+pub async fn usage_summary() -> Result<UsageSummary, String> {
+    tauri::async_runtime::spawn_blocking(usage_summary_sync)
+        .await
+        .map_err(|e| format!("用量统计任务异常退出: {e}"))?
 }
 
 fn empty_summary() -> UsageSummary {
