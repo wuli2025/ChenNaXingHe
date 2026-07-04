@@ -730,7 +730,12 @@ pub async fn chat_send(app: AppHandle, args: ChatSendArgs) -> Result<String, Str
 
 #[cfg_attr(feature = "desktop", tauri::command)]
 pub fn chat_cancel(req_id: String) -> Result<(), String> {
-    if let Some(mut child) = CHILDREN.lock().remove(&req_id) {
+    // 先用 `let` 绑定把 child 取出,当场释放 CHILDREN 锁(guard 到分号即析构),再做阻塞的
+    // kill_tree(spawn taskkill/kill 并 .output() 阻塞) + wait()。否则 `if let` 会把锁的
+    // 临界区一路撑到块尾,子进程若处于不可中断态(D 态/慢 taskkill),整个聊天子系统(新消息
+    // spawn、看门狗、流完成移除)全部卡死等这把锁。范式同下方 stream 完成处的 remove。
+    let child = CHILDREN.lock().remove(&req_id);
+    if let Some(mut child) = child {
         kill_tree(child.id()); // 先杀整树: claude 扇出的 python/node/dev server 等子孙
         let _ = child.kill(); // 再杀 claude 本体 (taskkill /T 通常已带走它, 这步兜底)
         let _ = child.wait(); // reap, 防 Unix 僵尸进程泄漏

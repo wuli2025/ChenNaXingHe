@@ -75,8 +75,13 @@ async function genBriefing() {
 
 <template>
   <div class="t-view-anim m0">
+    <!-- 数据来源提示:KPI / 趋势 / 晨报 / 流水线为内置示例算例(澳鲸进口),非你的真实经营数据。
+         真实数据需通过各模块的 AI 采集/录入动作接入。避免把示例当真账看。 -->
+    <div class="demo-note">
+      ⚠️ 示例数据 · 下列 KPI、趋势、流水线、晨报为内置演示算例（澳鲸进口范例），<b>并非你的真实经营数据</b>；请通过各业务模块的采集/录入接入真实数据。
+    </div>
     <!-- ═══ 顶部：标题 + 一键晨报 ═══ -->
-    <TSection title="经营驾驶舱" sub="澳鲸进口 · 澳洲进口分销全链路 · 数据实时汇总">
+    <TSection title="经营驾驶舱" sub="澳鲸进口 · 澳洲进口分销全链路 · 内置示例算例">
       <template #actions>
         <span class="t-pill">今日 · {{ todayStr }}</span>
         <button class="t-btn primary" :disabled="briefBusy || store.busy.value" @click="genBriefing">
@@ -183,6 +188,20 @@ async function genBriefing() {
 
 <style scoped>
 .m0 { padding-bottom: 12px; }
+
+/* ── 示例数据提示条 ── */
+.demo-note {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--amber, #d9a441);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: rgba(217, 164, 65, 0.08);
+  color: var(--text, #333);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.demo-note b { color: var(--amber, #b8860b); }
 
 /* ── 趋势卡 ── */
 .tr-card { transition: border-color 0.14s ease, transform 0.14s ease; }

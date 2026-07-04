@@ -12,6 +12,21 @@ const fStatus = ref("");
 const fPlatform = ref("");
 const fSearch = ref("");
 
+/** 数据来源徽标:让用户一眼分清某行是内置示例、AI 真实采集、CSV 导入还是手动录入,
+ *  避免把 seed 里的编造账号/推算指标误当成真实采集结果。 */
+function srcLabel(s?: string): string {
+  if (s === "ai-collect") return "AI采集";
+  if (s === "csv") return "CSV";
+  if (s === "manual") return "手动";
+  return "示例";
+}
+function srcTitle(s?: string): string {
+  if (s === "ai-collect") return "由 Claude 联网检索采集(未二次校验,可能含幻觉,请核对主页)";
+  if (s === "csv") return "从 CSV 导入";
+  if (s === "manual") return "手动录入";
+  return "内置示例数据:账号与粉丝/互动指标为演示用途,非真实采集";
+}
+
 const filtered = computed<Koc[]>(() =>
   store.kocData.value.filter((k) => {
     if (fStatus.value && k.status !== fStatus.value) return false;
@@ -122,6 +137,7 @@ function reset() {
           <tr v-for="k in filtered" :key="k.id">
             <td>
               <b>{{ k.name || k.username }}</b>
+              <span class="src-badge" :class="'src-' + (k.source_type || 'seed')" :title="srcTitle(k.source_type)">{{ srcLabel(k.source_type) }}</span>
               <div class="sub">@{{ k.username }}</div>
               <a v-if="k.url && /^https?:\/\//.test(k.url)" :href="k.url" target="_blank" rel="noopener" class="lnk">主页 ↗</a>
             </td>
@@ -219,6 +235,20 @@ tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--panel-hover); }
 .sub { font-size: 10.5px; color: var(--muted); }
 .lnk { font-size: 10.5px; color: var(--primary); }
+/* 数据来源徽标 */
+.src-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  vertical-align: middle;
+  cursor: help;
+}
+.src-seed { background: rgba(217, 164, 65, 0.18); color: #b8860b; }
+.src-ai-collect { background: rgba(64, 160, 96, 0.18); color: #2e8b57; }
+.src-csv, .src-manual { background: rgba(120, 130, 150, 0.18); color: var(--muted); }
 .contact a { font-size: 11px; color: var(--ok); }
 .dim { color: var(--dim); }
 .ell { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

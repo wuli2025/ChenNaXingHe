@@ -65,6 +65,12 @@ export function backendFileUrl(
   return `/api/file?${qs.toString()}`;
 }
 
+/** 后端是否已就绪(真监听能挂上)：Tauri 原生 或 已判定为 http。
+ *  非 Tauri 且探测未成功时,listen 只能返回静默 no-op,调用方据此判断是否别永久缓存该监听。 */
+export function backendReady(): boolean {
+  return isTauri || backendMode === "http";
+}
+
 async function ensureBackend(): Promise<void> {
   // 只永久缓存「成功」判定(http)。探测失败不写死 backendMode,下次调用会重试,
   // 避免一次网络抖动就把整个会话钉死在 stub 模式(chat_send 等静默返回假数据)。

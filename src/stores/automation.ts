@@ -391,7 +391,12 @@ export const useAutomationStore = defineStore("automation", () => {
   function load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) flows.value = JSON.parse(raw) as AutomationFlow[];
+      // M4 修复:校验解析结果是数组,否则合法但非数组的 JSON(典型 "null")会让下面
+      // flows.value.length / [...flows.value] TypeError 崩溃。
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) flows.value = parsed as AutomationFlow[];
+      }
     } catch {
       /* ignore，落种入分支 */
     }
@@ -601,6 +606,21 @@ export const useAutomationStore = defineStore("automation", () => {
           runFlow(f).catch((e) => console.warn("[automation] daily runFlow failed:", e));
         }
       } else if (s.kind === "interval" && s.everyHours && s.everyHours > 0) {
+        // M1 修复:首次见到这条 interval 流程(无 lastRunAt)时,due = 0 + everyHours*3600000
+        // 只是相对 1970 纪元的几小时(≈1e7),远小于 Date.now()(≈1.7e12)→ 条件恒真,调度器一起
+        // 就凭空跑一轮(无视间隔,还有 Claude 成本)。与 daily 分支一致:首次只登记基线 lastRunAt=now,
+        // 除非显式 runImmediately;真正的下一次到点从现在起算。
+        if (f.lastRunAt == null) {
+          if (!f.runImmediately) {
+            const i = flows.value.findIndex((x) => x.id === f.id);
+            if (i >= 0) {
+              flows.value[i] = { ...flows.value[i], lastRunAt: Date.now() };
+              flows.value = [...flows.value];
+              persist();
+            }
+            continue;
+          }
+        }
         const due = (f.lastRunAt ?? 0) + s.everyHours * 3600_000;
         if (Date.now() >= due)
           runFlow(f).catch((e) => console.warn("[automation] interval runFlow failed:", e));

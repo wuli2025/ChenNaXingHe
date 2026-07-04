@@ -12,7 +12,7 @@
  *    模块自身把结果持久化到 localStorage（保留记录/历史）。
  *  - providerId 透传 → 跟随用户在「供应商」中心选的 API（CC / 各家 key）。
  */
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import {
   chat as chatApi,
   convApi,
@@ -90,15 +90,10 @@ async function ensureAgentProject(): Promise<string> {
   return projectPromise;
 }
 
-/** 从模型全文里抠出第一个合法 JSON（容 ```json 围栏 / 前后解释文字 / 尾随逗号）。 */
-export function sliceJson(text: string): string | null {
-  if (!text) return null;
-  let t = text.trim();
-  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fence) t = fence[1].trim();
+/** 从第一个 { 或 [ 起做括号配平（识别字符串/转义），截到对应收尾；无平衡则 null。 */
+function balancedFrom(t: string): string | null {
   const first = t.search(/[[{]/);
   if (first < 0) return null;
-  // 从第一个 { 或 [ 起做括号配平，截到对应收尾。
   const open = t[first];
   const close = open === "{" ? "}" : "]";
   let depth = 0;
@@ -122,13 +117,62 @@ export function sliceJson(text: string): string | null {
   return null;
 }
 
+/**
+ * 从模型全文里抠出第一个合法 JSON。
+ * M2 修复:不再「先按 ``` 围栏粗截再配平」——那会在两种真实场景出错:
+ *   (1) JSON 某字段值里含 markdown 代码围栏 → 非贪婪匹配把 JSON 提前截断成残缺;
+ *   (2) 正文里先出现无关 ```bash 块 → 取到没有 { 的错块直接返回 null。
+ * 改为:优先尝试围栏内内容,但仅当其能配平「且能真正解析」才采用;否则退回对全文做括号配平。
+ * 全文配平天然跳过 markdown 围栏字符(``` 不是括号)与前后解释文字,更稳。
+ */
+export function sliceJson(text: string): string | null {
+  if (!text) return null;
+  const t = text.trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) {
+    const inner = balancedFrom(fence[1].trim());
+    if (inner && tryParse(inner) !== null) return inner;
+  }
+  return balancedFrom(t);
+}
+
+/** 去掉 JSON 里位于「字符串外」的尾随逗号(逗号后紧跟 } 或 ])。字符串内的逗号原样保留。 */
+function stripTrailingCommas(s: string): string {
+  let out = "";
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inStr) {
+      out += ch;
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"') {
+      inStr = true;
+      out += ch;
+      continue;
+    }
+    if (ch === ",") {
+      // 向后跳过空白,看下一个非空白是否为收尾括号 → 是则丢弃这个逗号。
+      let j = i + 1;
+      while (j < s.length && /\s/.test(s[j])) j++;
+      if (j < s.length && (s[j] === "}" || s[j] === "]")) continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
 function tryParse<T>(raw: string): T | null {
   try {
     return JSON.parse(raw) as T;
   } catch {
-    // 去尾随逗号再试一次
+    // M3 修复:去尾随逗号只在字符串外进行,不再用全局正则误改字符串内容(如 "a, }")。
     try {
-      return JSON.parse(raw.replace(/,\s*([}\]])/g, "$1")) as T;
+      return JSON.parse(stripTrailingCommas(raw)) as T;
     } catch {
       return null;
     }
@@ -136,11 +180,15 @@ function tryParse<T>(raw: string): T | null {
 }
 
 export function useAgentRunner() {
-  const running = ref(false);
+  // H2 修复:用「活跃轮数」引用计数,而非单个布尔。多个 run() 并发时(如对多个 KOC 连点
+  // 评判、或一边聊天一边选品),只要还有任意一轮在跑 running 就为 true;先完成的那一轮不会
+  // 把 running 提前置 false 而放开 busy 门控、导致重复触发。
+  const activeRuns = ref(0);
+  const running = computed(() => activeRuns.value > 0);
 
   /** 发一轮，流式回调，done 后返回全文。 */
   async function run(opts: AgentRunOptions): Promise<AgentRunResult> {
-    running.value = true;
+    activeRuns.value++;
     const tools: AgentRunResult["tools"] = [];
     let full = "";
     try {
@@ -230,7 +278,7 @@ export function useAgentRunner() {
 
       return result;
     } finally {
-      running.value = false;
+      activeRuns.value = Math.max(0, activeRuns.value - 1);
     }
   }
 

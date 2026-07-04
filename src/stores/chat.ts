@@ -4,6 +4,7 @@ import {
   chat as chatApi,
   convApi,
   listen,
+  backendReady,
   type ChatStreamEvent,
   type AttachedFile,
   type PermissionMode,
@@ -384,7 +385,7 @@ export const useChatStore = defineStore("chatRuntime", () => {
    *  返回缓存的就绪 promise：重复调用只注册一次，且每个调用方都能 await 到「监听已挂上」。 */
   function init(): Promise<void> {
     if (initPromise) return initPromise;
-    initPromise = listen<ChatStreamEvent>("chat:stream", (ev) => {
+    const p = listen<ChatStreamEvent>("chat:stream", (ev) => {
       const cid = ev.conversationId;
       if (!cid) return; // 无会话归属的事件无法路由（理论上不会出现）
       touchActivity(cid); // 任何流式事件都算心跳:喂给无声死亡看门狗,证明后端仍活着
@@ -448,7 +449,16 @@ export const useChatStore = defineStore("chatRuntime", () => {
         evictStaleConversations();
       }
     }).then(() => undefined);
-    return initPromise;
+    initPromise = p;
+    // H1 修复:若监听是在后端尚未就绪(非 Tauri 且未判定 http)时挂的,极可能是个静默 no-op
+    // (见 tauri.ts listen)。别永久缓存这个「死监听」——resolve 后清空,让下次调用在后端起来后
+    // 重挂真监听;监听注册若 reject 同样清空,避免整个会话流式永久失活。
+    p.then(() => {
+      if (!backendReady()) initPromise = null;
+    }).catch(() => {
+      initPromise = null;
+    });
+    return p;
   }
 
   /** 内存治理:外部(如 App 在后台化时)主动触发的轻量回收 —— 立刻卸载最久未用对话的气泡,

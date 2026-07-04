@@ -352,7 +352,12 @@ export const useWorkflowsStore = defineStore("workflows", () => {
   function load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) packs.value = JSON.parse(raw) as WorkflowPack[];
+      // M4 修复:必须校验解析结果是数组。旧版本/异常写入的合法但非数组 JSON(典型 "null")
+      // 若直接 as WorkflowPack[],下面 packs.value.length / [...packs.value] 会 TypeError 崩溃。
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) packs.value = parsed as WorkflowPack[];
+      }
     } catch {
       /* ignore，落到种入分支 */
     }

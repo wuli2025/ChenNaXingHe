@@ -6,7 +6,7 @@
 use anyhow::Result;
 use directories::UserDirs;
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -189,13 +189,25 @@ fn atomic_write_state(path: &std::path::Path, contents: &str) -> std::io::Result
     fs::rename(&tmp, path)
 }
 
+/// 落盘串行锁。修复并发撕裂:persist() 原来只持 STATE 的**读锁**(允许并发读者),两个 persist
+/// 会真并行地 fs::write 同一个 `state.json.polaris.tmp`(各自 fd、各自从 0 截断)→ 内容交错,
+/// rename 把这份垃圾原子装成 state.json → 下次启动解析失败、全部项目/对话静默蒸发。
+/// append_message 同时被 chat_send 线程与每个 stdout 完成线程调用,并发极常见。
+/// 用独立 IO 锁把「序列化快照 + 写文件」串起来(范式同 provider::IO_LOCK)。
+static IO_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
 fn persist() {
-    let st = STATE.read();
     let path = STATE_PATH.read().clone();
     if path.as_os_str().is_empty() {
         return;
     }
-    if let Ok(txt) = serde_json::to_string_pretty(&*st) {
+    // 持 STATE 读锁取一份一致快照后即释放,再进 IO 锁串行写盘(缩短临界区)。
+    let txt = {
+        let st = STATE.read();
+        serde_json::to_string_pretty(&*st)
+    };
+    if let Ok(txt) = txt {
+        let _io = IO_LOCK.lock();
         let _ = atomic_write_state(&path, &txt);
     }
 }
