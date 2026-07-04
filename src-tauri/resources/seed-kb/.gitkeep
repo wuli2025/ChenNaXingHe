@@ -1,0 +1,8 @@
+# 资料库种子目录（seed-kb）
+
+此目录随安装包分发（见 `tauri.windows.conf.json` 的 bundle.resources）。
+运行时 `kb.rs::seed_source()` 在这里查找可安装的名人资料包，例如 `毛主席/`。
+
+保留本占位文件的原因：Git 不跟踪空目录，而 Tauri 打包时要求该资源路径
+在干净检出下**存在**，否则 build.rs 报「resource path `resources/seed-kb` doesn't exist」
+导致 Windows 发版构建失败。往此目录放入 `<名人>/` 子目录即可让对应资料包带内容分发。
