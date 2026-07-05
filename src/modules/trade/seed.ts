@@ -151,11 +151,12 @@ export function seedShipments(): Shipment[] {
 }
 
 export function seedSuppliers(): Supplier[] {
+  // 注意：Viña Aurora（L-2201）不预置在此 —— 它由 M2「lead-convert」人工闸核准后
+  // 才真正 push 进公海（见 onReviewDecided），否则那条种子审核任务核准即空转。
   return [
     { name: "Barossa Vale Wines", country: "澳大利亚", cat: "Shiraz", onTime: 96, price: 88, quality: 94, composite: 92.6, grade: "A", tag: "核心" },
     { name: "Margaret River Estate", country: "澳大利亚", cat: "Cabernet", onTime: 92, price: 84, quality: 91, composite: 89, grade: "A", tag: "核心" },
     { name: "Coonawarra Cellars", country: "澳大利亚", cat: "Chardonnay", onTime: 85, price: 90, quality: 86, composite: 87, grade: "B", tag: "" },
-    { name: "Viña Aurora", country: "智利", cat: "有机 Carmenère", onTime: 0, price: 0, quality: 0, composite: 0, grade: "—", tag: "新建联" },
   ];
 }
 

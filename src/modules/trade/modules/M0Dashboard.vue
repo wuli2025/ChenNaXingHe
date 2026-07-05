@@ -11,7 +11,7 @@
  */
 import { ref, computed } from "vue";
 import { useTradeStore } from "../useTradeStore";
-import type { DashKpi } from "../types";
+import type { DashKpi, ModId } from "../types";
 import { ICONS } from "../types";
 import TSection from "../components/TSection.vue";
 import TPanel from "../components/TPanel.vue";
@@ -47,6 +47,17 @@ function briefTone(k: string): "green" | "gold" | "red" {
   return "green";
 }
 
+/* ── 下钻：KPI 卡 / 流水线节点 → 对应模块（与 store 派生数据同序） ── */
+const kpiTargets: (ModId | "review")[] = ["m6", "m5", "m4", "m6", "review", "m8"];
+const pipeTargets: (ModId | "review")[] = ["m1", "m2", "m3", "m5", "m4", "m6", "m7", "m8"];
+function drill(target: ModId | "review") {
+  store.go(target);
+}
+
+/* ── 无人化度量 + 最近已执行动作（核准即执行的证据流） ── */
+const autonomy = computed(() => store.autonomyStats.value);
+const recentActions = computed(() => store.executedActions.value.slice(0, 6));
+
 /* ── 一键生成今日晨报（Claude 动作，实时过程在右侧 Console 可见） ── */
 const briefText = ref<string>("");
 const briefBusy = ref<boolean>(false);
@@ -75,13 +86,8 @@ async function genBriefing() {
 
 <template>
   <div class="t-view-anim m0">
-    <!-- 数据来源提示:KPI / 趋势 / 晨报 / 流水线为内置示例算例(澳鲸进口),非你的真实经营数据。
-         真实数据需通过各模块的 AI 采集/录入动作接入。避免把示例当真账看。 -->
-    <div class="demo-note">
-      ⚠️ 示例数据 · 下列 KPI、趋势、流水线、晨报为内置演示算例（澳鲸进口范例），<b>并非你的真实经营数据</b>；请通过各业务模块的采集/录入接入真实数据。
-    </div>
     <!-- ═══ 顶部：标题 + 一键晨报 ═══ -->
-    <TSection title="经营驾驶舱" sub="澳鲸进口 · 澳洲进口分销全链路 · 内置示例算例">
+    <TSection title="经营驾驶舱" sub="澳鲸进口 · 全链路真实状态实时派生 · 点卡片下钻">
       <template #actions>
         <span class="t-pill">今日 · {{ todayStr }}</span>
         <button class="t-btn primary" :disabled="briefBusy || store.busy.value" @click="genBriefing">
@@ -91,24 +97,51 @@ async function genBriefing() {
       </template>
     </TSection>
 
-    <!-- ═══ 6 张 KPI ═══ -->
+    <!-- ═══ 6 张 KPI（真实派生 · 可点击下钻） ═══ -->
     <div v-if="store.dashKpi.value.length" class="t-grid t-g6">
-      <TKpi
+      <div
         v-for="(x, i) in store.dashKpi.value"
         :key="i"
-        :value="x.v"
-        :label="x.l"
-        :delta="x.d"
-        :up="x.up"
-        :acc="accOf(x)"
-        :icon="x.ico"
-      />
+        class="kpi-drill"
+        role="button"
+        tabindex="0"
+        :title="`下钻到 ${kpiTargets[i] === 'review' ? '审核看板' : kpiTargets[i].toUpperCase()}`"
+        @click="drill(kpiTargets[i])"
+        @keydown.enter="drill(kpiTargets[i])"
+      >
+        <TKpi :value="x.v" :label="x.l" :delta="x.d" :up="x.up" :acc="accOf(x)" :icon="x.ico" />
+      </div>
     </div>
     <TPanel v-else pad><div class="empty">暂无经营指标</div></TPanel>
 
+    <!-- ═══ 无人化仪表 + 最近已执行 ═══ -->
+    <div class="auto-row">
+      <TPanel pad class="auto-meter">
+        <div class="am-h">无人化仪表</div>
+        <div class="am-main">
+          <span class="am-v">{{ autonomy.autoRate }}%</span>
+          <span class="am-l">自动放行占比</span>
+        </div>
+        <div class="am-sub">
+          共执行 <b>{{ autonomy.total }}</b> 项 · 自动 <b>{{ autonomy.auto }}</b> · 人工闸 <b>{{ autonomy.human }}</b>
+        </div>
+        <div class="am-hint">高置信自动放行率越高，人越只需守关键闸口（目标 ≥90%）。</div>
+      </TPanel>
+      <TPanel pad class="auto-feed">
+        <div class="am-h">最近已执行 · 核准即生效</div>
+        <div v-if="recentActions.length" class="af-list">
+          <div v-for="a in recentActions" :key="a.id" class="af-row">
+            <span class="af-tag" :class="a.by === 'auto' ? 'af-auto' : 'af-human'">{{ a.by === 'auto' ? '自动' : '人工' }}</span>
+            <div class="af-body"><b>{{ a.title }}</b><span>{{ a.detail }}</span></div>
+          </div>
+        </div>
+        <div v-else class="af-empty">暂无已执行动作 —— 在各模块跑 AI 或到审核看板核准后，这里实时记录「到底做了什么」。</div>
+      </TPanel>
+    </div>
+
     <!-- ═══ 经营趋势 ═══ -->
     <TSection title="经营趋势" sub="销售额 · 毛利率 · 现金转换周期 · 近 12 周">
-      <template #actions><span class="t-pill">近 12 周</span></template>
+      <template #actions><span class="t-pill">示例趋势 · 待接入历史库</span></template>
     </TSection>
     <div v-if="store.trends.value.length" class="t-grid t-g3">
       <TPanel v-for="(t, i) in store.trends.value" :key="i" pad class="tr-card">
@@ -130,7 +163,14 @@ async function genBriefing() {
     <TPanel pad>
       <div v-if="store.pipeline.value.length" class="pipe">
         <template v-for="(p, i) in store.pipeline.value" :key="i">
-          <div class="pipe-node">
+          <div
+            class="pipe-node"
+            role="button"
+            tabindex="0"
+            :title="`下钻到 ${pipeTargets[i]?.toUpperCase?.() || ''}`"
+            @click="drill(pipeTargets[i])"
+            @keydown.enter="drill(pipeTargets[i])"
+          >
             <div class="pn-c">{{ p.c }}</div>
             <div class="pn-l">{{ p.l }}</div>
           </div>
@@ -142,9 +182,7 @@ async function genBriefing() {
       <div v-else class="empty">暂无流水线数据</div>
     </TPanel>
     <div class="t-note info">
-      <b>一屏看全</b>：数字为各模块当前在办量，点击左侧功能栏进入对应模块下钻。带 ★
-      的环节（报关确认 / 三单硬差异 / 缺证放行）会派单进
-      <b>人工审核看板</b>，硬闸不可跳过导出。
+      <b>数字为各模块当前在办量</b>，点节点即下钻进对应模块。带 ★ 的环节（报关确认 / 三单硬差异 / 缺证放行）派单进<b>人工审核看板</b>，硬闸不可跳过导出。
     </div>
 
     <!-- ═══ 今日晨报 ═══ -->
@@ -202,6 +240,40 @@ async function genBriefing() {
   line-height: 1.5;
 }
 .demo-note b { color: var(--amber, #b8860b); }
+
+/* ── KPI 下钻 ── */
+.kpi-drill { cursor: pointer; border-radius: 12px; transition: transform 0.14s ease; outline: none; }
+.kpi-drill:hover { transform: translateY(-2px); }
+.kpi-drill:focus-visible { box-shadow: 0 0 0 2px var(--primary); }
+
+/* ── 无人化仪表 + 已执行 ── */
+.auto-row {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 12px;
+  margin: 12px 0 4px;
+}
+@media (max-width: 720px) { .auto-row { grid-template-columns: 1fr; } }
+.am-h { font-size: 11.5px; font-weight: 800; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 8px; }
+.auto-meter { display: flex; flex-direction: column; }
+.am-main { display: flex; align-items: baseline; gap: 8px; }
+.am-v { font-size: 32px; font-weight: 800; color: var(--primary); letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.am-l { font-size: 12px; color: var(--muted); }
+.am-sub { font-size: 12px; color: var(--text-2); margin-top: 8px; }
+.am-sub b { color: var(--text); font-variant-numeric: tabular-nums; }
+.am-hint { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.auto-feed { min-width: 0; }
+.af-list { display: flex; flex-direction: column; gap: 8px; }
+.af-row { display: flex; gap: 9px; align-items: flex-start; }
+.af-tag {
+  flex-shrink: 0; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; margin-top: 1px;
+}
+.af-human { background: var(--vermilion-soft, rgba(200,80,60,.12)); color: var(--vermilion); }
+.af-auto { background: rgba(80,160,120,.14); color: var(--ok); }
+.af-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 12px; line-height: 1.5; }
+.af-body b { color: var(--text); }
+.af-body span { color: var(--text-2); }
+.af-empty { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
 /* ── 趋势卡 ── */
 .tr-card { transition: border-color 0.14s ease, transform 0.14s ease; }

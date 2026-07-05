@@ -11,6 +11,13 @@ export const JSON_RULE = `【JSON 输出铁律】
 
 const BIZ = `你服务澳洲进口分销商『澳鲸进口 / Orca Imports Pty Ltd』（葡萄酒/食品进口）。边界原则：算自己做、报交出去；结构化产出 + 关键动作人工确认；不做群发骚扰、不直连海关。`;
 
+/** 驳回重跑反馈段（有则拼进 prompt，让重跑针对性改进）。 */
+function feedbackBlock(feedback?: string): string {
+  return feedback && feedback.trim()
+    ? `\n【上一轮结果被人工驳回，请针对性改进】${feedback.trim()}\n`
+    : "";
+}
+
 /* ── M1 选品采集 ── */
 export function promptSourcing(criteria: { keywords: string; region: string; category: string; limit: number }): string {
   return `${BIZ}
@@ -49,14 +56,14 @@ ${JSON_RULE}`;
 }
 
 /* ── M2 建联：破冰开发信（个性化，多语言） ── */
-export function promptOutreach(lead: SupplierLead, lang: string): string {
+export function promptOutreach(lead: SupplierLead, lang: string, feedback?: string): string {
   const langName = lang === "zh" ? "中文" : lang === "es" ? "西班牙语（Español）" : "英文";
   return `${BIZ}
 请为目标供应商写一封**个性化破冰开发信**（非模板群发），语言：${langName}。
 
 【对方】${lead.company} · ${lead.country} ${lead.region} · 主营 ${lead.category} · 联系人 ${lead.contact}
 【我方意图】把对方的优质货源引入澳洲市场，索要 FOB 报价单与 MOQ，并可安排样品。
-
+${feedbackBlock(feedback)}
 要求：开头点出对方产区/认证亮点（体现做过功课），中段说明我方是谁与合作价值，结尾给明确 next step（报价/样品）。专业、真诚、简洁，8-14 行。直接输出信件正文，不要 JSON、不要额外说明。`;
 }
 
@@ -95,13 +102,14 @@ ${JSON_RULE}`;
 }
 
 /* ── M4 报关：HS 归类 ── */
-export function promptHsClassify(dec: CustomsDeclaration): string {
+export function promptHsClassify(dec: CustomsDeclaration, feedback?: string): string {
   const line = dec.lines[0];
   return `${BIZ}
 请结合澳洲税则与 llmwiki 归类规则，为下面商品给出 10 位 HS 编码、依据与置信度。低于 85 强制转人工。
+为满足「可交叉验证」，reasoning 必须引用具体税则条文/章注，dutyRate 注明协定依据。
 
 【商品】${line?.desc || dec.goods} · 原产地 ${line?.origin || dec.origin} · 协定 ${dec.agreement}
-
+${feedbackBlock(feedback)}
 按 schema 输出：
 { "hsCode": "2204.21.00", "reasoning": "归类依据（税则条文）", "dutyRate": "0%(ChAFTA)", "hsConf": 94, "dutyConf": 79 }
 
@@ -134,18 +142,18 @@ ${JSON_RULE}`;
 }
 
 /* ── M7 报价单 / 对客邮件 ── */
-export function promptQuoteOut(customer: string, sku: string, inclPrice: number): string {
+export function promptQuoteOut(customer: string, sku: string, inclPrice: number, feedback?: string): string {
   return `${BIZ}
-请给分销客户「${customer}」起草一封报价邮件，标的 ${sku}，含税价（WET+GST）AUD ${inclPrice.toFixed(2)}/瓶。含税价与合规中心同一函数取数。专业友好，中文，直接输出正文。`;
+请给分销客户「${customer}」起草一封报价邮件，标的 ${sku}，含税价（WET+GST）AUD ${inclPrice.toFixed(2)}/瓶。含税价与合规中心同一函数取数。专业友好，中文，直接输出正文。${feedbackBlock(feedback)}`;
 }
 
 /* ── M8 对账辅助 ── */
-export function promptRecon(open: ReconMatch): string {
+export function promptRecon(open: ReconMatch, feedback?: string): string {
   return `${BIZ}
 请为下面这笔未达账项给出候选匹配与理由。
 
 【未达】${open.item} · ${open.amount}
-
+${feedbackBlock(feedback)}
 按 schema 输出：{ "candidates": [ {"target":"凭证/单据号","reason":"匹配依据","conf":86} ] }
 
 ${JSON_RULE}`;

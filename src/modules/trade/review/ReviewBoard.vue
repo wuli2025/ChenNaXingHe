@@ -8,7 +8,7 @@
  * 接线的 store 动作：claimReview / approveReview / rejectReview / resetReview。
  * 全部走「人工闸」语义——这是给老板看的「每个要人工审核的流程都在这条流水线里」的门面。
  */
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useTradeStore } from "../useTradeStore";
 import {
   REVIEW_COLUMNS,
@@ -52,6 +52,56 @@ function sortedCol(status: ReviewStatus): ReviewTask[] {
 const columns = computed(() =>
   REVIEW_COLUMNS.map((c) => ({ ...c, tasks: sortedCol(c.key) }))
 );
+
+/* ── 主编工作台：键盘流（J/K 移动 · A 通过 · R 驳回重跑 · C 认领） ── */
+const actionable = computed<ReviewTask[]>(() => [...sortedCol("pending"), ...sortedCol("in_review")]);
+const selId = ref<string>("");
+const selectedId = computed(() => {
+  const list = actionable.value;
+  if (list.some((t) => t.id === selId.value)) return selId.value;
+  return list[0]?.id || "";
+});
+function moveSel(delta: number) {
+  const list = actionable.value;
+  if (!list.length) return;
+  const cur = list.findIndex((t) => t.id === selectedId.value);
+  const next = Math.max(0, Math.min(list.length - 1, (cur < 0 ? 0 : cur) + delta));
+  selId.value = list[next].id;
+  // 滚动到可见
+  requestAnimationFrame(() => {
+    document.querySelector(`[data-rvid="${selId.value}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+}
+function onKey(e: KeyboardEvent) {
+  // 仅在审核看板为当前视图时响应快捷键，避免在其他模块误触 A/R 等单键。
+  if (store.view.value !== "review") return;
+  const el = document.activeElement as HTMLElement | null;
+  if (el && (/^(INPUT|TEXTAREA)$/.test(el.tagName) || el.isContentEditable)) return;
+  if (rejecting.value) return;
+  const k = e.key.toLowerCase();
+  const id = selectedId.value;
+  // 导航（j/k）随时可用；决策动作（a/r/c）与按钮一致，AI 忙时禁用。
+  if (k === "j") { moveSel(1); e.preventDefault(); }
+  else if (k === "k") { moveSel(-1); e.preventDefault(); }
+  else if (store.busy.value) { return; }
+  else if (k === "a" && id) { store.approveReview(id); e.preventDefault(); }
+  else if (k === "r" && id) { openReject(id); e.preventDefault(); }
+  else if (k === "c" && id) { store.claimReview(id); e.preventDefault(); }
+}
+onMounted(() => window.addEventListener("keydown", onKey));
+onUnmounted(() => window.removeEventListener("keydown", onKey));
+
+/* 点击卡片选中 —— 仅待办/审核中的卡可成为键盘选中项，避免选中已决卡后 A 键误核准他卡。 */
+function selectCard(t: ReviewTask) {
+  if (t.status === "pending" || t.status === "in_review") selId.value = t.id;
+}
+
+/* ── 任务来源徽标 ── */
+const ORIGIN_META: Record<string, { label: string; tone: "blue" | "green" | "gray" }> = {
+  ai: { label: "AI 待审", tone: "blue" },
+  auto: { label: "自动放行", tone: "green" },
+  manual: { label: "人工发起", tone: "gray" },
+};
 
 /* ── 顶部统计 ── */
 const pending = computed(() => store.reviewColumns.value.pending.length);
@@ -129,6 +179,9 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
   <div class="t-view-anim rv-root">
     <TSection title="人工审核看板" sub="全链路每一个人工闸，汇成一条可追溯的审核流水线">
       <template #actions>
+        <span class="rv-kbd">
+          <b>J</b>/<b>K</b> 移动 · <b>A</b> 通过 · <b>R</b> 驳回重跑 · <b>C</b> 认领
+        </span>
         <span class="t-pill">共 {{ store.reviewTasks.value.length }} 项</span>
       </template>
     </TSection>
@@ -186,16 +239,21 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
           <article
             v-for="t in col.tasks"
             :key="t.id"
+            :data-rvid="t.id"
             class="rv-card"
-            :class="{ 'is-hard': t.hardGate || t.risk === 'hard' }"
+            :class="{ 'is-hard': t.hardGate || t.risk === 'hard', 'is-sel': t.id === selectedId && (t.status === 'pending' || t.status === 'in_review') }"
+            @click="selectCard(t)"
           >
-            <!-- 卡头：来源模块 + 风险 -->
+            <!-- 卡头：来源模块 + 来源 + 风险 -->
             <div class="rv-card-top">
               <span class="rv-card-src">
                 <span class="rv-card-mod">{{ MOD_NAME[t.mod] || t.mod }}</span>
                 <span class="rv-card-kind">{{ REVIEW_KIND_META[t.kind]?.label || t.kind }}</span>
               </span>
-              <TBadge :tone="RISK_META[t.risk].tone">{{ RISK_META[t.risk].label }}</TBadge>
+              <span class="rv-badges">
+                <TBadge v-if="t.origin && ORIGIN_META[t.origin]" :tone="ORIGIN_META[t.origin].tone">{{ ORIGIN_META[t.origin].label }}</TBadge>
+                <TBadge :tone="RISK_META[t.risk].tone">{{ RISK_META[t.risk].label }}</TBadge>
+              </span>
             </div>
 
             <!-- 硬闸醒目标记 -->
@@ -225,6 +283,9 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
                   :class="`conf-${confTone(factConf(f.v)!)}`"
                 >
                   <span class="rv-conf-fill" :style="{ width: factConf(f.v)! + '%' }" />
+                </div>
+                <div v-if="f.source" class="rv-fact-src">
+                  <span class="rv-src-ico">⌖</span>依据：{{ f.source }}
                 </div>
               </div>
             </dl>
@@ -267,7 +328,7 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
     <div v-if="rejecting" class="rv-modal-mask" @click.self="cancelReject">
       <div class="rv-modal">
         <h4>驳回并退回修正</h4>
-        <p class="t-muted">填写驳回原因，将写回该任务批注并流转至「已驳回」列。</p>
+        <p class="t-muted">填写驳回原因。AI 产出类任务（归类 / 对账 / 开发信 / 报价）将<b>带这条批注自动重跑</b>并重新入闸；其余任务退回来源修正。</p>
         <textarea
           v-model="rejectNote"
           class="rv-textarea"
@@ -439,6 +500,26 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
 .rv-card.is-hard {
   border-left: 3px solid var(--vermilion);
 }
+.rv-card.is-sel {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary), 0 6px 18px -8px rgba(0, 0, 0, 0.3);
+}
+.rv-badges { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+
+/* 键盘提示 */
+.rv-kbd { font-size: 11px; color: var(--muted); margin-right: 4px; }
+.rv-kbd b {
+  display: inline-block; font-family: var(--mono, monospace);
+  background: var(--bg-soft); border: 1px solid var(--border-strong);
+  border-radius: 4px; padding: 0 5px; color: var(--text-2); margin: 0 1px;
+}
+
+/* fact 出处 */
+.rv-fact-src {
+  font-size: 10px; color: var(--muted); line-height: 1.5;
+  display: flex; gap: 4px; align-items: baseline;
+}
+.rv-src-ico { color: var(--primary); flex-shrink: 0; }
 .rv-card-top {
   display: flex;
   align-items: center;

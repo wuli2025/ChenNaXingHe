@@ -29,16 +29,8 @@ const UsageBoard = defineAsyncComponent(() => import("./components/UsageBoard.vu
 const WikiBrowse = defineAsyncComponent(() => import("./components/WikiBrowse.vue"));
 const SkillCenter = defineAsyncComponent(() => import("./components/SkillCenter.vue"));
 const ChatPanel = defineAsyncComponent(() => import("./components/ChatPanel.vue"));
-// 三个营销应用场景：直接内嵌桌面原版 HTML 模板（public/tools/*.html），iframe 加载，
-// 保证「与模板 1:1 一模一样的效果」。首次切到才挂载，之后 v-show 保活。
-// 外贸 OS 已改造为原生桌面模块（src/modules/trade），直连后端官方 Claude Code，不再走 iframe。
-// koc/competitive/pmkt 仍内嵌桌面原版 HTML 模板（public/tools/*.html）。
-const TOOL_SRC: Record<string, string> = {
-  koc: "tools/koc.html",
-  competitive: "tools/competitive.html",
-  pmkt: "tools/pmkt.html",
-};
-// 外贸 OS 原生模块：首次切到才挂载（懒加载 12 模块），之后 v-show 保活。
+// 外贸 OS 原生桌面模块（src/modules/trade），直连后端官方 Claude Code。
+// 首次切到才挂载（懒加载 12 模块），之后 v-show 保活。
 const TradeModule = defineAsyncComponent(() => import("./modules/trade/TradeModule.vue"));
 
 import { checkForUpdate } from "./composables/useUpdater";
@@ -55,8 +47,7 @@ const chatStore = useChatStore();
 const workflows = useWorkflowsStore();
 const automation = useAutomationStore();
 
-// 每个工具一个常驻 iframe：首次切到才挂载（懒加载，不在启动时白跑三套内联 JS），之后 v-show 保活。
-// 治理「每次切 tab 都重载 168KB 的 koc.html、重跑全部内联 JS、丢页内状态」的卡顿——切回变瞬时。
+// 主区 tab 首次切到才挂载，之后 v-show 保活——切回瞬时、不丢页内状态。
 const visited = ref<Record<string, boolean>>({ [app.moduleTab]: true });
 watch(
   () => app.moduleTab,
@@ -186,7 +177,7 @@ watch(
 // 收不到 ready，工具自动回落本地演示引擎。每个 reqId 一次独立 run，流式回传 delta/tool。
 const tradeRunner = useAgentRunner();
 function onTradeBridge(e: MessageEvent) {
-  // 安全:桥能驱动 Claude Code(有文件系统访问)。营销工具 iframe(tools/*.html)与本应用
+  // 安全:桥能驱动 Claude Code(有文件系统访问)。外贸 OS 工具页(tools/trade-os.html)与本应用
   // 同源(相对路径加载),因此只接受同源消息;任何跨源 frame/脚本一律早退拒绝。
   if (e.origin !== window.location.origin) return;
   const d = e.data;
@@ -253,24 +244,12 @@ function onEnvDone() {
     <SideNav />
 
     <main class="content">
-      <!-- 主区舞台：知识库 / 技能中心 / 三个营销工具，随顶栏 tab 整屏切换 -->
+      <!-- 主区舞台：外贸 OS / 知识库 / 技能中心，随顶栏 tab 整屏切换 -->
       <div class="stage">
         <div v-if="app.moduleTab === 'kb'" class="view"><WikiBrowse /></div>
         <div v-else-if="app.moduleTab === 'skill'" class="view"><SkillCenter /></div>
         <!-- 外贸 OS：原生桌面模块（12 模块 + 人工审核看板），首次切到才挂载、之后 v-show 保活 -->
         <div v-if="visited['trade']" v-show="app.moduleTab === 'trade'" class="view"><TradeModule /></div>
-        <!-- koc/competitive/pmkt：常驻 iframe，首次切到才挂载，之后 v-show 保活 → 切回瞬时、不重载 -->
-        <template v-if="app.moduleTab !== 'kb' && app.moduleTab !== 'skill'">
-          <template v-for="(src, key) in TOOL_SRC" :key="key">
-            <iframe
-              v-if="visited[key]"
-              v-show="app.moduleTab === key"
-              class="tpl-frame"
-              :src="src"
-              :title="key"
-            ></iframe>
-          </template>
-        </template>
       </div>
 
       <!-- 右侧对话抽屉：可拖宽、可收起，与主区并列；统管对话 / 策略 / 表格 / 知识库 -->
@@ -351,7 +330,7 @@ function onEnvDone() {
   display: flex;
   min-width: 0;
 }
-/* 主区舞台：知识库 / 技能中心 / 营销工具铺满剩余空间 */
+/* 主区舞台：外贸 OS / 知识库 / 技能中心铺满剩余空间 */
 .stage {
   position: relative;
   flex: 1 1 auto;
@@ -402,13 +381,6 @@ function onEnvDone() {
 .dock-slide-leave-to {
   transform: translateX(16px);
   opacity: 0;
-}
-.tpl-frame {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: #fff;
 }
 /* Docker/Web 模式 WS 断线提示条 */
 .ws-down {

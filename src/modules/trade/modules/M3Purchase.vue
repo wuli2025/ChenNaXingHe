@@ -39,14 +39,27 @@ function tagTone(tag: string): "gold" | "green" {
   return tag === "核心" ? "gold" : "green";
 }
 
+/* ── 已执行台账（M3）：核准即执行的真实、持久状态，替代一次性布尔 ── */
+const m3Actions = computed(() => store.executedActions.value.filter((a) => a.mod === "m3"));
+function hasPending(kind: string) {
+  return store.reviewTasks.value.some((t) => t.kind === kind && (t.status === "pending" || t.status === "in_review"));
+}
+function hasDone(kind: string) {
+  return m3Actions.value.some((a) => a.kind === kind);
+}
+
 /* ── ① 群发比价询价 → 人工闸（rfq-send） ── */
-const rfqSent = ref(false);
+const rfqPending = computed(() => hasPending("rfq-send"));
+const rfqDone = computed(() => hasDone("rfq-send"));
+const rfqLabel = computed(() => (rfqDone.value ? "已群发询价" : rfqPending.value ? "已入核准闸" : "群发比价询价"));
 function sendRfq() {
+  if (rfqPending.value || rfqDone.value) return;
   const targets = rated.value.map((s) => s.name);
   store.enqueueReview({
     mod: "m3",
     kind: "rfq-send",
     title: "比价询价群发核准",
+    origin: "manual",
     summary: `拟向 ${targets.length} 家在评供应商群发 Shiraz 2021 比价询价（统一规格 3,600 瓶 / 20ft），外发前需人工核准（反骚扰闸）。`,
     facts: [
       { k: "群发对象", v: targets.join("、") || "（暂无在评供应商）", warn: !targets.length },
@@ -55,8 +68,8 @@ function sendRfq() {
       { k: "低置信策略", v: "字段置信 <85% → 转人工回写采购单" },
     ],
     risk: "normal",
+    payload: { targets },
   });
-  rfqSent.value = true;
 }
 
 /* ── ③ 回信结构化抽取演示（反幻觉范式示例字段 + 置信度） ── */
@@ -78,24 +91,29 @@ const lowConfNames = computed(() =>
   lowConfFields.value.map((f) => f.k.replace(/（.*?）/g, "")).join(" / ")
 );
 
-/* ── 回信抽取回写 → 人工闸（quote-writeback） ── */
-const writebackSent = ref(false);
+/* ── 回信抽取回写 → 人工闸（quote-writeback），核准后自动生成 M4 报关草稿 ── */
+const wbPending = computed(() => hasPending("quote-writeback"));
+const wbDone = computed(() => hasDone("quote-writeback"));
+const wbLabel = computed(() => (wbDone.value ? "已回写 · 已建报关草稿" : wbPending.value ? "已入回写闸" : "转人工回写采购单"));
 function sendWriteback() {
+  if (wbPending.value || wbDone.value) return;
   const low = lowConfFields.value.map((f) => `${f.k}(${f.conf}%)`).join("、");
   store.enqueueReview({
     mod: "m3",
     kind: "quote-writeback",
     title: "Viña Aurora 报价回写采购单",
-    summary: `已从回信剥签名并抽取结构化报价，${lowConfFields.value.length} 个字段置信 <85%，需人工核对后回写采购单。`,
+    origin: "ai",
+    summary: `已从回信剥签名并抽取结构化报价，${lowConfFields.value.length} 个字段置信 <85%，核准后回写采购单并自动生成 M4 报关草稿。`,
     refId: "L-2201",
     facts: [
-      { k: "供应商", v: "Viña Aurora · 智利 Maule" },
+      { k: "供应商", v: "Viña Aurora · 智利 Maule", source: "M2 回信线程" },
       { k: "抽取报价", v: "USD 4.20/瓶 · 有效 30 天" },
       { k: "低置信字段", v: low || "无", warn: lowConfFields.value.length > 0 },
+      { k: "核准后动作", v: "回写采购单 + 生成报关草稿 → M4" },
     ],
     risk: "normal",
+    payload: { supplier: "Viña Aurora", goods: "有机 Carmenère 红酒 2021", qty: 12000, unit: 4.2, origin: "智利" },
   });
-  writebackSent.value = true;
 }
 </script>
 
@@ -119,12 +137,12 @@ function sendWriteback() {
       <template #actions>
         <button
           class="t-btn sm gold"
-          :disabled="store.busy.value || rfqSent"
+          :disabled="store.busy.value || rfqPending || rfqDone"
           @click="sendRfq"
-          :title="rfqSent ? '已入询价群发核准闸' : '群发比价询价（进人工审核看板）'"
+          :title="rfqDone ? '已群发（见下方已执行）' : rfqPending ? '已入询价群发核准闸' : '群发比价询价（进人工审核看板）'"
         >
           <TIcon :path="ICONS.purchase" :size="14" />
-          {{ rfqSent ? "已入核准闸" : "群发比价询价" }}
+          {{ rfqLabel }}
         </button>
       </template>
     </TSection>
@@ -183,7 +201,19 @@ function sendWriteback() {
     <div class="t-note warn">
       <b>群发比价询价（人工闸）：</b>对在评的 <b>{{ rated.length }}</b> 家供应商群发同一规格 Shiraz 询价，
       邮件外发前进 <b>人工审核看板</b>（<span class="t-mono">rfq-send</span>）核准，避免误扰与重复触达。
-      <span v-if="rfqSent" class="t-warn-txt"> · 本轮已入列，去审核看板处理。</span>
+      <span v-if="rfqPending" class="t-warn-txt"> · 本轮已入列，去审核看板核准。</span>
+      <span v-else-if="rfqDone" class="t-warn-txt"> · 已核准外发，见下方「已执行」。</span>
+    </div>
+
+    <!-- 已执行台账（M3）：证明「核准即执行」不是空转 -->
+    <div v-if="m3Actions.length" class="m3-exec">
+      <div class="m3-exec-h">
+        <TIcon :path="ICONS.review" :size="13" />
+        已执行 · 核准即生效（{{ m3Actions.length }}）
+      </div>
+      <div v-for="a in m3Actions.slice(0, 4)" :key="a.id" class="m3-exec-row">
+        <b>{{ a.title }}</b><span>{{ a.detail }}</span>
+      </div>
     </div>
 
     <!-- ③ 回信结构化抽取演示 -->
@@ -191,12 +221,12 @@ function sendWriteback() {
       <template #actions>
         <button
           class="t-btn sm primary"
-          :disabled="store.busy.value || writebackSent"
+          :disabled="store.busy.value || wbPending || wbDone"
           @click="sendWriteback"
-          :title="writebackSent ? '已入报价回写闸' : '低置信字段转人工回写采购单'"
+          :title="wbDone ? '已回写并生成报关草稿' : wbPending ? '已入报价回写闸' : '低置信字段转人工回写采购单'"
         >
           <TIcon :path="ICONS.finance" :size="14" />
-          {{ writebackSent ? "已入回写闸" : "转人工回写采购单" }}
+          {{ wbLabel }}
         </button>
       </template>
     </TSection>
@@ -287,6 +317,25 @@ function sendWriteback() {
 .sup-empty svg { flex-shrink: 0; opacity: 0.75; }
 
 .empty { text-align: center; padding: 26px 12px; color: var(--muted); font-size: 12.5px; }
+
+/* ── 已执行台账 ── */
+.m3-exec {
+  margin: 10px 0 2px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--ok);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  padding: 10px 13px;
+}
+.m3-exec-h {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 700; color: var(--ok); margin-bottom: 6px;
+}
+.m3-exec-row {
+  display: flex; gap: 8px; font-size: 11.5px; color: var(--text-2);
+  padding: 3px 0; line-height: 1.5;
+}
+.m3-exec-row b { color: var(--text); flex-shrink: 0; }
 
 /* ── 回信抽取 ── */
 .ex-head { justify-content: space-between; }

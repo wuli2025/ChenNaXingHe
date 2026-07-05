@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * TopNav —— 新外壳顶部条：品牌 + 「选项」下拉(快捷入口) + 模块 tab 切换 + 供应商 + 设置/更多。
- * 「最上面用来切换」：对话核心 + 三个营销应用场景；其余能力进「选项」下拉或「更多」。
+ * 「最上面用来切换」：外贸 OS / 知识库 / 技能中心；其余能力进「选项」下拉或「更多」。
  * 环境配置(env) 只在右侧「更多」里，不再单独露出。
  */
 import { Settings2, MessageSquare, BookOpen, Puzzle } from "@lucide/vue";
@@ -9,7 +9,7 @@ import { useAppStore, type ModuleTab } from "../stores/app";
 
 const app = useAppStore();
 
-// 顶栏 tab:知识库 / 技能中心放最左(可点开整屏看);后面接三个营销应用场景。
+// 顶栏 tab:外贸 OS / 知识库 / 技能中心。
 const tabs: { key: ModuleTab; label: string; hint: string }[] = [
   { key: "trade", label: "外贸 OS", hint: "北极星外贸 OS · 全链路工作台" },
   { key: "kb", label: "知识库", hint: "PolarisKB 资料库浏览 / 双链溯源" },

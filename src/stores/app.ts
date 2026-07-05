@@ -40,10 +40,10 @@ export type ViewKey =
   | "web_studio";
 
 /**
- * 顶部模块切换（新外壳）：知识库 / 技能中心 / 三个营销应用场景。
+ * 顶部模块切换（新外壳）：外贸 OS / 知识库 / 技能中心。
  * 对话系统不再是主区 tab，改为右侧可收纳抽屉（chatOpen）。
  */
-export type ModuleTab = "trade" | "kb" | "skill" | "koc" | "competitive" | "pmkt";
+export type ModuleTab = "trade" | "kb" | "skill";
 
 export const useAppStore = defineStore("app", () => {
   const view = ref<ViewKey>("chat");
@@ -68,7 +68,7 @@ export const useAppStore = defineStore("app", () => {
   const drawerCollapsed = ref(true);
 
   // ── 对话系统：右侧可收纳抽屉 ──
-  // 默认收起,把主区让给知识库/技能中心/营销工具;点顶栏「对话」按钮滑出,可拖宽。
+  // 默认收起,把主区让给外贸 OS/知识库/技能中心;点顶栏「对话」按钮滑出,可拖宽。
   const chatOpen = ref(false);
   function toggleChat() {
     chatOpen.value = !chatOpen.value;

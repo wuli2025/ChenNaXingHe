@@ -315,8 +315,8 @@ function landedBadge(v: number): "red" | "amber" | "green" {
               <b class="rep-name">{{ r.name }}</b>
               <span class="t-muted t-mono" style="font-size: 11px; margin-left: 8px">{{ r.sku }}</span>
             </div>
-            <TBadge :tone="pendingReplenish(r.sku) ? 'amber' : 'gold'">
-              {{ pendingReplenish(r.sku) ? "审核中" : "待确认" }}
+            <TBadge :tone="r.ordered ? 'green' : pendingReplenish(r.sku) ? 'amber' : 'gold'">
+              {{ r.ordered ? "已下单 · 回流 M3" : pendingReplenish(r.sku) ? "审核中" : "待确认" }}
             </TBadge>
           </div>
           <div class="rep-meta">
@@ -327,10 +327,10 @@ function landedBadge(v: number): "red" | "amber" | "green" {
           <div class="rep-foot">
             <button
               class="t-btn sm primary"
-              :disabled="pendingReplenish(r.sku)"
+              :disabled="pendingReplenish(r.sku) || r.ordered"
               @click="confirmReplenish(r)"
             >
-              {{ pendingReplenish(r.sku) ? "已进审核看板" : "确认补货 → 人工闸" }}
+              {{ r.ordered ? "已核准下单" : pendingReplenish(r.sku) ? "已进审核看板" : "确认补货 → 人工闸" }}
             </button>
           </div>
         </TPanel>

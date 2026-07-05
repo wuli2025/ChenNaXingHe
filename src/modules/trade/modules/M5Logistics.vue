@@ -71,14 +71,16 @@ async function parseEdi() {
   }
 }
 
-/* 异常里程碑上报——走人工闸（进中央审核看板流水线）。 */
+/* 异常里程碑上报——走人工闸（进中央审核看板流水线）。核准后写入异常里程碑并升级滞期。 */
 function flagAnomaly(s: Shipment) {
   const now = s.milestones.find((m) => m.now);
+  const anomaly = `${s.status} · ${s.from}→${s.to} · 滞期${s.demurrage}`;
   store.enqueueReview({
     mod: "m5",
     kind: "milestone-anomaly",
     title: `货柜 ${s.id} 物流异常里程碑确认`,
     refId: s.id,
+    origin: "manual",
     summary: `货柜 ${s.id}（${s.goods}）当前『${s.status}』，${s.from}→${s.to}，ETA P50 ${s.etaP50}/P90 ${s.etaP90}，滞期风险『${s.demurrage}』，货代回传节点疑似异常，转人工核实。`,
     facts: [
       { k: "当前节点", v: now ? `${now.t} · ${now.at}` : s.status },
@@ -86,7 +88,16 @@ function flagAnomaly(s: Shipment) {
       { k: "滞期风险", v: s.demurrage, warn: s.demurrage !== "低" },
     ],
     risk: s.demurrage === "高" ? "high" : "normal",
+    payload: { anomaly },
   });
+}
+
+/* 确认到港 → 开 GRN 收货单，货物入 M6 厂仓（M5→M6 真实链路）。 */
+function receiveArrival(s: Shipment) {
+  const sku = store.receiveArrival(s.id);
+  store.log("ok", sku
+    ? `📦 货柜 ${s.id} 已确认到港，开 GRN 收货单，${s.goods} 入 M6 厂仓待上架。`
+    : `货柜 ${s.id} 已入仓，无需重复。`);
 }
 </script>
 
@@ -100,17 +111,23 @@ function flagAnomaly(s: Shipment) {
       <TKpi :value="kpis.avg + '%'" label="平均在途进度" acc="green" :icon="ICONS.warehouse" />
     </div>
 
-    <!-- 到港自动开 GRN → 推 M6 -->
-    <div v-if="arrivedShip" class="t-note info">
-      <b>到港自动开 GRN：</b>货柜 {{ arrivedShip.id }}（{{ arrivedShip.goods }}）已抵港，清关放行后系统自动生成收货单 GRN 并推入
-      <b>M6 厂仓 / 补货</b>做入库上架与落地成本归集；到港清关节点亦联动 <b>M4 报关</b>回执回写。
+    <!-- 到港 → 开 GRN 推 M6（真实动作） -->
+    <div v-if="arrivedShip" class="t-note info arrive-note">
+      <span>
+        <b>货柜 {{ arrivedShip.id }}（{{ arrivedShip.goods }}）已抵港</b>：确认到港即生成收货单 GRN，货物入
+        <b>M6 厂仓</b>待上架与落地成本归集。
+      </span>
+      <button class="t-btn sm primary" :disabled="store.busy.value" @click="receiveArrival(arrivedShip)">
+        <TIcon :path="ICONS.warehouse" :size="13" />
+        确认到港 · 开 GRN
+      </button>
     </div>
 
-    <TSection title="在途货柜 · 全程跟踪" sub="里程碑 · ETA P50/P90 · 滞期预警 · 到港自动开 GRN">
+    <TSection title="在途货柜 · 全程跟踪" sub="里程碑 · ETA P50/P90 · 滞期预警 · 到港开 GRN">
       <template #actions>
-        <button class="t-btn gold sm" :disabled="store.busy.value" @click="parseEdi">
+        <button class="t-btn gold sm" :disabled="store.busy.value" @click="parseEdi" title="解析货代 EDI 邮件，结果流式显示在右侧 Console（预览，不自动改数据）">
           <TIcon :path="ICONS.logistics" :size="14" />
-          {{ store.busy.value ? "解析中…" : "解析货代 EDI 邮件更新里程碑" }}
+          {{ store.busy.value ? "解析中…" : "解析货代 EDI 邮件（预览）" }}
         </button>
       </template>
     </TSection>
@@ -213,6 +230,16 @@ function flagAnomaly(s: Shipment) {
 </template>
 
 <style scoped>
+/* 到港开 GRN 提示条：说明 + 动作按钮同排 */
+.arrive-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.arrive-note button { flex-shrink: 0; }
+
 /* 进度条：底色随滞期风险着色（沿用设计令牌） */
 .bar-pct > span { transition: width 0.6s cubic-bezier(0.22, 0.7, 0.25, 1); }
 .bar-pct.d-green > span { background: var(--ok); }

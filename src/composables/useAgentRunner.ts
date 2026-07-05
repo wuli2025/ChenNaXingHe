@@ -1,7 +1,7 @@
 /**
  * useAgentRunner —— 把 Claude Code 当唯一后端大脑的统一驱动层。
  *
- * 三个营销模块（KOC / 竞品分析 / PMKT 营销策略）都经此发起 agent 任务：
+ * 业务模块（外贸 OS 等）都经此发起 agent 任务：
  *  - run()      ：发一轮，流式回 delta/tool，done 后返回全文。
  *  - runJson()  ：要求结构化 JSON，自带提取 + 坏 JSON 回灌 Claude 修复。
  *
@@ -180,8 +180,8 @@ function tryParse<T>(raw: string): T | null {
 }
 
 export function useAgentRunner() {
-  // H2 修复:用「活跃轮数」引用计数,而非单个布尔。多个 run() 并发时(如对多个 KOC 连点
-  // 评判、或一边聊天一边选品),只要还有任意一轮在跑 running 就为 true;先完成的那一轮不会
+  // H2 修复:用「活跃轮数」引用计数,而非单个布尔。多个 run() 并发时(如连点多个评判、
+  // 或一边聊天一边选品),只要还有任意一轮在跑 running 就为 true;先完成的那一轮不会
   // 把 running 提前置 false 而放开 busy 门控、导致重复触发。
   const activeRuns = ref(0);
   const running = computed(() => activeRuns.value > 0);

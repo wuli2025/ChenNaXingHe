@@ -39,12 +39,13 @@ async function collect() {
   });
 }
 
-/* 存为线索：纯本地状态流转（把候选并入 M2 线索池由 M2 处理，这里仅标记来源） */
+/* 存为线索：真正把候选并入 M2 供应商线索池（M1→M2 接通），可在 M2 直接发开发信。 */
 function saveAsLead(s: SkuCandidate) {
   if (s.state === "lead") return;
-  s.state = "lead";
-  store.saveSkus();
-  store.log("ok", `📌 已存为建联线索：${s.name}（${s.region}）→ 可在 M2 供应商建联跟进`);
+  const lead = store.promoteSkuToLead(s);
+  store.log("ok", lead
+    ? `📌 已并入 M2 线索池：${s.name}（${s.region}）· 等级 ${lead.grade} → 可在 M2 发破冰开发信`
+    : `📌 ${s.name} 已在 M2 线索池中`);
 }
 
 /* 入库：人工闸。派单进中央审核看板（kind: sku-intake）。

@@ -4,7 +4,7 @@
  * 这是全部 12 个业务模块 + 人工审核流水线共享的类型底座。所有模块组件
  * （M0Dashboard.vue … M11Knowledge.vue）与 useTradeStore 都依赖本文件。
  *
- * 设计对齐 KOC/竞品/PMKT 原生范式：
+ * 设计范式：
  *  - 每个业务对象带 provenance（user/inferred/ai）与字段级置信度。
  *  - 每个「人工闸」都产出一个 ReviewTask，进中央审核看板流水线。
  *  - 一切持久化（localStorage，key 前缀 chuanying.trade.*）。
@@ -85,6 +85,15 @@ export type ReviewKind =
 /** 风险等级 —— 驱动看板卡片色与排序。 */
 export type ReviewRisk = "hard" | "high" | "normal" | "low";
 
+/** 审核要点一行（结构化，四要素之「结构化 + 可验证」：可带出处 source）。 */
+export interface ReviewFact {
+  k: string;
+  v: string;
+  warn?: boolean;
+  /** 出处/依据（税则条文、邮件原文、单据页码、检索来源…）——支撑「可验证」。 */
+  source?: string;
+}
+
 /** 一项人工审核任务。 */
 export interface ReviewTask {
   id: string;
@@ -96,7 +105,7 @@ export interface ReviewTask {
   /** 一句话摘要（审什么）。 */
   summary: string;
   /** 结构化审核要点（key → value，渲染成小表）。 */
-  facts: { k: string; v: string; warn?: boolean }[];
+  facts: ReviewFact[];
   risk: ReviewRisk;
   /** 关联业务对象 id（货柜/线索/订单…）。 */
   refId?: string;
@@ -107,6 +116,34 @@ export interface ReviewTask {
   /** 审核意见（驳回原因/批注）。 */
   note?: string;
   decidedBy?: string;
+  /** 任务来源：ai=AI 产出待审 / auto=高置信自动放行留痕 / manual=人工发起。 */
+  origin?: "ai" | "auto" | "manual";
+  /**
+   * 携带过闸的数据 + 驳回重跑所需的原始参数（如 {leadId,lang,body} / {decId} / {item}）。
+   * 让「核准即执行」拿得到要写回的内容，让「驳回自动重跑」拿得到重跑入参。
+   */
+  payload?: Record<string, unknown>;
+  /** 驳回后是否已自动触发 AI 重跑（避免重复触发）。 */
+  reran?: boolean;
+}
+
+/**
+ * 已执行动作台账 —— 「核准即执行」的证据链。
+ * 每次人工闸核准回写、或（P1）高置信自动放行，都在此留一条，可回溯、可度量无人化率。
+ */
+export interface ExecutedAction {
+  id: string;
+  at: number;
+  mod: ModId;
+  /** 对应的审核类别或系统动作。 */
+  kind: ReviewKind | string;
+  /** 关联业务对象 id。 */
+  refId?: string;
+  title: string;
+  /** 这次到底对数据做了什么（人话）。 */
+  detail: string;
+  /** auto=AI 高置信自动执行（无人）；human=人工闸核准后执行。 */
+  by: "auto" | "human";
 }
 
 /** 审核看板列元信息。 */
@@ -327,6 +364,8 @@ export interface ReplenishSuggestion {
   qty: number;
   by: string;
   reason: string;
+  /** 补货核准后置 true —— 已回流 M3 生成采购询价。 */
+  ordered?: boolean;
 }
 
 /* ══════════════════ M7 客户与分销 ══════════════════ */
@@ -516,5 +555,6 @@ export const LS = {
   kb: "chuanying.trade.kb.v1",
   reviews: "chuanying.trade.reviews.v1",
   runs: "chuanying.trade.runs.v1",
+  executed: "chuanying.trade.executed.v1",
   seeded: "chuanying.trade.seeded.v2",
 } as const;
