@@ -71,8 +71,21 @@ function confirmWriteback(r: ReconMatch) {
   <div class="t-view-anim">
     <!-- 顶部财务 KPI -->
     <div class="t-grid t-g4">
-      <TKpi value="$1.14M" label="本月分销额" delta="环比 +12%" :up="true" acc="green" :icon="ICONS.customer" />
-      <TKpi value="$0.78M" label="本月采购 / 成本" delta="含货代 + 落地成本" acc="blue" :icon="ICONS.purchase" />
+      <TKpi
+        value="$1.14M"
+        label="本月分销额"
+        delta="环比 +12%"
+        :up="true"
+        acc="green"
+        :icon="ICONS.customer"
+      />
+      <TKpi
+        value="$0.78M"
+        label="本月采购 / 成本"
+        delta="含货代 + 落地成本"
+        acc="blue"
+        :icon="ICONS.purchase"
+      />
       <TKpi
         :value="openCount.toString()"
         label="未达账项"
@@ -91,7 +104,10 @@ function confirmWriteback(r: ReconMatch) {
     </div>
 
     <!-- 三方单据匹配 -->
-    <TSection title="三方单据匹配" sub="采购 / 物流 / 分销 · 复式账本 · AI 生成候选匹配">
+    <TSection
+      title="三方单据匹配"
+      sub="采购 / 物流 / 分销 · 复式账本 · AI 生成候选匹配"
+    >
       <template #actions>
         <span class="t-pill">已匹配 {{ matchedCount }}</span>
         <span class="t-pill">待确认 {{ pendingMatch }}</span>
@@ -104,23 +120,49 @@ function confirmWriteback(r: ReconMatch) {
         <thead>
           <tr>
             <th>单据</th>
-            <th class="num">金额</th>
+            <th class="num">
+              金额
+            </th>
             <th>候选匹配</th>
-            <th style="width: 200px">置信度</th>
+            <th style="width: 200px">
+              置信度
+            </th>
             <th>状态</th>
-            <th style="width: 128px; text-align: right">操作</th>
+            <th style="width: 128px; text-align: right">
+              操作
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="r in store.recon.value" :key="r.item" class="recon-row">
+          <tr
+            v-for="r in store.recon.value"
+            :key="r.item"
+            class="recon-row"
+          >
             <td><b>{{ r.item }}</b></td>
-            <td class="num t-mono">{{ r.amount }}</td>
-            <td :class="{ 't-muted': r.conf === 0 }">{{ r.match }}</td>
-            <td class="conf-cell">
-              <TConf v-if="r.conf > 0" :value="r.conf" />
-              <TBadge v-else tone="red">无候选</TBadge>
+            <td class="num t-mono">
+              {{ r.amount }}
             </td>
-            <td><TBadge :tone="statusTone(r.status)">{{ statusLabel(r.status) }}</TBadge></td>
+            <td :class="{ 't-muted': r.conf === 0 }">
+              {{ r.match }}
+            </td>
+            <td class="conf-cell">
+              <TConf
+                v-if="r.conf > 0"
+                :value="r.conf"
+              />
+              <TBadge
+                v-else
+                tone="red"
+              >
+                无候选
+              </TBadge>
+            </td>
+            <td>
+              <TBadge :tone="statusTone(r.status)">
+                {{ statusLabel(r.status) }}
+              </TBadge>
+            </td>
             <td style="text-align: right">
               <button
                 v-if="r.status === '未达'"
@@ -128,7 +170,10 @@ function confirmWriteback(r: ReconMatch) {
                 :disabled="store.busy.value"
                 @click="aiRecon(r)"
               >
-                <TIcon :path="ICONS.finance" :size="13" /> AI 辅助对账
+                <TIcon
+                  :path="ICONS.finance"
+                  :size="13"
+                /> AI 辅助对账
               </button>
               <button
                 v-else-if="r.status === '待确认'"
@@ -136,14 +181,23 @@ function confirmWriteback(r: ReconMatch) {
                 :disabled="store.busy.value"
                 @click="confirmWriteback(r)"
               >
-                <TIcon :path="ICONS.review" :size="13" /> 确认回写
+                <TIcon
+                  :path="ICONS.review"
+                  :size="13"
+                /> 确认回写
               </button>
-              <span v-else class="t-muted" style="font-size: 11px">已入账</span>
+              <span
+                v-else
+                class="t-muted"
+                style="font-size: 11px"
+              >已入账</span>
             </td>
           </tr>
           <tr v-if="store.recon.value.length === 0">
             <td colspan="6">
-              <div class="t-empty">暂无待对账单据 · 采购 / 物流 / 分销三方凭证到齐后自动汇入。</div>
+              <div class="t-empty">
+                暂无待对账单据 · 采购 / 物流 / 分销三方凭证到齐后自动汇入。
+              </div>
             </td>
           </tr>
         </tbody>
@@ -151,26 +205,35 @@ function confirmWriteback(r: ReconMatch) {
     </TPanel>
 
     <!-- 未达账项业务提示 -->
-    <div v-if="openCount > 0" class="t-note warn">
+    <div
+      v-if="openCount > 0"
+      class="t-note warn"
+    >
       <b>{{ openCount }} 笔未达账项</b>：候选缺失或金额对不上，点右侧「AI 辅助对账」让 Claude 拉取 PO / 落地成本 / 银行流水生成候选，
       候选生成后自动进「对账匹配确认」<b>人工闸</b>，人工通过才回写账本。
     </div>
-    <div v-else-if="pendingMatch > 0" class="t-note info">
+    <div
+      v-else-if="pendingMatch > 0"
+      class="t-note info"
+    >
       有 <b>{{ pendingMatch }} 笔</b>已有 AI 候选待人工确认。点「确认回写」派进审核看板（recon-match 闸），
       通过后置为「已匹配」并落复式账本。
     </div>
 
     <!-- 复式账本 / BAS 草稿 -->
-    <TSection title="复式账本 / BAS 草稿" sub="系统只做核算与结构化，申报动作外接" />
+    <TSection
+      title="复式账本 / BAS 草稿"
+      sub="系统只做核算与结构化，申报动作外接"
+    />
     <div class="t-grid t-g2">
       <div class="t-note info">
-        <b>复式记账（借贷平衡）</b><br />
+        <b>复式记账（借贷平衡）</b><br>
         每笔匹配确认后按科目自动生成分录：采购入库计<b>存货</b>与<b>应付账款</b>，
         进口税费计 <b>WET/GST 进项</b>，分销回款冲<b>应收账款</b>。当前三方匹配率
         <b>{{ matchedCount }}/{{ store.recon.value.length }}</b>，未达项不入账、挂「待对账」科目。
       </div>
       <div class="t-note ok">
-        <b>Q3 BAS 税务草稿</b><br />
+        <b>Q3 BAS 税务草稿</b><br>
         进口 WET（29%）<b class="t-mono">AUD {{ q3Tax.wet.toLocaleString() }}</b> ·
         GST（10%，含 WET 基数）<b class="t-mono">AUD {{ q3Tax.gst.toLocaleString() }}</b> ·
         合计进口税费 <b class="t-mono">AUD {{ q3Tax.totalTax.toLocaleString() }}</b>。

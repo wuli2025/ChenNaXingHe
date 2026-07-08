@@ -256,7 +256,7 @@ async function onRowClick(p: ProviderView) {
     if (store.codex?.loggedIn && p.id !== store.currentId) {
       await store.switchTo("codex");
     } else {
-      // ★ 未授权也直接弹,不再吞掉点击
+      // 未授权也直接弹,不再吞掉点击
       codexOpen.value = true;
     }
     return;
@@ -552,31 +552,64 @@ function subtitleOf(p: ProviderView): string {
         <span class="pill-main">
           <span class="pill-name">{{ current?.name || "选择供应商" }}</span>
           <span class="pill-sub">
-            <Zap :size="9" :stroke-width="2.4" />
+            <Zap
+              :size="9"
+              :stroke-width="2.4"
+            />
             {{ fmt(todayTotal) }} · 今日
           </span>
         </span>
-        <ChevronUp class="chev" :class="{ flip: open }" :size="14" :stroke-width="2" />
+        <ChevronUp
+          class="chev"
+          :class="{ flip: open }"
+          :size="14"
+          :stroke-width="2"
+        />
       </template>
     </button>
 
     <Teleport to="body">
       <Transition name="dock-fade">
-        <div v-if="open" class="dock-overlay" @click="open = false">
-          <div class="panel" @click.stop>
+        <div
+          v-if="open"
+          class="dock-overlay"
+          @click="open = false"
+        >
+          <div
+            class="panel"
+            @click.stop
+          >
             <div class="panel-accent" />
 
             <header class="panel-head">
               <div class="head-titles">
-                <div class="title">API 供应商</div>
-                <div class="subtitle">{{ store.linkGlobal ? "点选即切换 · 联动写入 ~/.claude/settings.json" : "点选即切换 · 仅 Polaris 内生效" }}</div>
+                <div class="title">
+                  API 供应商
+                </div>
+                <div class="subtitle">
+                  {{ store.linkGlobal ? "点选即切换 · 联动写入 ~/.claude/settings.json" : "点选即切换 · 仅 Polaris 内生效" }}
+                </div>
               </div>
               <div class="head-actions">
-                <button class="icon-btn" title="添加供应商" @click="addCustom">
-                  <Plus :size="16" :stroke-width="2" />
+                <button
+                  class="icon-btn"
+                  title="添加供应商"
+                  @click="addCustom"
+                >
+                  <Plus
+                    :size="16"
+                    :stroke-width="2"
+                  />
                 </button>
-                <button class="icon-btn" title="关闭" @click="open = false">
-                  <X :size="15" :stroke-width="1.8" />
+                <button
+                  class="icon-btn"
+                  title="关闭"
+                  @click="open = false"
+                >
+                  <X
+                    :size="15"
+                    :stroke-width="1.8"
+                  />
                 </button>
               </div>
             </header>
@@ -584,10 +617,25 @@ function subtitleOf(p: ProviderView): string {
             <div class="panel-body">
               <!-- 搜索条 -->
               <div class="search-row">
-                <Search :size="13" :stroke-width="1.8" class="s-ic" />
-                <input v-model="filter" class="search-input" placeholder="搜索供应商 / 主机名…" />
-                <button v-if="filter" class="icon-btn sm" @click="filter = ''">
-                  <X :size="13" :stroke-width="1.8" />
+                <Search
+                  :size="13"
+                  :stroke-width="1.8"
+                  class="s-ic"
+                />
+                <input
+                  v-model="filter"
+                  class="search-input"
+                  placeholder="搜索供应商 / 主机名…"
+                >
+                <button
+                  v-if="filter"
+                  class="icon-btn sm"
+                  @click="filter = ''"
+                >
+                  <X
+                    :size="13"
+                    :stroke-width="1.8"
+                  />
                 </button>
               </div>
 
@@ -614,26 +662,38 @@ function subtitleOf(p: ProviderView): string {
                 </button>
               </div>
 
-              <!-- ★ 上段:当前供应商状态卡 (放大) -->
-              <section v-if="current" class="now-card" :class="{ codex: current.kind === 'codex' }">
+              <!-- 上段:当前供应商状态卡 (放大) -->
+              <section
+                v-if="current"
+                class="now-card"
+                :class="{ codex: current.kind === 'codex' }"
+              >
                 <div class="now-row">
                   <span
                     class="now-dot"
                     :style="{ background: current.color, boxShadow: `0 0 0 3px ${current.color}29` }"
                   />
                   <div class="now-info">
-                    <div class="now-name">{{ current.name }}</div>
+                    <div class="now-name">
+                      {{ current.name }}
+                    </div>
                     <div class="now-host">
                       <template v-if="current.kind === 'codex'">
                         <span v-if="store.codex?.loggedIn">ChatGPT 已授权</span>
-                        <span v-else class="need-auth">⚠ 需先授权 ChatGPT</span>
+                        <span
+                          v-else
+                          class="need-auth"
+                        >需先授权 ChatGPT</span>
                       </template>
                       <template v-else-if="current.kind === 'copilot'">
                         GitHub Copilot · 暂未支持
                       </template>
                       <template v-else-if="current.kind === 'official'">
                         <span v-if="store.claudeAuth?.loggedIn">Claude 订阅 · 已登录</span>
-                        <span v-else class="need-auth">未登录订阅 · 可用 API Key 或点下方授权</span>
+                        <span
+                          v-else
+                          class="need-auth"
+                        >未登录订阅 · 可用 API Key 或点下方授权</span>
                       </template>
                       <template v-else>
                         {{ hostOf(current.baseUrl) }}<span v-if="currentModel"> · {{ currentModel }}</span>
@@ -641,29 +701,60 @@ function subtitleOf(p: ProviderView): string {
                     </div>
                   </div>
                   <div class="now-today">
-                    <div class="now-num">{{ fmt(todayTotal) }}</div>
-                    <div class="now-lab">今日 token</div>
+                    <div class="now-num">
+                      {{ fmt(todayTotal) }}
+                    </div>
+                    <div class="now-lab">
+                      今日 token
+                    </div>
                   </div>
                 </div>
 
                 <!-- 套餐额度 / 实时余额(当前供应商,自动查) -->
-                <div v-if="showBalance" class="now-balance">
-                  <Wallet :size="12" :stroke-width="1.9" class="nb-ic" />
-                  <span class="nb-label" :class="balClass(currentBalance)">
+                <div
+                  v-if="showBalance"
+                  class="now-balance"
+                >
+                  <Wallet
+                    :size="12"
+                    :stroke-width="1.9"
+                    class="nb-ic"
+                  />
+                  <span
+                    class="nb-label"
+                    :class="balClass(currentBalance)"
+                  >
                     {{ currentBalance?.label ?? "查询额度…" }}
                   </span>
-                  <span v-if="currentBalance?.detail" class="nb-detail">{{ currentBalance.detail }}</span>
+                  <span
+                    v-if="currentBalance?.detail"
+                    class="nb-detail"
+                  >{{ currentBalance.detail }}</span>
                   <button
                     v-if="currentBalance?.consoleUrl"
                     class="nb-console"
                     title="打开控制台"
                     @click.stop="openSite(currentBalance.consoleUrl)"
                   >
-                    <ExternalLink :size="11" :stroke-width="1.8" />
+                    <ExternalLink
+                      :size="11"
+                      :stroke-width="1.8"
+                    />
                   </button>
-                  <button class="nb-refresh" title="刷新额度" @click.stop="store.refreshBalance(current.id)">
-                    <span v-if="store.balanceBusy[current.id]" class="spinner sm" />
-                    <RefreshCw v-else :size="11" :stroke-width="1.8" />
+                  <button
+                    class="nb-refresh"
+                    title="刷新额度"
+                    @click.stop="store.refreshBalance(current.id)"
+                  >
+                    <span
+                      v-if="store.balanceBusy[current.id]"
+                      class="spinner sm"
+                    />
+                    <RefreshCw
+                      v-else
+                      :size="11"
+                      :stroke-width="1.8"
+                    />
                   </button>
                 </div>
 
@@ -673,7 +764,10 @@ function subtitleOf(p: ProviderView): string {
                   class="now-cta codex-cta"
                   @click="codexOpen = true"
                 >
-                  <LogIn :size="14" :stroke-width="2" />
+                  <LogIn
+                    :size="14"
+                    :stroke-width="2"
+                  />
                   ChatGPT 一键授权
                 </button>
                 <!-- Claude 官方未登录订阅时,主操作 = 授权登录 -->
@@ -682,16 +776,26 @@ function subtitleOf(p: ProviderView): string {
                   class="now-cta claude-cta"
                   @click="claudeOpen = true; startClaudeAuth()"
                 >
-                  <LogIn :size="14" :stroke-width="2" />
+                  <LogIn
+                    :size="14"
+                    :stroke-width="2"
+                  />
                   授权登录 Claude 订阅
                 </button>
-                <button v-else class="now-cta" @click="openBoard">
-                  <BarChart3 :size="13" :stroke-width="1.8" />
+                <button
+                  v-else
+                  class="now-cta"
+                  @click="openBoard"
+                >
+                  <BarChart3
+                    :size="13"
+                    :stroke-width="1.8"
+                  />
                   查看用量详情
                 </button>
               </section>
 
-              <!-- ★ 中段:供应商全量列表(WeSight 风) -->
+              <!-- 中段:供应商全量列表(WeSight 风) -->
               <div class="prov-section">
                 <div class="section-head">
                   <span>供应商</span>
@@ -708,26 +812,58 @@ function subtitleOf(p: ProviderView): string {
                       :class="{ on: p.id === store.currentId, pending: store.switching === p.id, navsel: flatNav[navIndex]?.id === p.id }"
                       @click="onRowClick(p)"
                     >
-                      <span class="row-bar" v-if="p.id === store.currentId" />
-                      <span class="prov-dot" :style="{ background: p.color }" />
+                      <span
+                        v-if="p.id === store.currentId"
+                        class="row-bar"
+                      />
+                      <span
+                        class="prov-dot"
+                        :style="{ background: p.color }"
+                      />
                       <span class="prov-info">
                         <span class="prov-name">
                           {{ p.name }}
-                          <span v-if="p.kind === 'codex'" class="kcodex">GPT</span>
+                          <span
+                            v-if="p.kind === 'codex'"
+                            class="kcodex"
+                          >GPT</span>
                         </span>
                         <span class="prov-host">{{ subtitleOf(p) }}</span>
                       </span>
                       <span class="prov-tail">
-                        <span v-if="store.switching === p.id" class="spinner" />
-                        <span v-else-if="p.id === store.currentId" class="badge-on">
-                          <Check :size="11" :stroke-width="2.6" /> 使用中
+                        <span
+                          v-if="store.switching === p.id"
+                          class="spinner"
+                        />
+                        <span
+                          v-else-if="p.id === store.currentId"
+                          class="badge-on"
+                        >
+                          <Check
+                            :size="11"
+                            :stroke-width="2.6"
+                          /> 使用中
                         </span>
-                        <span v-else-if="p.kind === 'codex' || p.kind === 'copilot'" class="badge-oauth">授权</span>
-                        <span v-else-if="!p.hasKey" class="badge-need">配置</span>
+                        <span
+                          v-else-if="p.kind === 'codex' || p.kind === 'copilot'"
+                          class="badge-oauth"
+                        >授权</span>
+                        <span
+                          v-else-if="!p.hasKey"
+                          class="badge-need"
+                        >配置</span>
 
                         <span class="row-actions">
-                          <button v-if="p.websiteUrl" class="mini-act" title="官网" @click.stop="openSite(p.websiteUrl)">
-                            <ExternalLink :size="12" :stroke-width="1.8" />
+                          <button
+                            v-if="p.websiteUrl"
+                            class="mini-act"
+                            title="官网"
+                            @click.stop="openSite(p.websiteUrl)"
+                          >
+                            <ExternalLink
+                              :size="12"
+                              :stroke-width="1.8"
+                            />
                           </button>
                           <button
                             v-if="p.kind !== 'codex' && p.kind !== 'copilot'"
@@ -735,7 +871,10 @@ function subtitleOf(p: ProviderView): string {
                             :title="p.isPreset ? '配置' : '编辑'"
                             @click.stop="editProvider(p)"
                           >
-                            <Pencil :size="12" :stroke-width="1.8" />
+                            <Pencil
+                              :size="12"
+                              :stroke-width="1.8"
+                            />
                           </button>
                           <button
                             v-if="(p.isPreset && p.hasKey && p.kind === 'key') || p.kind === 'custom'"
@@ -743,20 +882,34 @@ function subtitleOf(p: ProviderView): string {
                             :title="p.isPreset ? '清除配置' : '删除'"
                             @click.stop="askRemove(p)"
                           >
-                            <Trash2 :size="12" :stroke-width="1.8" />
+                            <Trash2
+                              :size="12"
+                              :stroke-width="1.8"
+                            />
                           </button>
                         </span>
                       </span>
                     </div>
-                    <div v-if="filtered.length === 0" class="list-empty">无匹配供应商</div>
+                    <div
+                      v-if="filtered.length === 0"
+                      class="list-empty"
+                    >
+                      无匹配供应商
+                    </div>
                   </div>
                 </template>
 
                 <!-- 默认:分组(常用 / 全部) -->
                 <template v-else>
-                  <div v-if="recentList.length" class="group">
+                  <div
+                    v-if="recentList.length"
+                    class="group"
+                  >
                     <div class="group-head">
-                      <Star :size="10" :stroke-width="2" /> 常用
+                      <Star
+                        :size="10"
+                        :stroke-width="2"
+                      /> 常用
                     </div>
                     <div class="prov-list">
                       <div
@@ -766,26 +919,58 @@ function subtitleOf(p: ProviderView): string {
                         :class="{ on: p.id === store.currentId, pending: store.switching === p.id, navsel: flatNav[navIndex]?.id === p.id }"
                         @click="onRowClick(p)"
                       >
-                        <span class="row-bar" v-if="p.id === store.currentId" />
-                        <span class="prov-dot" :style="{ background: p.color }" />
+                        <span
+                          v-if="p.id === store.currentId"
+                          class="row-bar"
+                        />
+                        <span
+                          class="prov-dot"
+                          :style="{ background: p.color }"
+                        />
                         <span class="prov-info">
                           <span class="prov-name">
                             {{ p.name }}
-                            <span v-if="p.kind === 'codex'" class="kcodex">GPT</span>
+                            <span
+                              v-if="p.kind === 'codex'"
+                              class="kcodex"
+                            >GPT</span>
                           </span>
                           <span class="prov-host">{{ subtitleOf(p) }}</span>
                         </span>
                         <span class="prov-tail">
-                          <span v-if="store.switching === p.id" class="spinner" />
-                          <span v-else-if="p.id === store.currentId" class="badge-on">
-                            <Check :size="11" :stroke-width="2.6" /> 使用中
+                          <span
+                            v-if="store.switching === p.id"
+                            class="spinner"
+                          />
+                          <span
+                            v-else-if="p.id === store.currentId"
+                            class="badge-on"
+                          >
+                            <Check
+                              :size="11"
+                              :stroke-width="2.6"
+                            /> 使用中
                           </span>
-                          <span v-else-if="p.kind === 'codex' || p.kind === 'copilot'" class="badge-oauth">授权</span>
-                          <span v-else-if="!p.hasKey" class="badge-need">配置</span>
+                          <span
+                            v-else-if="p.kind === 'codex' || p.kind === 'copilot'"
+                            class="badge-oauth"
+                          >授权</span>
+                          <span
+                            v-else-if="!p.hasKey"
+                            class="badge-need"
+                          >配置</span>
 
                           <span class="row-actions">
-                            <button v-if="p.websiteUrl" class="mini-act" title="官网" @click.stop="openSite(p.websiteUrl)">
-                              <ExternalLink :size="12" :stroke-width="1.8" />
+                            <button
+                              v-if="p.websiteUrl"
+                              class="mini-act"
+                              title="官网"
+                              @click.stop="openSite(p.websiteUrl)"
+                            >
+                              <ExternalLink
+                                :size="12"
+                                :stroke-width="1.8"
+                              />
                             </button>
                             <button
                               v-if="p.kind !== 'codex' && p.kind !== 'copilot'"
@@ -793,7 +978,10 @@ function subtitleOf(p: ProviderView): string {
                               :title="p.isPreset ? '配置' : '编辑'"
                               @click.stop="editProvider(p)"
                             >
-                              <Pencil :size="12" :stroke-width="1.8" />
+                              <Pencil
+                                :size="12"
+                                :stroke-width="1.8"
+                              />
                             </button>
                             <button
                               v-if="(p.isPreset && p.hasKey && p.kind === 'key') || p.kind === 'custom'"
@@ -801,7 +989,10 @@ function subtitleOf(p: ProviderView): string {
                               :title="p.isPreset ? '清除配置' : '删除'"
                               @click.stop="askRemove(p)"
                             >
-                              <Trash2 :size="12" :stroke-width="1.8" />
+                              <Trash2
+                                :size="12"
+                                :stroke-width="1.8"
+                              />
                             </button>
                           </span>
                         </span>
@@ -811,7 +1002,10 @@ function subtitleOf(p: ProviderView): string {
 
                   <div class="group">
                     <div class="group-head">
-                      <Sparkles :size="10" :stroke-width="2" /> 全部
+                      <Sparkles
+                        :size="10"
+                        :stroke-width="2"
+                      /> 全部
                     </div>
                     <div class="prov-list">
                       <div
@@ -821,26 +1015,58 @@ function subtitleOf(p: ProviderView): string {
                         :class="{ on: p.id === store.currentId, pending: store.switching === p.id, navsel: flatNav[navIndex]?.id === p.id }"
                         @click="onRowClick(p)"
                       >
-                        <span class="row-bar" v-if="p.id === store.currentId" />
-                        <span class="prov-dot" :style="{ background: p.color }" />
+                        <span
+                          v-if="p.id === store.currentId"
+                          class="row-bar"
+                        />
+                        <span
+                          class="prov-dot"
+                          :style="{ background: p.color }"
+                        />
                         <span class="prov-info">
                           <span class="prov-name">
                             {{ p.name }}
-                            <span v-if="p.kind === 'codex'" class="kcodex">GPT</span>
+                            <span
+                              v-if="p.kind === 'codex'"
+                              class="kcodex"
+                            >GPT</span>
                           </span>
                           <span class="prov-host">{{ subtitleOf(p) }}</span>
                         </span>
                         <span class="prov-tail">
-                          <span v-if="store.switching === p.id" class="spinner" />
-                          <span v-else-if="p.id === store.currentId" class="badge-on">
-                            <Check :size="11" :stroke-width="2.6" /> 使用中
+                          <span
+                            v-if="store.switching === p.id"
+                            class="spinner"
+                          />
+                          <span
+                            v-else-if="p.id === store.currentId"
+                            class="badge-on"
+                          >
+                            <Check
+                              :size="11"
+                              :stroke-width="2.6"
+                            /> 使用中
                           </span>
-                          <span v-else-if="p.kind === 'codex' || p.kind === 'copilot'" class="badge-oauth">授权</span>
-                          <span v-else-if="!p.hasKey" class="badge-need">配置</span>
+                          <span
+                            v-else-if="p.kind === 'codex' || p.kind === 'copilot'"
+                            class="badge-oauth"
+                          >授权</span>
+                          <span
+                            v-else-if="!p.hasKey"
+                            class="badge-need"
+                          >配置</span>
 
                           <span class="row-actions">
-                            <button v-if="p.websiteUrl" class="mini-act" title="官网" @click.stop="openSite(p.websiteUrl)">
-                              <ExternalLink :size="12" :stroke-width="1.8" />
+                            <button
+                              v-if="p.websiteUrl"
+                              class="mini-act"
+                              title="官网"
+                              @click.stop="openSite(p.websiteUrl)"
+                            >
+                              <ExternalLink
+                                :size="12"
+                                :stroke-width="1.8"
+                              />
                             </button>
                             <button
                               v-if="p.kind !== 'codex' && p.kind !== 'copilot'"
@@ -848,7 +1074,10 @@ function subtitleOf(p: ProviderView): string {
                               :title="p.isPreset ? '配置' : '编辑'"
                               @click.stop="editProvider(p)"
                             >
-                              <Pencil :size="12" :stroke-width="1.8" />
+                              <Pencil
+                                :size="12"
+                                :stroke-width="1.8"
+                              />
                             </button>
                             <button
                               v-if="(p.isPreset && p.hasKey && p.kind === 'key') || p.kind === 'custom'"
@@ -856,7 +1085,10 @@ function subtitleOf(p: ProviderView): string {
                               :title="p.isPreset ? '清除配置' : '删除'"
                               @click.stop="askRemove(p)"
                             >
-                              <Trash2 :size="12" :stroke-width="1.8" />
+                              <Trash2
+                                :size="12"
+                                :stroke-width="1.8"
+                              />
                             </button>
                           </span>
                         </span>
@@ -864,21 +1096,36 @@ function subtitleOf(p: ProviderView): string {
                     </div>
                   </div>
 
-                  <button class="add-row" @click="addCustom">
-                    <Plus :size="13" :stroke-width="2.2" /> 添加自定义供应商
+                  <button
+                    class="add-row"
+                    @click="addCustom"
+                  >
+                    <Plus
+                      :size="13"
+                      :stroke-width="2.2"
+                    /> 添加自定义供应商
                   </button>
                 </template>
               </div>
 
-              <!-- ★ Codex 授权大卡 (整张更醒目) -->
+              <!-- Codex 授权大卡 (整张更醒目) -->
               <Transition name="ed-fade">
-                <div v-if="codexOpen" class="codex-card">
+                <div
+                  v-if="codexOpen"
+                  class="codex-card"
+                >
                   <div class="codex-card-head">
                     <div class="ed-title">
-                      <ShieldCheck :size="14" :stroke-width="2" />
+                      <ShieldCheck
+                        :size="14"
+                        :stroke-width="2"
+                      />
                       Codex (ChatGPT) 授权
                     </div>
-                    <button class="icon-btn sm" @click="closeCodexCard">
+                    <button
+                      class="icon-btn sm"
+                      @click="closeCodexCard"
+                    >
                       <X :size="13" />
                     </button>
                   </div>
@@ -896,11 +1143,24 @@ function subtitleOf(p: ProviderView): string {
                       {{ codexDevice.userCode }}
                       <span class="code-copy">{{ codexCopied ? "已复制" : "复制" }}</span>
                     </button>
-                    <p class="codex-poll"><span class="spinner" /> 等待浏览器中完成授权…</p>
+                    <p class="codex-poll">
+                      <span class="spinner" /> 等待浏览器中完成授权…
+                    </p>
                     <div class="ed-actions">
-                      <button class="ed-cancel" @click="resetCodexAuth">取消</button>
-                      <button class="ed-save" @click="openCodexVerify">
-                        <ExternalLink :size="13" :stroke-width="2" /> 重新打开授权页
+                      <button
+                        class="ed-cancel"
+                        @click="resetCodexAuth"
+                      >
+                        取消
+                      </button>
+                      <button
+                        class="ed-save"
+                        @click="openCodexVerify"
+                      >
+                        <ExternalLink
+                          :size="13"
+                          :stroke-width="2"
+                        /> 重新打开授权页
                       </button>
                     </div>
                   </template>
@@ -908,33 +1168,63 @@ function subtitleOf(p: ProviderView): string {
                   <!-- 已授权 -->
                   <template v-else-if="store.codex && store.codex.loggedIn">
                     <p class="codex-ok">
-                      <ShieldCheck :size="14" :stroke-width="2" /> 已授权 ChatGPT
+                      <ShieldCheck
+                        :size="14"
+                        :stroke-width="2"
+                      /> 已授权 ChatGPT
                     </p>
-                    <p v-if="store.currentId === 'codex'" class="codex-note">
+                    <p
+                      v-if="store.currentId === 'codex'"
+                      class="codex-note"
+                    >
                       Claude Code 正经本地翻译代理使用你的 ChatGPT 订阅(<code>gpt-5.5</code>)<template
                         v-if="store.codexProxy?.running"
-                      > · 127.0.0.1:{{ store.codexProxy.port }}</template
-                      >。
+                      >
+                        · 127.0.0.1:{{ store.codexProxy.port }}
+                      </template>。
                     </p>
-                    <p v-else class="codex-note">
+                    <p
+                      v-else
+                      class="codex-note"
+                    >
                       凭据已写入 <code>~/.codex/auth.json</code>。点「用 GPT 对话」即让 Claude Code 经本地翻译代理用上 ChatGPT 订阅(<code>gpt-5.5</code>)。
                     </p>
-                    <p v-if="store.codexProxy?.lastError" class="codex-fail">
+                    <p
+                      v-if="store.codexProxy?.lastError"
+                      class="codex-fail"
+                    >
                       代理上次报错:{{ store.codexProxy.lastError }}
                     </p>
                     <div class="ed-actions">
-                      <button class="ed-cancel" @click="startCodexAuth" :disabled="codexBusy">
-                        <RefreshCw :size="13" :stroke-width="2" /> 重新授权
+                      <button
+                        class="ed-cancel"
+                        :disabled="codexBusy"
+                        @click="startCodexAuth"
+                      >
+                        <RefreshCw
+                          :size="13"
+                          :stroke-width="2"
+                        /> 重新授权
                       </button>
                       <button
                         v-if="store.currentId !== 'codex'"
                         class="ed-save login"
                         @click="routeCodex"
                       >
-                        <Zap :size="13" :stroke-width="2" /> 用 GPT 对话
+                        <Zap
+                          :size="13"
+                          :stroke-width="2"
+                        /> 用 GPT 对话
                       </button>
-                      <button v-else class="ed-save" @click="codexOpen = false">
-                        <Check :size="13" :stroke-width="2" /> 完成
+                      <button
+                        v-else
+                        class="ed-save"
+                        @click="codexOpen = false"
+                      >
+                        <Check
+                          :size="13"
+                          :stroke-width="2"
+                        /> 完成
                       </button>
                     </div>
                   </template>
@@ -946,34 +1236,61 @@ function subtitleOf(p: ProviderView): string {
                       凭据写入 <code>~/.codex/auth.json</code>,授权后点「用 GPT 对话」即生效。
                     </p>
                     <div class="ed-actions">
-                      <button class="ed-cancel" @click="codexOpen = false">关闭</button>
+                      <button
+                        class="ed-cancel"
+                        @click="codexOpen = false"
+                      >
+                        关闭
+                      </button>
                       <button
                         class="ed-save login big"
-                        @click="startCodexAuth"
                         :disabled="codexBusy"
+                        @click="startCodexAuth"
                       >
-                        <span v-if="codexBusy" class="spinner" />
-                        <LogIn v-else :size="14" :stroke-width="2" />
+                        <span
+                          v-if="codexBusy"
+                          class="spinner"
+                        />
+                        <LogIn
+                          v-else
+                          :size="14"
+                          :stroke-width="2"
+                        />
                         {{ codexBusy ? "正在发起…" : "ChatGPT 一键授权" }}
                       </button>
                     </div>
                   </template>
 
-                  <p v-if="codexErr" class="codex-fail">
-                    <CircleAlert :size="12" :stroke-width="2" /> {{ codexErr }}
+                  <p
+                    v-if="codexErr"
+                    class="codex-fail"
+                  >
+                    <CircleAlert
+                      :size="12"
+                      :stroke-width="2"
+                    /> {{ codexErr }}
                   </p>
                 </div>
               </Transition>
 
-              <!-- ★ Claude 官方订阅授权大卡 (手工回贴授权码) -->
+              <!-- Claude 官方订阅授权大卡 (手工回贴授权码) -->
               <Transition name="ed-fade">
-                <div v-if="claudeOpen" class="claude-card">
+                <div
+                  v-if="claudeOpen"
+                  class="claude-card"
+                >
                   <div class="codex-card-head">
                     <div class="ed-title claude">
-                      <ShieldCheck :size="14" :stroke-width="2" />
+                      <ShieldCheck
+                        :size="14"
+                        :stroke-width="2"
+                      />
                       Claude 官方订阅授权
                     </div>
-                    <button class="icon-btn sm" @click="claudeOpen = false">
+                    <button
+                      class="icon-btn sm"
+                      @click="claudeOpen = false"
+                    >
                       <X :size="13" />
                     </button>
                   </div>
@@ -981,18 +1298,34 @@ function subtitleOf(p: ProviderView): string {
                   <!-- 已登录 -->
                   <template v-if="store.claudeAuth?.loggedIn && !claudeLogin">
                     <p class="codex-ok claude">
-                      <ShieldCheck :size="14" :stroke-width="2" /> 已登录 Claude 订阅
+                      <ShieldCheck
+                        :size="14"
+                        :stroke-width="2"
+                      /> 已登录 Claude 订阅
                     </p>
                     <p class="codex-note">
                       凭据已写入 <code>~/.claude/.credentials.json</code>,Polaris 与终端
                       <code>claude</code> 都会复用这份订阅,无需在外壳里再登录。
                     </p>
                     <div class="ed-actions">
-                      <button class="ed-cancel" @click="startClaudeAuth" :disabled="claudeBusy">
-                        <RefreshCw :size="13" :stroke-width="2" /> 重新授权
+                      <button
+                        class="ed-cancel"
+                        :disabled="claudeBusy"
+                        @click="startClaudeAuth"
+                      >
+                        <RefreshCw
+                          :size="13"
+                          :stroke-width="2"
+                        /> 重新授权
                       </button>
-                      <button class="ed-save" @click="claudeOpen = false">
-                        <Check :size="13" :stroke-width="2" /> 完成
+                      <button
+                        class="ed-save"
+                        @click="claudeOpen = false"
+                      >
+                        <Check
+                          :size="13"
+                          :stroke-width="2"
+                        /> 完成
                       </button>
                     </div>
                   </template>
@@ -1012,16 +1345,29 @@ function subtitleOf(p: ProviderView): string {
                       @keydown.enter.prevent="submitClaudeCode"
                     />
                     <div class="ed-actions">
-                      <button class="ed-cancel" @click="openClaudeAuthPage">
-                        <ExternalLink :size="13" :stroke-width="2" /> 重新打开登录页
+                      <button
+                        class="ed-cancel"
+                        @click="openClaudeAuthPage"
+                      >
+                        <ExternalLink
+                          :size="13"
+                          :stroke-width="2"
+                        /> 重新打开登录页
                       </button>
                       <button
                         class="ed-save login claude"
                         :disabled="claudeBusy || !claudePasted.trim()"
                         @click="submitClaudeCode"
                       >
-                        <span v-if="claudeBusy" class="spinner" />
-                        <Check v-else :size="13" :stroke-width="2" />
+                        <span
+                          v-if="claudeBusy"
+                          class="spinner"
+                        />
+                        <Check
+                          v-else
+                          :size="13"
+                          :stroke-width="2"
+                        />
                         {{ claudeBusy ? "验证中…" : "完成授权" }}
                       </button>
                     </div>
@@ -1035,37 +1381,74 @@ function subtitleOf(p: ProviderView): string {
                       <code>~/.claude/.credentials.json</code>。
                     </p>
                     <div class="ed-actions">
-                      <button class="ed-cancel" @click="claudeOpen = false">关闭</button>
+                      <button
+                        class="ed-cancel"
+                        @click="claudeOpen = false"
+                      >
+                        关闭
+                      </button>
                       <button
                         class="ed-save login claude big"
                         :disabled="claudeBusy"
                         @click="startClaudeAuth"
                       >
-                        <span v-if="claudeBusy" class="spinner" />
-                        <LogIn v-else :size="14" :stroke-width="2" />
+                        <span
+                          v-if="claudeBusy"
+                          class="spinner"
+                        />
+                        <LogIn
+                          v-else
+                          :size="14"
+                          :stroke-width="2"
+                        />
                         {{ claudeBusy ? "正在打开登录页…" : "授权登录 Claude 订阅" }}
                       </button>
                     </div>
                   </template>
 
-                  <p v-if="claudeErr" class="codex-fail">
-                    <CircleAlert :size="12" :stroke-width="2" /> {{ claudeErr }}
+                  <p
+                    v-if="claudeErr"
+                    class="codex-fail"
+                  >
+                    <CircleAlert
+                      :size="12"
+                      :stroke-width="2"
+                    /> {{ claudeErr }}
                   </p>
                 </div>
               </Transition>
 
-              <div v-if="store.error" class="err-line">{{ store.error }}</div>
+              <div
+                v-if="store.error"
+                class="err-line"
+              >
+                {{ store.error }}
+              </div>
 
-              <!-- ★ 下段:用量 + 功能键 -->
+              <!-- 下段:用量 + 功能键 -->
               <section class="usage">
                 <div class="usage-head">
                   <span class="u-title">Token 用量</span>
                   <div class="u-actions">
-                    <button class="ghost" title="完整统计" @click="openBoard">
-                      <BarChart3 :size="12" :stroke-width="1.8" /> 详细
+                    <button
+                      class="ghost"
+                      title="完整统计"
+                      @click="openBoard"
+                    >
+                      <BarChart3
+                        :size="12"
+                        :stroke-width="1.8"
+                      /> 详细
                     </button>
-                    <button class="icon-btn sm" title="刷新" @click="store.refreshUsage()">
-                      <RefreshCw :size="12" :stroke-width="1.8" />
+                    <button
+                      class="icon-btn sm"
+                      title="刷新"
+                      @click="store.refreshUsage()"
+                    >
+                      <RefreshCw
+                        :size="12"
+                        :stroke-width="1.8"
+                      />
                     </button>
                   </div>
                 </div>
@@ -1083,25 +1466,52 @@ function subtitleOf(p: ProviderView): string {
                       <span class="chip-num">{{ fmt(bucketOf(pd.key)?.total || 0) }}</span>
                     </button>
                   </div>
-                  <div v-if="activeBucket" class="mini-foot">
+                  <div
+                    v-if="activeBucket"
+                    class="mini-foot"
+                  >
                     <span>成本估算 <b>{{ fmtCost(activeBucket.cost) }}</b></span>
                     <span>输入 {{ fmt(activeBucket.input) }} · 输出 {{ fmt(activeBucket.output) }}</span>
                     <span>{{ activeBucket.requests }} 次</span>
                   </div>
                 </template>
-                <div v-else class="usage-empty">
-                  暂无用量数据<br /><span>(尚未通过 Claude Code 产生会话)</span>
+                <div
+                  v-else
+                  class="usage-empty"
+                >
+                  暂无用量数据<br><span>(尚未通过 Claude Code 产生会话)</span>
                 </div>
 
                 <div class="util-row">
-                  <button class="util" title="管理供应商" @click="addCustom">
-                    <KeyRound :size="12" :stroke-width="1.8" /> 管理
+                  <button
+                    class="util"
+                    title="管理供应商"
+                    @click="addCustom"
+                  >
+                    <KeyRound
+                      :size="12"
+                      :stroke-width="1.8"
+                    /> 管理
                   </button>
-                  <button class="util" title="从 JSON 导入供应商配置" @click="openImport">
-                    <Download :size="12" :stroke-width="1.8" /> 导入
+                  <button
+                    class="util"
+                    title="从 JSON 导入供应商配置"
+                    @click="openImport"
+                  >
+                    <Download
+                      :size="12"
+                      :stroke-width="1.8"
+                    /> 导入
                   </button>
-                  <button class="util" title="导出全部供应商配置为 JSON" @click="openExport">
-                    <Upload :size="12" :stroke-width="1.8" /> 导出
+                  <button
+                    class="util"
+                    title="导出全部供应商配置为 JSON"
+                    @click="openExport"
+                  >
+                    <Upload
+                      :size="12"
+                      :stroke-width="1.8"
+                    /> 导出
                   </button>
                 </div>
               </section>
@@ -1114,14 +1524,27 @@ function subtitleOf(p: ProviderView): string {
     <!-- 导入 / 导出 配置弹层 -->
     <Teleport to="body">
       <Transition name="io-fade">
-        <div v-if="ioOpen" class="io-mask" @click.self="ioOpen = false">
+        <div
+          v-if="ioOpen"
+          class="io-mask"
+          @click.self="ioOpen = false"
+        >
           <div class="io-card">
             <header class="io-head">
               <span class="io-title">
-                <component :is="ioMode === 'export' ? Upload : ClipboardPaste" :size="15" :stroke-width="2" />
+                <component
+                  :is="ioMode === 'export' ? Upload : ClipboardPaste"
+                  :size="15"
+                  :stroke-width="2"
+                />
                 {{ ioMode === "export" ? "导出供应商配置" : "导入供应商配置" }}
               </span>
-              <button class="icon-btn sm" @click="ioOpen = false"><X :size="14" /></button>
+              <button
+                class="icon-btn sm"
+                @click="ioOpen = false"
+              >
+                <X :size="14" />
+              </button>
             </header>
             <p class="io-hint">
               {{
@@ -1138,13 +1561,22 @@ function subtitleOf(p: ProviderView): string {
               :placeholder="ioMode === 'import' ? '在此粘贴供应商配置 JSON…' : ''"
             />
             <div class="io-actions">
-              <button class="ed-cancel" @click="ioOpen = false">关闭</button>
+              <button
+                class="ed-cancel"
+                @click="ioOpen = false"
+              >
+                关闭
+              </button>
               <button
                 v-if="ioMode === 'export'"
                 class="ed-save"
                 @click="copyExport"
               >
-                <component :is="ioCopied ? Check : Copy" :size="13" :stroke-width="2" />
+                <component
+                  :is="ioCopied ? Check : Copy"
+                  :size="13"
+                  :stroke-width="2"
+                />
                 {{ ioCopied ? "已复制" : "复制到剪贴板" }}
               </button>
               <button
@@ -1153,8 +1585,15 @@ function subtitleOf(p: ProviderView): string {
                 :disabled="ioBusy || !ioText.trim()"
                 @click="runImport"
               >
-                <span v-if="ioBusy" class="spinner" />
-                <Download v-else :size="13" :stroke-width="2" />
+                <span
+                  v-if="ioBusy"
+                  class="spinner"
+                />
+                <Download
+                  v-else
+                  :size="13"
+                  :stroke-width="2"
+                />
                 {{ ioBusy ? "导入中…" : "导入" }}
               </button>
             </div>
@@ -1166,13 +1605,24 @@ function subtitleOf(p: ProviderView): string {
     <!-- 删除确认弹层（应用内，非阻塞） -->
     <Teleport to="body">
       <Transition name="io-fade">
-        <div v-if="removeTarget" class="io-mask" @click.self="removeTarget = null">
+        <div
+          v-if="removeTarget"
+          class="io-mask"
+          @click.self="removeTarget = null"
+        >
           <div class="confirm-card">
-            <div class="confirm-ic"><TriangleAlert :size="22" :stroke-width="1.8" /></div>
+            <div class="confirm-ic">
+              <TriangleAlert
+                :size="22"
+                :stroke-width="1.8"
+              />
+            </div>
             <div class="confirm-title">
               {{ removeTarget.isPreset ? "清除此供应商配置？" : "删除此供应商？" }}
             </div>
-            <div class="confirm-name">{{ removeTarget.name }}</div>
+            <div class="confirm-name">
+              {{ removeTarget.name }}
+            </div>
             <div class="confirm-desc">
               {{
                 removeTarget.isPreset
@@ -1181,10 +1631,27 @@ function subtitleOf(p: ProviderView): string {
               }}
             </div>
             <div class="confirm-actions">
-              <button class="ed-cancel" :disabled="removeBusy" @click="removeTarget = null">取消</button>
-              <button class="ed-danger" :disabled="removeBusy" @click="confirmRemove">
-                <span v-if="removeBusy" class="spinner" />
-                <Trash2 v-else :size="13" :stroke-width="2" />
+              <button
+                class="ed-cancel"
+                :disabled="removeBusy"
+                @click="removeTarget = null"
+              >
+                取消
+              </button>
+              <button
+                class="ed-danger"
+                :disabled="removeBusy"
+                @click="confirmRemove"
+              >
+                <span
+                  v-if="removeBusy"
+                  class="spinner"
+                />
+                <Trash2
+                  v-else
+                  :size="13"
+                  :stroke-width="2"
+                />
                 {{ removeTarget.isPreset ? "清除配置" : "删除" }}
               </button>
             </div>
@@ -1204,9 +1671,10 @@ function subtitleOf(p: ProviderView): string {
   align-items: center;
   gap: 9px;
   padding: 7px 9px;
-  background: linear-gradient(180deg, var(--panel) 0%, var(--bg-soft) 100%);
-  border: 1px solid var(--border-soft);
-  border-radius: 9px;
+  /* 玻璃小卡:渐变玻璃底 + 白玻璃描边 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
   text-align: left;
   transition: border-color 140ms ease, box-shadow 140ms ease;
   box-shadow: var(--shadow-sm);
@@ -1230,14 +1698,33 @@ function subtitleOf(p: ProviderView): string {
   max-height: min(82vh, 760px);
   display: flex;
   flex-direction: column;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--hairline);
+  /* 悬浮 chrome:真磨砂玻璃浮层 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   overflow: hidden;
 }
+/* 棱边折射环:跟随圆角的 1px 玻璃棱光 */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
 .panel-accent { height: 2px; background: linear-gradient(90deg, var(--primary) 0%, var(--gold) 55%, var(--vermilion) 100%); opacity: 0.85; }
-.panel-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 13px 12px 10px 14px; border-bottom: 1px solid var(--border-soft); }
+/* 头部发丝线:两端渐隐 */
+.panel-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 13px 12px 10px 14px; border-bottom: 1px solid transparent; border-image: var(--hairline-grad) 1; }
 .head-titles { display: flex; flex-direction: column; gap: 2px; }
 .head-actions { display: flex; gap: 2px; }
 .title { font-family: var(--serif); font-size: 14.5px; font-weight: 600; color: var(--ink); letter-spacing: 1.5px; }
@@ -1287,9 +1774,11 @@ function subtitleOf(p: ProviderView): string {
 .now-card {
   margin: 8px 10px 4px;
   padding: 10px 11px 9px;
-  border: 1px solid var(--border);
+  /* 玻璃卡片:渐变底 + 白玻璃描边 + 发丝投影 */
+  border: 1px solid var(--card-border);
   border-radius: 10px;
-  background: linear-gradient(180deg, var(--panel) 0%, var(--bg-soft) 100%);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   display: flex; flex-direction: column; gap: 9px;
 }
 .now-card.codex { border-color: #10a37f55; background: #10a37f0c; }
@@ -1329,15 +1818,17 @@ function subtitleOf(p: ProviderView): string {
   width: 100%;
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   padding: 7px 10px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  /* 次级玻璃按钮 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text-2);
   font-size: 12px;
   border-radius: 7px;
   font-weight: 500;
-  transition: border-color 120ms ease, background 120ms ease;
+  transition: border-color 120ms var(--ease, ease), background 120ms var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .now-cta:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.now-cta:active { transform: scale(0.98); }
 .now-cta.codex-cta {
   background: #10a37f; border-color: #10a37f; color: #fff; font-weight: 600;
   box-shadow: 0 1px 0 #10a37f33, 0 0 0 3px #10a37f14;
@@ -1370,7 +1861,7 @@ function subtitleOf(p: ProviderView): string {
 .prov-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .prov-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .prov-name { font-size: 12.5px; color: var(--text); font-weight: 500; display: inline-flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.prov-name .kcodex { font-family: var(--mono); font-size: 8.5px; padding: 0 4px; border-radius: 3px; color: #10a37f; border: 1px solid #10a37f66; font-weight: 600; letter-spacing: 0.5px; }
+.prov-name .kcodex { font-family: var(--mono); font-size: 8.5px; padding: 0 4px; border-radius: 3px; color: #10a37f; border: 1px solid #10a37f66; font-weight: 600; letter-spacing: 0.08em; }
 .prov-host { font-size: 10px; color: var(--muted); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prov-tail { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .badge-on { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--primary-deep); font-weight: 600; }
@@ -1429,7 +1920,7 @@ function subtitleOf(p: ProviderView): string {
 .err-line { margin: 0 14px 9px; font-size: 11px; color: var(--vermilion); background: var(--vermilion-soft); border-radius: 6px; padding: 6px 9px; }
 
 /* ── 用量 + 功能键 ───────────────────────── */
-.usage { border-top: 1px solid var(--border-soft); padding: 12px 14px 14px; margin-top: 4px; }
+.usage { border-top: 1px solid transparent; border-image: var(--hairline-grad) 1; padding: 12px 14px 14px; margin-top: 4px; }
 .usage-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .u-title { font-family: var(--serif); font-size: 11px; letter-spacing: 1.5px; color: var(--dim); }
 .u-actions { display: flex; align-items: center; gap: 4px; }
@@ -1471,17 +1962,23 @@ function subtitleOf(p: ProviderView): string {
 /* ── 导入/导出 + 删除确认 弹层 ───────────────────────── */
 .io-mask {
   position: fixed; inset: 0; z-index: 9700;
+  /* 液态玻璃遮罩:压暗 + 磨砂 */
   background: var(--overlay, rgba(20, 20, 25, 0.42));
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex; align-items: center; justify-content: center; padding: 24px;
 }
 .io-card {
+  position: relative;
   width: min(560px, 94vw);
   display: flex; flex-direction: column; gap: 11px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-lg);
+  /* 悬浮 chrome:磨砂玻璃弹窗 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   padding: 16px 18px 18px;
 }
 .io-head { display: flex; align-items: center; justify-content: space-between; }
@@ -1493,18 +1990,38 @@ function subtitleOf(p: ProviderView): string {
   color: var(--text); background: var(--bg-soft);
   border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px;
 }
-.io-text:focus { outline: none; border-color: var(--primary); }
+.io-text:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .io-text[readonly] { color: var(--text-2); }
 .io-actions, .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 .confirm-card {
+  position: relative;
   width: min(380px, 92vw);
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg);
+  /* 悬浮 chrome:磨砂玻璃确认卡 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   padding: 24px 22px 18px;
+}
+/* 棱边折射环:弹窗层(io-card / confirm-card)共用 */
+.io-card::before,
+.confirm-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .confirm-ic {
   width: 44px; height: 44px; border-radius: 50%;
@@ -1522,9 +2039,10 @@ function subtitleOf(p: ProviderView): string {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 9px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
   border: 1px solid var(--vermilion); background: var(--vermilion); color: #fff;
-  transition: filter 0.14s ease;
+  transition: filter 0.14s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .ed-danger:hover:not(:disabled) { filter: brightness(0.92); }
+.ed-danger:active:not(:disabled) { transform: scale(0.98); }
 .ed-danger:disabled { opacity: 0.6; cursor: default; }
 
 .io-fade-enter-active, .io-fade-leave-active { transition: opacity 180ms ease; }

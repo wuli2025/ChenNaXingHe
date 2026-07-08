@@ -39,8 +39,14 @@ const seats = computed(() =>
           <DigitalWorker :busy="s.busy" />
         </div>
         <div class="seat-foot">
-          <span class="dot" :class="{ on: s.busy }"></span>
-          <span class="label" :title="s.title">
+          <span
+            class="dot"
+            :class="{ on: s.busy }"
+          />
+          <span
+            class="label"
+            :title="s.title"
+          >
             {{ s.busy ? s.title || "工作中…" : "摸鱼" }}
           </span>
         </div>
@@ -51,10 +57,11 @@ const seats = computed(() =>
 
 <style scoped>
 .office {
-  background:
-    radial-gradient(120% 80% at 50% 0%, #f2efe7 0%, var(--bg-soft) 60%);
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
+  /* 办公室外框：玻璃卡材质（token 四主题自适应，替换旧硬编码浅色渐变） */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
   padding: 16px 18px 18px;
   margin-bottom: 18px;
 }
@@ -81,10 +88,12 @@ const seats = computed(() =>
   gap: 12px;
 }
 .seat {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
+  /* 工位玻璃小卡 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 8px;
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   transition: border-color 0.3s, box-shadow 0.3s;
@@ -95,8 +104,8 @@ const seats = computed(() =>
 }
 .seat-stage {
   height: 96px;
-  background:
-    linear-gradient(180deg, #fbfaf6 0%, #f4f2ea 100%);
+  /* 舞台地面改用 token，黑夜模式不再刺眼 */
+  background: var(--bg-soft);
   border-radius: 6px;
   overflow: hidden;
 }

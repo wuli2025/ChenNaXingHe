@@ -1,13 +1,15 @@
 /* ===== Polaris 墨蓝水墨主题 (v6 token, 沿用 PRD) ===== */
 :root {
-  --bg: #fafaf7;
-  --bg-soft: #f5f4ef;
+  /* 低视觉污染稿(2026-07 用户指定, 对齐 polaris-app 收敛版):
+     全局退到近中性灰白、纯平无渐变, 页面只剩内容有颜色 */
+  --bg: #fafaf9;
+  --bg-soft: #f4f4f2;
   --panel: #ffffff;
-  --panel-hover: #fbfaf6;
+  --panel-hover: #fafaf8;
 
-  --border: #e2e0d8;
-  --border-soft: #ecebe5;
-  --border-strong: #d0cec5;
+  --border: #e3e2de;
+  --border-soft: #edecea;
+  --border-strong: #d2d1cc;
 
   --text: #1a1a1c;
   --text-2: #44444a;
@@ -42,41 +44,73 @@
   --code-bg: #f4f3ee;
   --code-text: #3a3a40;
 
-  /* 苹果式多层柔投影：近处一层收边 + 远处一层大范围柔化，低透明度堆叠出「浮起」感 */
-  --shadow-sm: 0 1px 2px rgba(20, 20, 25, 0.04);
-  --shadow: 0 1px 2px rgba(20, 20, 25, 0.04), 0 6px 16px -8px rgba(20, 20, 25, 0.09);
-  --shadow-lg: 0 2px 6px rgba(20, 20, 25, 0.05),
-    0 18px 44px -14px rgba(20, 20, 25, 0.16);
+  /* 投影收敛：单层极淡, 只分层不造戏 */
+  --shadow-sm: 0 1px 1px rgba(20, 20, 25, 0.018);
+  --shadow: 0 1px 6px rgba(20, 20, 25, 0.025);
+  --shadow-lg: 0 4px 22px rgba(20, 20, 25, 0.06);
 
   --hairline: rgba(20, 20, 25, 0.06);
+
+  /* ===== Liquid Glass 卡片材质（v8）=====
+     Apple Liquid Glass 的「平价配方」：卡片不开 backdrop-filter（GPU 太贵、
+     数量大），改用 上白下透渐变底 + 白玻璃描边 + 顶部镜面高光 + 外圈发丝暗环
+     + 多层柔投影 五件套堆出玻璃厚度感。真模糊只留给 chrome 层
+     （侧栏/弹窗/命令面板/浮条），走 --glass-bg + --glass-blur。
+     组件只引用 var()，四套主题各自覆盖。 */
+  /* 卡片材质收敛(2026-07): 玻璃五件套退役 —— 纯白面板 + 实线描边 + 单层极淡投影。
+     token 名保留(组件全在引用), 值全部拍平。 */
+  --card-bg: #ffffff;
+  --card-border: var(--border);
+  --card-ring: 0 0 0 1px rgba(20, 20, 25, 0.045);
+  --card-hi: inset 0 0 0 0 transparent;
+  --card-shadow: var(--card-ring), 0 1px 6px rgba(20, 20, 25, 0.025);
+  --card-shadow-hover: var(--card-ring), 0 4px 22px rgba(20, 20, 25, 0.06);
+  /* chrome 层（弹窗/命令面板/浮层）：近实底白 + 轻模糊, 不再造「厚玻璃」 */
+  --chrome-bg: rgba(255, 255, 255, 0.94);
+  --chrome-blur: blur(14px);
+  --chrome-border: var(--border);
+  --chrome-shadow: 0 0 0 1px rgba(20, 20, 25, 0.05),
+    0 4px 22px rgba(20, 20, 25, 0.08);
+
+  /* ===== v9 高级感层 =====
+     统一缓动（快出慢收 / 微回弹）+ 玻璃棱边折射光 + 掠过流光 + 渐隐发丝线。
+     棱边折射是 Liquid Glass 的签名细节：光从左上打进玻璃，
+     左上棱最亮、右下棱次亮、中段几乎消失 —— 用 135° 四段渐变模拟。 */
+  --ease: cubic-bezier(0.22, 0.7, 0.25, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.5, 1);
+  /* 折射光/流光退役: 置为不可见, 组件引用不动 */
+  --edge-refract: linear-gradient(135deg, transparent, transparent);
+  --sheen: linear-gradient(105deg, transparent, transparent);
+  --hairline-grad: linear-gradient(90deg, transparent, var(--hairline) 16%, var(--hairline) 84%, transparent);
+  --scroll-thumb: rgba(20, 20, 25, 0.16);
+  --scroll-thumb-hover: rgba(20, 20, 25, 0.28);
 
   /* ===== 琉璃玻璃（默认浅色）=====
      环境光：极淡的角落光晕，让磨砂玻璃后面「有东西可透」；
      glass：磨砂面板底色 + 统一模糊配方 + 顶部内高光。整套挂在 token 上，
      深/浅/极光各自覆盖，组件只引用 var()。 */
-  --ambient: radial-gradient(1100px 760px at 6% -12%, rgba(88, 138, 214, 0.1), transparent 58%),
-    radial-gradient(980px 720px at 114% 6%, rgba(176, 138, 214, 0.08), transparent 55%),
-    radial-gradient(1000px 900px at 50% 120%, rgba(167, 140, 79, 0.06), transparent 60%),
-    var(--bg-side);
-  --glass-bg: rgba(252, 251, 247, 0.72);
-  --glass-side: rgba(247, 246, 240, 0.6);
-  --glass-blur: blur(22px) saturate(180%);
-  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.55);
+  /* 顶层再织一层 5% 颗粒噪点：磨砂玻璃透出它时有真实材质的「沙感」，去数码塑料味 */
+  /* 环境噪点/角落光晕退役: 纯平底色; 磨砂改近实底 + 轻模糊 */
+  --ambient: var(--bg-side);
+  --glass-bg: rgba(252, 252, 251, 0.92);
+  --glass-side: rgba(242, 242, 239, 0.92);
+  --glass-blur: blur(10px);
+  --glass-hi: inset 0 0 0 0 transparent;
+  --glass-border: var(--border-soft);
 
   /* ===== v7 琉璃质感（仿 Codex/Kimi 收敛稿）=====
      主区暖白、侧栏略深一档的暖米（Codex 形态：靠色差分区，无分割线）；
      琉璃流光描边用于产物 chip 等边缘点缀（暖金调，若有似无） */
   /* 仿 Codex 浅色：主区近白面板，侧栏/框面暖米色 + 中部微光渐变（用户指定保留） */
-  --bg-chat: #fcfbf7;
-  --bg-side: #f3f2eb;
-  --bg-side-mid: #f7f6ef;
+  --bg-chat: #fdfdfb;
+  --bg-side: #f2f2ef;
+  --bg-side-mid: #f2f2ef;
   --liuli-edge: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.9),
-    rgba(167, 140, 79, 0.14) 50%,
-    rgba(196, 186, 164, 0.22) 80%,
-    rgba(255, 255, 255, 0.75)
+    rgba(255, 255, 255, 0.85),
+    rgba(150, 148, 140, 0.1) 50%,
+    rgba(170, 168, 160, 0.14) 80%,
+    rgba(255, 255, 255, 0.7)
   );
 
   --serif: "Source Han Serif SC", "Noto Serif SC", STSong, "SimSun", serif;
@@ -182,14 +216,33 @@ a:hover {
 
   --hairline: rgba(255, 255, 255, 0.07);
 
-  /* 深色琉璃：环境光压到极淡冷调，磨砂面板走半透黑，模糊配方降饱和不发糊 */
-  --ambient: radial-gradient(1100px 760px at 6% -12%, rgba(120, 150, 220, 0.07), transparent 58%),
-    radial-gradient(980px 720px at 114% 6%, rgba(150, 120, 200, 0.055), transparent 55%),
-    var(--bg-side);
-  --glass-bg: rgba(35, 35, 34, 0.68);
-  --glass-side: rgba(29, 29, 29, 0.6);
-  --glass-blur: blur(22px) saturate(140%);
-  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  /* 深色卡片收敛: 实底面板 + 白系细描边, 无渐变无镜面高光 */
+  --card-bg: #232322;
+  --card-border: rgba(255, 255, 255, 0.09);
+  --card-ring: 0 0 0 1px rgba(0, 0, 0, 0.28);
+  --card-hi: inset 0 0 0 0 transparent;
+  --card-shadow: var(--card-ring), 0 1px 6px rgba(0, 0, 0, 0.28);
+  --card-shadow-hover: var(--card-ring), 0 4px 22px rgba(0, 0, 0, 0.42);
+  --chrome-bg: rgba(32, 32, 33, 0.94);
+  --chrome-blur: blur(14px);
+  --chrome-border: rgba(255, 255, 255, 0.1);
+  --chrome-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 4px 22px rgba(0, 0, 0, 0.4);
+
+  /* 折射光/流光退役(与浅色一致) */
+  --edge-refract: linear-gradient(135deg, transparent, transparent);
+  --sheen: linear-gradient(105deg, transparent, transparent);
+  --scroll-thumb: rgba(255, 255, 255, 0.14);
+  --scroll-thumb-hover: rgba(255, 255, 255, 0.24);
+
+  /* 深色琉璃：环境光压到极淡冷调，磨砂面板走半透黑，模糊配方降饱和不发糊；
+     颗粒噪点在深色下略调高一点才可感知 */
+  /* 深色环境噪点/光晕退役: 纯平底色 */
+  --ambient: var(--bg-side);
+  --glass-bg: rgba(35, 35, 34, 0.94);
+  --glass-side: rgba(29, 29, 29, 0.92);
+  --glass-blur: blur(10px);
+  --glass-hi: inset 0 0 0 0 transparent;
   --glass-border: rgba(255, 255, 255, 0.08);
 
   /* Codex 形态：主区略暗、框面/侧栏略亮，侧栏中部微光走 --bg-side-mid */
@@ -199,7 +252,7 @@ a:hover {
   --liuli-edge: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.22),
-    rgba(212, 176, 106, 0.12) 50%,
+    rgba(160, 160, 158, 0.12) 50%,
     rgba(255, 255, 255, 0.1) 80%,
     rgba(255, 255, 255, 0.16)
   );
@@ -277,26 +330,26 @@ html[data-theme="aurora-dark"] .shell {
   background: transparent;
 }
 /* 侧栏=画框主体：磨砂玻璃透出极光（浅色高彩度、深色低彩度更收敛） */
-html[data-theme="aurora-light"] .sb {
+html[data-theme="aurora-light"] .sidenav {
   backdrop-filter: blur(28px) saturate(185%);
   -webkit-backdrop-filter: blur(28px) saturate(185%);
 }
-html[data-theme="aurora-dark"] .sb {
+html[data-theme="aurora-dark"] .sidenav {
   backdrop-filter: blur(28px) saturate(120%);
   -webkit-backdrop-filter: blur(28px) saturate(120%);
 }
 /* 框带多留一点缝，让画框更明显 */
-html[data-theme="aurora-light"] .main,
-html[data-theme="aurora-dark"] .main {
+html[data-theme="aurora-light"] .content,
+html[data-theme="aurora-dark"] .content {
   margin: 12px;
 }
 /* 主内容面板：底保持不透明干净（软白 / 墨黑），只在外缘做「琉璃画框」——
    用 mask 渐变描边法画一圈跟随圆角的彩虹边 + 柔光 */
-html[data-theme="aurora-light"] .main {
+html[data-theme="aurora-light"] .content {
   box-shadow: 0 20px 52px -26px rgba(120, 100, 200, 0.42),
     0 0 0 1px rgba(255, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
-html[data-theme="aurora-dark"] .main {
+html[data-theme="aurora-dark"] .content {
   box-shadow: 0 20px 52px -26px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
@@ -309,16 +362,16 @@ html[data-theme="aurora-dark"] .main {
   inherits: true;
   initial-value: 0deg;
 }
-html[data-theme="aurora-light"] .main {
+html[data-theme="aurora-light"] .content {
   --edge-comet: rgba(255, 255, 255, 0.95);
   --edge-halo: rgba(255, 255, 255, 0.42);
 }
-html[data-theme="aurora-dark"] .main {
+html[data-theme="aurora-dark"] .content {
   --edge-comet: rgba(206, 218, 255, 0.7);
   --edge-halo: rgba(178, 194, 255, 0.28);
 }
-html[data-theme="aurora-light"] .main::after,
-html[data-theme="aurora-dark"] .main::after {
+html[data-theme="aurora-light"] .content::after,
+html[data-theme="aurora-dark"] .content::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -443,20 +496,30 @@ html[data-theme="aurora-dark"] .aurora span {
   }
 }
 
-/* 全局滚动条 (细) */
+/* 全局滚动条：玻璃拇指 —— 半透浮在内容上，带 3px 透明衬边像悬空的玻璃条 */
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 11px;
+  height: 11px;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
+  background: var(--scroll-thumb, var(--border));
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 8px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong);
+  background: var(--scroll-thumb-hover, var(--border-strong));
+  background-clip: padding-box;
 }
-*::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* v9 字面气质：标题收紧字距（光学排印），微标签放宽 —— 大字紧、小字松 */
+h1, h2, h3 {
+  letter-spacing: -0.015em;
+  font-weight: 700;
 }
 
 /* ═══════════ 全局键盘焦点指示(a11y 白送项) ═══════════ */
@@ -464,6 +527,50 @@ html[data-theme="aurora-dark"] .aurora span {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
   border-radius: 4px;
+}
+
+/* ═══════════ Liquid Glass 全局工具类（v8） ═══════════
+   .glass-card   内容卡片：渐变玻璃底+镜面高光，无 backdrop-filter（省 GPU）
+   .glass-chrome 悬浮 chrome：弹窗/命令面板/浮条，真磨砂 backdrop-filter
+   组件可直接挂类，也可在 scoped 样式里引用同名 token 自绘。 */
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+}
+.glass-chrome {
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
+}
+/* 玻璃棱边折射环（v9）：挂在任意圆角面上，画一圈跟随圆角的 1px 折射光。
+   mask 双层异或挖空，只留 padding 那 1px；不吃鼠标事件。 */
+.lg-edge {
+  position: relative;
+}
+.lg-edge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
+/* 弹窗遮罩统一配方：轻染色 + 微模糊，让底下界面「退成毛玻璃背景」 */
+.glass-scrim {
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
 }
 
 /* ═══════════ markdown 代码块包壳(全 v-html 区域共用) ═══════════ */

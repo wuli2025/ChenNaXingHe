@@ -44,16 +44,30 @@ function retry() {
 
 <template>
   <slot v-if="!err" />
-  <div v-else class="fb">
+  <div
+    v-else
+    class="fb"
+  >
     <div class="fb-card">
-      <div class="fb-icon">⚠️</div>
-      <h3 class="fb-title">这个功能暂时出错了</h3>
-      <p class="fb-sub">其它功能不受影响 —— 左侧任意功能键都能照常使用。可点「重试」重新加载本功能。</p>
+      <div class="fb-icon">
+        提示
+      </div>
+      <h3 class="fb-title">
+        这个功能暂时出错了
+      </h3>
+      <p class="fb-sub">
+        其它功能不受影响 —— 左侧任意功能键都能照常使用。可点「重试」重新加载本功能。
+      </p>
       <details class="fb-detail">
         <summary>错误详情</summary>
         <pre>{{ err.message }}</pre>
       </details>
-      <button class="fb-btn" @click="retry">重试</button>
+      <button
+        class="fb-btn"
+        @click="retry"
+      >
+        重试
+      </button>
     </div>
   </div>
 </template>
@@ -67,15 +81,33 @@ function retry() {
   padding: 32px;
 }
 .fb-card {
+  position: relative;
   max-width: 440px;
   width: 100%;
   text-align: center;
   padding: 34px 30px;
   border-radius: 18px;
-  background: var(--bg-elev, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--hairline, rgba(255, 255, 255, 0.1));
-  box-shadow: var(--shadow, 0 10px 40px rgba(0, 0, 0, 0.25));
-  backdrop-filter: saturate(150%) blur(18px);
+  /* 悬浮 chrome:磨砂玻璃错误卡,四主题下自动换值 */
+  background: var(--chrome-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--chrome-border, rgba(255, 255, 255, 0.1));
+  box-shadow: var(--chrome-shadow, 0 10px 40px rgba(0, 0, 0, 0.25));
+  backdrop-filter: var(--chrome-blur, saturate(150%) blur(18px));
+  -webkit-backdrop-filter: var(--chrome-blur, saturate(150%) blur(18px));
+}
+/* 棱边折射环:跟随圆角的 1px 玻璃棱光 */
+.fb-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .fb-icon {
   font-size: 38px;
@@ -126,10 +158,13 @@ function retry() {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .fb-btn:hover {
   background: var(--primary, #6db5ff);
   color: #fff;
+}
+.fb-btn:active {
+  transform: scale(0.98);
 }
 </style>

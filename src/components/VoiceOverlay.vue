@@ -41,12 +41,12 @@ onMounted(async () => {
     await listen<{ text?: string; error?: string; cancelled?: boolean }>("voice:final", (f) => {
       listening.value = false;
       if (f?.error) {
-        note.value = "✗ " + f.error;
+        note.value = f.error;
       } else if (f?.cancelled) {
         note.value = "（太短，已取消）";
       } else {
         text.value = f?.text ?? text.value;
-        note.value = "✓ 已上屏";
+        note.value = "已上屏";
       }
       // 终稿短暂展示后淡出
       clearTimeout(hideTimer);
@@ -65,16 +65,36 @@ onUnmounted(() => {
 
 <template>
   <Transition name="vov">
-    <div v-if="visible" class="vov" :class="{ live: listening }">
-      <div v-if="listening" class="wave">
-        <i v-for="n in 6" :key="n" :style="{ animationDelay: n * 0.08 + 's' }"></i>
+    <div
+      v-if="visible"
+      class="vov"
+      :class="{ live: listening }"
+    >
+      <div
+        v-if="listening"
+        class="wave"
+      >
+        <i
+          v-for="n in 6"
+          :key="n"
+          :style="{ animationDelay: n * 0.08 + 's' }"
+        />
       </div>
-      <span v-else class="dot">●</span>
+      <span
+        v-else
+        class="dot"
+      >●</span>
       <span class="txt">
         {{ text || (listening ? "在听…" : "") }}
-        <span v-if="listening" class="cur"></span>
+        <span
+          v-if="listening"
+          class="cur"
+        />
       </span>
-      <span v-if="note" class="note">{{ note }}</span>
+      <span
+        v-if="note"
+        class="note"
+      >{{ note }}</span>
     </div>
   </Transition>
 </template>
@@ -91,11 +111,13 @@ onUnmounted(() => {
   gap: 12px;
   max-width: min(70vw, 720px);
   padding: 10px 20px;
-  background: rgba(31, 31, 31, 0.96);
+  /* 深色玻璃胶囊:降底色不透明度 + 真磨砂,文字为硬编码浅色故保持深色身份 */
+  background: rgba(28, 29, 36, 0.72);
   border: 1px solid var(--gold, #d4b06a);
-  border-radius: 30px;
-  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 36px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
 }
 .wave {
   display: flex;
@@ -150,7 +172,7 @@ onUnmounted(() => {
 }
 .vov-enter-active,
 .vov-leave-active {
-  transition: opacity 0.25s, transform 0.25s;
+  transition: opacity 0.25s var(--ease, ease), transform 0.25s var(--ease, ease);
 }
 .vov-enter-from,
 .vov-leave-to {

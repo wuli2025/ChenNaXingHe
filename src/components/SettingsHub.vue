@@ -31,11 +31,19 @@ const active = computed(() =>
 </script>
 
 <template>
-  <div class="hub-mask" @click.self="app.closeSettings()">
+  <div
+    class="hub-mask"
+    @click.self="app.closeSettings()"
+  >
     <div class="hub">
       <header class="hub-top">
         <span class="hub-title">设置 / 更多</span>
-        <button class="hub-x" @click="app.closeSettings()"><X :size="18" /></button>
+        <button
+          class="hub-x"
+          @click="app.closeSettings()"
+        >
+          <X :size="18" />
+        </button>
       </header>
       <div class="hub-body">
         <nav class="hub-nav">
@@ -50,7 +58,10 @@ const active = computed(() =>
           </button>
         </nav>
         <div class="hub-pane">
-          <div v-if="active === 'provider'" class="provider-pane">
+          <div
+            v-if="active === 'provider'"
+            class="provider-pane"
+          >
             <ProviderDock />
           </div>
           <Settings v-else-if="active === 'general'" />
@@ -67,30 +78,53 @@ const active = computed(() =>
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(2px);
+  /* 液态玻璃遮罩：统一 scrim 配方 */
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 28px;
 }
 .hub {
+  position: relative;
   width: min(1160px, 96vw);
   height: min(820px, 92vh);
-  background: var(--bg-chat);
-  border: 1px solid var(--hairline);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg, 0 20px 60px rgba(0, 0, 0, 0.35));
+  /* 液态玻璃：设置中枢大弹窗走 chrome 真磨砂配方 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 20px;
+  box-shadow: var(--chrome-shadow);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+/* v9：设置中枢主容器一圈棱边折射环 */
+.hub::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .hub-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--hairline);
+  /* v9：头部渐隐发丝线 */
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   flex: 0 0 auto;
 }
 .hub-title {
@@ -124,7 +158,8 @@ const active = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: var(--bg-side);
+  /* 液态玻璃：侧栏透出玻璃侧面色，与 chrome 弹窗融为一体 */
+  background: var(--glass-side);
   overflow-y: auto;
 }
 .nav-item {

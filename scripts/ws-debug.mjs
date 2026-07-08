@@ -6,9 +6,9 @@ const inv = async (cmd, args) => {
 };
 const ws = new WebSocket("ws://localhost:8080/ws");
 let phase = 0, myReq = null, cid = null;
-const frames = [];
+const _frames = [];
 
-function watch(reqId, label, done) {
+function watch(reqId, label, _done) {
   myReq = reqId; console.log(`\n=== ${label} reqId=${reqId} ===`);
 }
 

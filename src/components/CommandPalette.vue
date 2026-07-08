@@ -86,16 +86,27 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div v-if="paletteOpen" class="cp-overlay" @click.self="close">
-    <div class="cp" role="dialog" aria-label="命令面板">
+  <div
+    v-if="paletteOpen"
+    class="cp-overlay"
+    @click.self="close"
+  >
+    <div
+      class="cp"
+      role="dialog"
+      aria-label="命令面板"
+    >
       <div class="cp-search">
-        <SearchGlass :size="15" :stroke-width="1.8" />
+        <SearchGlass
+          :size="15"
+          :stroke-width="1.8"
+        />
         <input
           ref="inputEl"
           v-model="query"
           placeholder="搜对话,或输入功能名跳转…"
           @keydown="onKeydown"
-        />
+        >
         <kbd>Esc</kbd>
       </div>
       <div class="cp-list">
@@ -107,12 +118,25 @@ function onKeydown(e: KeyboardEvent) {
           @mouseenter="active = i"
           @click="pick(it)"
         >
-          <component :is="it.icon" :size="14" :stroke-width="1.7" class="cp-ic" />
+          <component
+            :is="it.icon"
+            :size="14"
+            :stroke-width="1.7"
+            class="cp-ic"
+          />
           <span class="cp-label">{{ it.label }}</span>
-          <span v-if="it.sub" class="cp-sub">{{ it.sub }}</span>
+          <span
+            v-if="it.sub"
+            class="cp-sub"
+          >{{ it.sub }}</span>
           <span class="cp-kind">{{ it.kind === "conv" ? "对话" : "功能" }}</span>
         </button>
-        <div v-if="!items.length" class="cp-empty">没有匹配项</div>
+        <div
+          v-if="!items.length"
+          class="cp-empty"
+        >
+          没有匹配项
+        </div>
       </div>
     </div>
   </div>
@@ -123,23 +147,45 @@ function onKeydown(e: KeyboardEvent) {
   position: fixed;
   inset: 0;
   z-index: 1000;
+  /* 液态玻璃遮罩:压暗 + 磨砂,让面板从背景里浮出来 */
   background: var(--overlay, rgba(20, 20, 24, 0.35));
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding-top: 14vh;
 }
 .cp {
+  position: relative;
   width: min(560px, 90vw);
   max-height: 56vh;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-lg);
+  /* 悬浮 chrome:真磨砂玻璃面板 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: cp-pop 140ms ease;
+  animation: cp-pop 140ms var(--ease-spring, ease);
+}
+/* 棱边折射环:跟随圆角的 1px 玻璃棱光,左上最亮 */
+.cp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 @keyframes cp-pop {
   from {
@@ -152,7 +198,9 @@ function onKeydown(e: KeyboardEvent) {
   align-items: center;
   gap: 9px;
   padding: 13px 16px;
-  border-bottom: 1px solid var(--border-soft);
+  /* 渐隐发丝线:两端消隐,更像蚀刻 */
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   color: var(--muted);
 }
 .cp-search input {
@@ -166,6 +214,7 @@ function onKeydown(e: KeyboardEvent) {
 .cp-search kbd {
   font-family: var(--mono);
   font-size: 10px;
+  letter-spacing: 0.08em;
   color: var(--dim);
   border: 1px solid var(--border-soft);
   border-radius: 4px;

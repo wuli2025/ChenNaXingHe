@@ -384,38 +384,75 @@ const npmReady = computed(() => !!report.value?.npm.found);
   <div :class="props.gate ? 'gate' : 'page'">
     <div class="card">
       <!-- 头 -->
-      <div class="badge"><span class="star"></span></div>
-      <h1 class="title">环境检测与配置</h1>
+      <div class="badge">
+        <span class="star" />
+      </div>
+      <h1 class="title">
+        环境检测与配置
+      </h1>
       <p class="lead">
         北极星依托 <strong>Claude Code</strong> 在你本机干活。先帮你把运行环境安顿好——
         缺什么一键补上，<strong>环境变量</strong>也会一并配好。
       </p>
 
       <!-- 检测中 -->
-      <div v-if="phase === 'checking'" class="checking">
-        <span class="spinner"></span> 正在检测本机环境…
+      <div
+        v-if="phase === 'checking'"
+        class="checking"
+      >
+        <span class="spinner" /> 正在检测本机环境…
       </div>
 
       <!-- 检测失败: 不再永久转圈, 给重试 -->
-      <div v-else-if="phase === 'error'" class="check-error">
-        <p class="ce-text">环境检测失败：{{ checkErr }}</p>
-        <button class="btn primary" @click="recheck">重试检测</button>
+      <div
+        v-else-if="phase === 'error'"
+        class="check-error"
+      >
+        <p class="ce-text">
+          环境检测失败：{{ checkErr }}
+        </p>
+        <button
+          class="btn primary"
+          @click="recheck"
+        >
+          重试检测
+        </button>
       </div>
 
       <template v-else>
         <!-- 工具清单 -->
         <ul class="tools">
-          <li v-for="t in tools" :key="t.key" class="tool">
-            <span class="dot" :class="level(t)"></span>
+          <li
+            v-for="t in tools"
+            :key="t.key"
+            class="tool"
+          >
+            <span
+              class="dot"
+              :class="level(t)"
+            />
             <div class="t-main">
               <div class="t-row">
                 <span class="t-name">{{ t.name }}</span>
-                <span class="t-status" :class="level(t)">{{ statusText(t) }}</span>
+                <span
+                  class="t-status"
+                  :class="level(t)"
+                >{{ statusText(t) }}</span>
               </div>
               <div class="t-sub">
-                <span v-if="t.version" class="t-ver">{{ t.version }}</span>
-                <span v-else class="t-hint">{{ t.hint }}</span>
-                <span v-if="t.path" class="t-path" :title="t.path">{{ t.path }}</span>
+                <span
+                  v-if="t.version"
+                  class="t-ver"
+                >{{ t.version }}</span>
+                <span
+                  v-else
+                  class="t-hint"
+                >{{ t.hint }}</span>
+                <span
+                  v-if="t.path"
+                  class="t-path"
+                  :title="t.path"
+                >{{ t.path }}</span>
               </div>
             </div>
             <!-- 行内动作 -->
@@ -476,12 +513,20 @@ const npmReady = computed(() => !!report.value?.npm.found);
                 </button>
               </template>
               <template v-else-if="t.key === 'node' && !t.found">
-                <button class="btn" :disabled="busy" @click="installNode">
+                <button
+                  class="btn"
+                  :disabled="busy"
+                  @click="installNode"
+                >
                   {{ busyKind === "node" ? "安装中…" : "安装" }}
                 </button>
               </template>
               <template v-else-if="t.key === 'pwsh' && !t.found">
-                <button class="btn" :disabled="busy" @click="installPwsh">
+                <button
+                  class="btn"
+                  :disabled="busy"
+                  @click="installPwsh"
+                >
                   {{ busyKind === "pwsh" ? "安装中…" : "安装" }}
                 </button>
               </template>
@@ -500,32 +545,56 @@ const npmReady = computed(() => !!report.value?.npm.found);
         </ul>
 
         <!-- 安装 Claude 的方式说明 + 兜底 (两端默认 npm 国内镜像; 官方脚本仅境外网络兜底) -->
-        <p v-if="report && !report.claude.found" class="alt">
+        <p
+          v-if="report && !report.claude.found"
+          class="alt"
+        >
           默认经<strong>国内镜像</strong>用 npm 安装
           <code>npm i -g @anthropic-ai/claude-code --registry=npmmirror.com</code>（含平台原生二进制，国内可装、不碰 claude.ai）。
           <span v-if="!npmReady">需先安装 <strong>Node.js</strong>（{{ isWin ? "随 npm 一起来" : "免 sudo 装到 ~/.local" }}）。</span>
-          <button class="link" :disabled="busy" @click="installClaude('native')">
+          <button
+            class="link"
+            :disabled="busy"
+            @click="installClaude('native')"
+          >
             或改用官方脚本（境外网络{{ isWin ? "" : " · install.sh" }}）
           </button>
         </p>
 
         <!-- 环境变量 (PATH) 体检 -->
-        <div v-if="pathNeedsFix" class="path-warn">
+        <div
+          v-if="pathNeedsFix"
+          class="path-warn"
+        >
           <div class="pw-text">
             检测到 <strong>Claude Code 已安装但其目录不在 PATH</strong> 里——
             终端 / 重启后可能找不到 <code>claude</code>。
-            <span v-if="report?.claudeDir" class="pw-dir">{{ report.claudeDir }}</span>
+            <span
+              v-if="report?.claudeDir"
+              class="pw-dir"
+            >{{ report.claudeDir }}</span>
           </div>
-          <button class="btn primary" :disabled="busy" @click="fixPath">
+          <button
+            class="btn primary"
+            :disabled="busy"
+            @click="fixPath"
+          >
             {{ busyKind === "path" ? "修复中…" : "修复 PATH" }}
           </button>
         </div>
 
         <!-- uv 缓存治理: 装了 uv 才显示。uv 缓存放任会涨到数 GB, 给一键清理 -->
-        <div v-if="report?.uv.found && uvCache?.available" class="uv-cache">
+        <div
+          v-if="report?.uv.found && uvCache?.available"
+          class="uv-cache"
+        >
           <div class="uc-text">
             <strong>uv 缓存</strong>占用 <span class="uc-size">{{ uvCache.human }}</span>
-            <span v-if="uvCache.dir" class="uc-dir" :title="uvCache.dir">{{ uvCache.dir }}</span>
+            <span
+              v-if="uvCache.dir"
+              class="uc-dir"
+              :title="uvCache.dir"
+            >{{ uvCache.dir }}</span>
           </div>
           <button
             class="btn"
@@ -538,27 +607,60 @@ const npmReady = computed(() => !!report.value?.npm.found);
         </div>
 
         <!-- 流式安装日志 -->
-        <div v-if="busy && logs.length" class="logwrap">
+        <div
+          v-if="busy && logs.length"
+          class="logwrap"
+        >
           <div class="log-head">
             <span>安装日志</span>
-            <button v-if="installReqId" class="link" @click="cancelInstall">取消</button>
+            <button
+              v-if="installReqId"
+              class="link"
+              @click="cancelInstall"
+            >
+              取消
+            </button>
           </div>
-          <pre class="log"><code v-for="(l, i) in logs" :key="i">{{ l }}
+          <pre class="log"><code
+v-for="(l, i) in logs"
+                                 :key="i"
+>{{ l }}
 </code></pre>
         </div>
 
         <!-- 结果横幅 -->
-        <div v-if="banner" class="banner" :class="banner.kind">{{ banner.text }}</div>
+        <div
+          v-if="banner"
+          class="banner"
+          :class="banner.kind"
+        >
+          {{ banner.text }}
+        </div>
 
         <!-- 底部动作 -->
         <div class="actions">
-          <button class="btn ghost" :disabled="busy" @click="recheck">重新检测</button>
-          <div class="spacer"></div>
+          <button
+            class="btn ghost"
+            :disabled="busy"
+            @click="recheck"
+          >
+            重新检测
+          </button>
+          <div class="spacer" />
           <template v-if="props.gate">
-            <button v-if="!report?.ready" class="btn text" :disabled="busy" @click="enter">
+            <button
+              v-if="!report?.ready"
+              class="btn text"
+              :disabled="busy"
+              @click="enter"
+            >
               稍后再说，先进入
             </button>
-            <button class="btn primary" :disabled="busy && !report?.ready" @click="enter">
+            <button
+              class="btn primary"
+              :disabled="busy && !report?.ready"
+              @click="enter"
+            >
               {{ report?.ready ? "环境就绪 · 进入北极星" : "仍要进入" }}
             </button>
           </template>
@@ -587,18 +689,35 @@ const npmReady = computed(() => !!report.value?.npm.found);
   width: 100%;
 }
 .card {
+  position: relative;
   width: 100%;
   max-width: 600px;
   margin: 0 auto;
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
-  box-shadow: var(--shadow-lg);
+  /* 液态玻璃：主卡片走 card 配方 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
   padding: 36px 40px 30px;
   animation: cardIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 .page .card {
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
+}
+/* v9：主卡片一圈棱边折射环 */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(12px); }
@@ -865,19 +984,30 @@ const npmReady = computed(() => !!report.value?.npm.found);
 
 .btn {
   padding: 8px 16px;
-  border-radius: 3px;
+  border-radius: 10px;
   font-size: 12.5px;
   letter-spacing: 0.5px;
-  border: 1px solid var(--border);
-  background: transparent;
+  /* 液态玻璃：次级按钮走 card 配方 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text-2);
   cursor: pointer;
 }
-.btn:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
-.btn.primary { background: var(--btn-solid-bg); color: var(--btn-solid-text); border-color: var(--btn-solid-bg); }
-.btn.primary:hover:not(:disabled) { background: var(--primary); border-color: var(--primary); }
+.btn:hover:not(:disabled) { color: var(--ink); transform: translateY(-1px); box-shadow: var(--shadow); }
+/* v9：主 CTA 按压反馈（hover 有 translateY，按压归位再收缩） */
+.btn { transition: transform 0.12s var(--ease, ease), box-shadow 0.12s var(--ease, ease), color 0.12s var(--ease, ease); }
+.btn.primary:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.btn.primary {
+  background: var(--btn-solid-bg);
+  color: var(--btn-solid-text);
+  /* 液态玻璃：主按钮玻璃三件套高光 */
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
+}
+.btn.primary:hover:not(:disabled) { background: var(--primary); }
 .btn.ghost { color: var(--text-2); }
-.btn.text { border-color: transparent; color: var(--muted); }
+.btn.text { border-color: transparent; background: transparent; color: var(--muted); }
 .btn.text:hover:not(:disabled) { color: var(--ink); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 

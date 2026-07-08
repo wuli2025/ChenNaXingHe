@@ -6,7 +6,9 @@ export function humanizeError(err: unknown): string {
       ? err.message
       : typeof err === "string"
         ? err
-        : String((err as any)?.message ?? err ?? "");
+        // 只带 code 的错误对象（如 { code: "ECONNREFUSED" }）也要能被下面的模式识别，
+        // 否则 String({...}) 会得到 "[object Object]" 丢掉可映射信号。
+        : String((err as any)?.message ?? (err as any)?.code ?? err ?? "");
   const s = raw.toLowerCase();
 
   if (

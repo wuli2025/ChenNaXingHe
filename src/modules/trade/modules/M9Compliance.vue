@@ -102,7 +102,12 @@ const gates = [
   <div class="t-view-anim">
     <!-- KPI 概览 -->
     <div class="t-grid t-g4">
-      <TKpi :value="String(rows.length)" label="在册货柜" acc="blue" :icon="ICONS.customs" />
+      <TKpi
+        :value="String(rows.length)"
+        label="在册货柜"
+        acc="blue"
+        :icon="ICONS.customs"
+      />
       <TKpi
         :value="String(okCount)"
         label="可放行"
@@ -129,25 +134,40 @@ const gates = [
     </div>
 
     <!-- 合规率总览条 -->
-    <TPanel pad v-if="rows.length">
+    <TPanel
+      v-if="rows.length"
+      pad
+    >
       <div class="rate-row">
         <span class="rate-k">整体放行合规率</span>
         <span class="rate-v">{{ passRate }}%</span>
         <span class="rate-sub t-muted">{{ okCount }} / {{ rows.length }} 柜可放行</span>
       </div>
       <div class="t-bar rate-bar">
-        <span :class="passRate >= 80 ? 'ok' : passRate >= 50 ? 'warn' : 'bad'" :style="{ width: passRate + '%' }" />
+        <span
+          :class="passRate >= 80 ? 'ok' : passRate >= 50 ? 'warn' : 'bad'"
+          :style="{ width: passRate + '%' }"
+        />
       </div>
     </TPanel>
 
     <!-- ① WET / GST 计算器 -->
-    <TSection title="WET / GST 计算器" sub="单点真相 · 与 M4 报关、M7 开票共用同一函数 computeWineTax()" />
+    <TSection
+      title="WET / GST 计算器"
+      sub="单点真相 · 与 M4 报关、M7 开票共用同一函数 computeWineTax()"
+    />
     <TPanel pad>
       <div class="t-grid t-g2">
         <div class="calc">
           <label class="calc-input">
             <span class="ci-k">完税价格（CIF, AUD）</span>
-            <input v-model.number="taxable" type="number" min="0" step="100" class="ci-v" />
+            <input
+              v-model.number="taxable"
+              type="number"
+              min="0"
+              step="100"
+              class="ci-v"
+            >
           </label>
           <div class="field-row">
             <span class="fk">进口关税（ChAFTA 0%）</span>
@@ -174,12 +194,21 @@ const gates = [
             <span class="fv fv-gold">${{ fmt(tax.inclTotal) }}</span>
           </div>
         </div>
-        <div class="t-col" style="gap: 12px">
-          <div class="t-note gold" style="margin: 0">
+        <div
+          class="t-col"
+          style="gap: 12px"
+        >
+          <div
+            class="t-note gold"
+            style="margin: 0"
+          >
             <b>单点真相：</b>此处 WET / GST 与 <b>M4 报关</b>税费测算、<b>M7 开票</b>含税价<b>共用同一函数</b>
             <span class="t-mono">computeWineTax(taxable)</span>，逐分位一致，杜绝「三处算出三个数」。
           </div>
-          <div class="t-note info" style="margin: 0">
+          <div
+            class="t-note info"
+            style="margin: 0"
+          >
             <b>计算链：</b>CIF <span class="t-mono">{{ fmt(tax.taxable) }}</span>
             → WET = CIF × 29% = <span class="t-mono">{{ fmt(tax.wet) }}</span>
             → GST 基 = (CIF + WET) × 10% = <span class="t-mono">{{ fmt(tax.gst) }}</span>
@@ -190,14 +219,30 @@ const gates = [
     </TPanel>
 
     <!-- ② 逐柜合规台账 -->
-    <TSection title="逐柜合规台账 · 缺证拦发货" sub="WET / GST / TGA / FSANZ / Biosecurity · 放行硬闸">
+    <TSection
+      title="逐柜合规台账 · 缺证拦发货"
+      sub="WET / GST / TGA / FSANZ / Biosecurity · 放行硬闸"
+    >
       <template #actions>
-        <TBadge tone="red" v-if="blockCount">{{ blockCount }} 柜缺证拦发货</TBadge>
-        <TBadge tone="green" v-else>全部可放行</TBadge>
+        <TBadge
+          v-if="blockCount"
+          tone="red"
+        >
+          {{ blockCount }} 柜缺证拦发货
+        </TBadge>
+        <TBadge
+          v-else
+          tone="green"
+        >
+          全部可放行
+        </TBadge>
       </template>
     </TSection>
 
-    <div class="t-note danger" v-if="blockCount">
+    <div
+      v-if="blockCount"
+      class="t-note danger"
+    >
       <b>缺证拦发货硬闸：</b>缺证货柜不可出仓发运。核查缺口后走「核准放行」进人工审核看板，
       经运营核准（<span class="t-mono">compliance-release</span> 硬闸）方可放行。
     </div>
@@ -213,22 +258,44 @@ const gates = [
             <th>FSANZ 标签</th>
             <th>Biosecurity</th>
             <th>放行状态</th>
-            <th style="text-align: right">操作</th>
+            <th style="text-align: right">
+              操作
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="r in rows" :key="r.container" :class="{ bad: !r.ok, busy: checking === r.container }">
+          <tr
+            v-for="r in rows"
+            :key="r.container"
+            :class="{ bad: !r.ok, busy: checking === r.container }"
+          >
             <td><b>货柜 {{ r.container }}</b></td>
-            <td :class="{ 'miss-cell': r.wet.includes('待') }">{{ r.wet }}</td>
-            <td :class="{ 'miss-cell': r.gst.includes('待') }">{{ r.gst }}</td>
-            <td class="t-muted">{{ r.tga }}</td>
-            <td :class="{ 'miss-cell': r.fsanz.includes('缺') }">{{ r.fsanz }}</td>
+            <td :class="{ 'miss-cell': r.wet.includes('待') }">
+              {{ r.wet }}
+            </td>
+            <td :class="{ 'miss-cell': r.gst.includes('待') }">
+              {{ r.gst }}
+            </td>
+            <td class="t-muted">
+              {{ r.tga }}
+            </td>
+            <td :class="{ 'miss-cell': r.fsanz.includes('缺') }">
+              {{ r.fsanz }}
+            </td>
             <td :class="{ 'miss-cell': r.biosecurity.includes('待') || r.biosecurity.includes('缺') }">
               {{ r.biosecurity }}
             </td>
             <td>
-              <span v-if="isBlocked(r)" class="t-warn-txt">{{ r.release }}</span>
-              <TBadge v-else tone="green">{{ r.release }}</TBadge>
+              <span
+                v-if="isBlocked(r)"
+                class="t-warn-txt"
+              >{{ r.release }}</span>
+              <TBadge
+                v-else
+                tone="green"
+              >
+                {{ r.release }}
+              </TBadge>
             </td>
             <td class="act-cell">
               <template v-if="!r.ok">
@@ -237,7 +304,10 @@ const gates = [
                   :disabled="store.busy.value || !!checking"
                   @click="checkContainer(r)"
                 >
-                  <TIcon :path="ICONS.compliance" :size="13" />
+                  <TIcon
+                    :path="ICONS.compliance"
+                    :size="13"
+                  />
                   {{ checking === r.container ? "核查中…" : "合规要件核查" }}
                 </button>
                 <button
@@ -248,11 +318,18 @@ const gates = [
                   核准放行
                 </button>
               </template>
-              <span v-else class="t-muted done-dash">—</span>
+              <span
+                v-else
+                class="t-muted done-dash"
+              >—</span>
             </td>
           </tr>
           <tr v-if="!rows.length">
-            <td colspan="8" class="t-muted" style="text-align: center; padding: 22px">
+            <td
+              colspan="8"
+              class="t-muted"
+              style="text-align: center; padding: 22px"
+            >
               暂无在册货柜合规记录
             </td>
           </tr>
@@ -261,13 +338,27 @@ const gates = [
     </TPanel>
 
     <!-- 合规要件卡 -->
-    <TSection title="澳洲进口酒 · 合规要件速查" sub="TGA / FSANZ / Biosecurity / WET-GST 要点" />
+    <TSection
+      title="澳洲进口酒 · 合规要件速查"
+      sub="TGA / FSANZ / Biosecurity / WET-GST 要点"
+    />
     <div class="t-grid t-g2">
-      <TPanel v-for="g in gates" :key="g.key" pad>
-        <div class="t-row" style="margin-bottom: 8px">
-          <TBadge :tone="g.tone">{{ g.key }}</TBadge>
+      <TPanel
+        v-for="g in gates"
+        :key="g.key"
+        pad
+      >
+        <div
+          class="t-row"
+          style="margin-bottom: 8px"
+        >
+          <TBadge :tone="g.tone">
+            {{ g.key }}
+          </TBadge>
         </div>
-        <p class="gate-desc">{{ g.desc }}</p>
+        <p class="gate-desc">
+          {{ g.desc }}
+        </p>
       </TPanel>
     </div>
   </div>

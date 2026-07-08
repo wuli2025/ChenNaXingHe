@@ -32,6 +32,8 @@ const ChatPanel = defineAsyncComponent(() => import("./components/ChatPanel.vue"
 // 外贸 OS 原生桌面模块（src/modules/trade），直连后端官方 Claude Code。
 // 首次切到才挂载（懒加载 12 模块），之后 v-show 保活。
 const TradeModule = defineAsyncComponent(() => import("./modules/trade/TradeModule.vue"));
+// 星河无头ERP（src/modules/erp）：AI 一人公司操作系统，10 模块 + 审批中心，同为原生模块。
+const ErpModule = defineAsyncComponent(() => import("./modules/erp/ErpModule.vue"));
 
 import { checkForUpdate } from "./composables/useUpdater";
 import { useAgentRunner } from "./composables/useAgentRunner";
@@ -232,13 +234,22 @@ function onEnvDone() {
 </script>
 
 <template>
-  <div class="shell" :style="{ gridTemplateColumns: app.sidebarWidth + 'px 1fr' }">
+  <div
+    class="shell"
+    :style="{ gridTemplateColumns: app.sidebarWidth + 'px 1fr' }"
+  >
     <!-- 极光琉璃画框主题 -->
     <template v-if="app.theme === 'aurora-light' || app.theme === 'aurora-dark'">
-      <div class="aurora" aria-hidden="true">
-        <span class="a1"></span><span class="a2"></span><span class="a3"></span><span class="a4"></span><span class="a5"></span>
+      <div
+        class="aurora"
+        aria-hidden="true"
+      >
+        <span class="a1" /><span class="a2" /><span class="a3" /><span class="a4" /><span class="a5" />
       </div>
-      <div class="grain" aria-hidden="true"></div>
+      <div
+        class="grain"
+        aria-hidden="true"
+      />
     </template>
 
     <SideNav />
@@ -246,16 +257,40 @@ function onEnvDone() {
     <main class="content">
       <!-- 主区舞台：外贸 OS / 知识库 / 技能中心，随顶栏 tab 整屏切换 -->
       <div class="stage">
-        <div v-if="app.moduleTab === 'kb'" class="view"><WikiBrowse /></div>
-        <div v-else-if="app.moduleTab === 'skill'" class="view"><SkillCenter /></div>
+        <div
+          v-if="app.moduleTab === 'kb'"
+          class="view"
+        >
+          <WikiBrowse />
+        </div>
+        <div
+          v-else-if="app.moduleTab === 'skill'"
+          class="view"
+        >
+          <SkillCenter />
+        </div>
         <!-- 外贸 OS：原生桌面模块（12 模块 + 人工审核看板），首次切到才挂载、之后 v-show 保活 -->
-        <div v-if="visited['trade']" v-show="app.moduleTab === 'trade'" class="view"><TradeModule /></div>
+        <div
+          v-if="visited['trade']"
+          v-show="app.moduleTab === 'trade'"
+          class="view"
+        >
+          <TradeModule />
+        </div>
+        <!-- 星河无头ERP：AI 一人公司操作系统（10 模块 + 审批中心），同样首挂载后保活 -->
+        <div
+          v-if="visited['erp']"
+          v-show="app.moduleTab === 'erp'"
+          class="view"
+        >
+          <ErpModule />
+        </div>
       </div>
 
       <!-- 右侧对话抽屉：可拖宽、可收起，与主区并列；统管对话 / 策略 / 表格 / 知识库 -->
       <Transition name="dock-slide">
         <aside
-          v-show="app.chatOpen && app.moduleTab !== 'trade'"
+          v-show="app.chatOpen && !app.isNativeTab"
           class="chat-dock"
           :style="{ width: app.chatDockWidth + 'px' }"
         >
@@ -263,7 +298,7 @@ function onEnvDone() {
             class="dock-resize"
             title="拖拽调节对话栏宽度"
             @mousedown="startDockResize"
-          ></div>
+          />
           <!-- 首次展开才挂载,之后随抽屉收起仍保活(不丢输入/滚动) -->
           <ChatPanel v-if="chatEverOpened" />
         </aside>
@@ -279,7 +314,12 @@ function onEnvDone() {
     <CommandPalette />
 
     <!-- Docker/Web 模式断线提示 -->
-    <div v-if="wsDown" class="ws-down">连接已断开,正在自动重连…</div>
+    <div
+      v-if="wsDown"
+      class="ws-down"
+    >
+      连接已断开,正在自动重连…
+    </div>
 
     <!-- 设置 / 更多 overlay -->
     <SettingsHub v-if="app.settingsOpen" />
@@ -292,13 +332,23 @@ function onEnvDone() {
 
     <!-- 启动流程覆盖层 -->
     <Transition name="splash-fade">
-      <SplashScreen v-if="phase === 'splash'" @done="onSplashDone" />
+      <SplashScreen
+        v-if="phase === 'splash'"
+        @done="onSplashDone"
+      />
     </Transition>
     <Transition name="onboard-fade">
-      <Onboarding v-if="phase === 'onboarding'" @done="onOnboardingDone" />
+      <Onboarding
+        v-if="phase === 'onboarding'"
+        @done="onOnboardingDone"
+      />
     </Transition>
     <Transition name="onboard-fade">
-      <EnvDoctor v-if="phase === 'env'" gate @done="onEnvDone" />
+      <EnvDoctor
+        v-if="phase === 'env'"
+        gate
+        @done="onEnvDone"
+      />
     </Transition>
   </div>
 </template>
@@ -320,15 +370,34 @@ function onEnvDone() {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
-  background: var(--bg-chat);
+  /* Liquid Glass 主面板：半透明磨砂浮在 --ambient 环境光上，
+     四角大圆角 + 白玻璃描边 + 顶部镜面高光，像一整块悬浮玻璃板 */
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   margin: 8px;
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  /* 多层柔投影 + 顶部一线内高光：面板像一块微微浮起的玻璃 */
+  border: 1px solid var(--glass-border, var(--hairline));
+  border-radius: 16px;
   box-shadow: var(--shadow-lg), var(--glass-hi);
   /* 主区舞台 + 右侧对话抽屉并列 */
   display: flex;
   min-width: 0;
+}
+/* v9 玻璃棱边折射环：光从左上打进来，左上棱最亮、右下棱次亮（极光主题
+   有自己的彩虹 ::after 边，这里用 ::before 不冲突） */
+.content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 6;
 }
 /* 主区舞台：外贸 OS / 知识库 / 技能中心铺满剩余空间 */
 .stage {
@@ -348,8 +417,12 @@ function onEnvDone() {
   flex: 0 0 auto;
   min-width: 0;
   display: flex;
-  border-left: 1px solid var(--hairline);
-  background: var(--bg-chat);
+  border-left: 1px solid var(--glass-border, var(--hairline));
+  /* 抽屉比主区再亮/暗半档的玻璃层，形成材质层级 */
+  background: var(--glass-side);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-hi);
 }
 .chat-dock :deep(.chat) {
   flex: 1 1 auto;

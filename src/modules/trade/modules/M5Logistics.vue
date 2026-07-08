@@ -67,7 +67,7 @@ async function parseEdi() {
     );
   } catch (e) {
     // 后端失败时给出可见反馈，避免静默失败 + 未处理的 promise 拒绝。
-    store.log("error", `❌ EDI 解析失败：${(e as Error).message || String(e)}`);
+    store.log("error", `EDI 解析失败：${(e as Error).message || String(e)}`);
   }
 }
 
@@ -96,7 +96,7 @@ function flagAnomaly(s: Shipment) {
 function receiveArrival(s: Shipment) {
   const sku = store.receiveArrival(s.id);
   store.log("ok", sku
-    ? `📦 货柜 ${s.id} 已确认到港，开 GRN 收货单，${s.goods} 入 M6 厂仓待上架。`
+    ? `货柜 ${s.id} 已确认到港，开 GRN 收货单，${s.goods} 入 M6 厂仓待上架。`
     : `货柜 ${s.id} 已入仓，无需重复。`);
 }
 </script>
@@ -105,28 +105,72 @@ function receiveArrival(s: Shipment) {
   <div class="t-view-anim">
     <!-- KPI 概览 -->
     <div class="t-grid t-g4">
-      <TKpi :value="String(kpis.total)" label="在途货柜" acc="blue" :icon="ICONS.logistics" />
-      <TKpi :value="String(kpis.arrived)" label="到港待清关" acc="amber" delta="联动 M4 报关" :icon="ICONS.customs" />
-      <TKpi :value="String(kpis.demur)" label="滞期风险柜" :up="false" acc="red" delta="需优先跟催" :icon="ICONS.logistics" />
-      <TKpi :value="kpis.avg + '%'" label="平均在途进度" acc="green" :icon="ICONS.warehouse" />
+      <TKpi
+        :value="String(kpis.total)"
+        label="在途货柜"
+        acc="blue"
+        :icon="ICONS.logistics"
+      />
+      <TKpi
+        :value="String(kpis.arrived)"
+        label="到港待清关"
+        acc="amber"
+        delta="联动 M4 报关"
+        :icon="ICONS.customs"
+      />
+      <TKpi
+        :value="String(kpis.demur)"
+        label="滞期风险柜"
+        :up="false"
+        acc="red"
+        delta="需优先跟催"
+        :icon="ICONS.logistics"
+      />
+      <TKpi
+        :value="kpis.avg + '%'"
+        label="平均在途进度"
+        acc="green"
+        :icon="ICONS.warehouse"
+      />
     </div>
 
     <!-- 到港 → 开 GRN 推 M6（真实动作） -->
-    <div v-if="arrivedShip" class="t-note info arrive-note">
+    <div
+      v-if="arrivedShip"
+      class="t-note info arrive-note"
+    >
       <span>
         <b>货柜 {{ arrivedShip.id }}（{{ arrivedShip.goods }}）已抵港</b>：确认到港即生成收货单 GRN，货物入
         <b>M6 厂仓</b>待上架与落地成本归集。
       </span>
-      <button class="t-btn sm primary" :disabled="store.busy.value" @click="receiveArrival(arrivedShip)">
-        <TIcon :path="ICONS.warehouse" :size="13" />
+      <button
+        class="t-btn sm primary"
+        :disabled="store.busy.value"
+        @click="receiveArrival(arrivedShip)"
+      >
+        <TIcon
+          :path="ICONS.warehouse"
+          :size="13"
+        />
         确认到港 · 开 GRN
       </button>
     </div>
 
-    <TSection title="在途货柜 · 全程跟踪" sub="里程碑 · ETA P50/P90 · 滞期预警 · 到港开 GRN">
+    <TSection
+      title="在途货柜 · 全程跟踪"
+      sub="里程碑 · ETA P50/P90 · 滞期预警 · 到港开 GRN"
+    >
       <template #actions>
-        <button class="t-btn gold sm" :disabled="store.busy.value" @click="parseEdi" title="解析货代 EDI 邮件，结果流式显示在右侧 Console（预览，不自动改数据）">
-          <TIcon :path="ICONS.logistics" :size="14" />
+        <button
+          class="t-btn gold sm"
+          :disabled="store.busy.value"
+          title="解析货代 EDI 邮件，结果流式显示在右侧 Console（预览，不自动改数据）"
+          @click="parseEdi"
+        >
+          <TIcon
+            :path="ICONS.logistics"
+            :size="14"
+          />
           {{ store.busy.value ? "解析中…" : "解析货代 EDI 邮件（预览）" }}
         </button>
       </template>
@@ -143,50 +187,101 @@ function receiveArrival(s: Shipment) {
             <th>ETA P50 / P90</th>
             <th>状态</th>
             <th>滞期</th>
-            <th style="min-width: 130px">进度</th>
-            <th></th>
+            <th style="min-width: 130px">
+              进度
+            </th>
+            <th />
           </tr>
         </thead>
         <tbody>
-          <template v-for="s in store.shipments.value" :key="s.id">
-            <tr class="clk" @click="toggle(s.id)">
+          <template
+            v-for="s in store.shipments.value"
+            :key="s.id"
+          >
+            <tr
+              class="clk"
+              @click="toggle(s.id)"
+            >
               <td>
                 <b>货柜 {{ s.id }}</b>
-                <div class="t-mono t-muted" style="font-size: 11px">{{ s.bl }}</div>
+                <div
+                  class="t-mono t-muted"
+                  style="font-size: 11px"
+                >
+                  {{ s.bl }}
+                </div>
               </td>
               <td>{{ s.goods }}</td>
-              <td class="t-mono">{{ s.from }} → {{ s.to }}</td>
+              <td class="t-mono">
+                {{ s.from }} → {{ s.to }}
+              </td>
               <td class="t-mono">
                 <b>{{ s.etaP50 }}</b>
                 <span class="t-muted"> / {{ s.etaP90 }}</span>
               </td>
-              <td><TBadge :tone="statusTone(s.status)">{{ s.status }}</TBadge></td>
-              <td><TBadge :tone="demurTone(s.demurrage)">{{ s.demurrage }}</TBadge></td>
+              <td>
+                <TBadge :tone="statusTone(s.status)">
+                  {{ s.status }}
+                </TBadge>
+              </td>
+              <td>
+                <TBadge :tone="demurTone(s.demurrage)">
+                  {{ s.demurrage }}
+                </TBadge>
+              </td>
               <td>
                 <div class="t-row">
-                  <span class="t-bar bar-pct" :class="'d-' + demurTone(s.demurrage)" style="flex: 1">
+                  <span
+                    class="t-bar bar-pct"
+                    :class="'d-' + demurTone(s.demurrage)"
+                    style="flex: 1"
+                  >
                     <span :style="{ width: s.pct + '%' }" />
                   </span>
-                  <span class="t-mono t-muted" style="font-size: 11px; min-width: 32px; text-align: right">{{ s.pct }}%</span>
+                  <span
+                    class="t-mono t-muted"
+                    style="font-size: 11px; min-width: 32px; text-align: right"
+                  >{{ s.pct }}%</span>
                 </div>
               </td>
               <td style="text-align: right">
-                <span class="t-pill toggle-pill" :class="{ open: openId === s.id }">
+                <span
+                  class="t-pill toggle-pill"
+                  :class="{ open: openId === s.id }"
+                >
                   {{ openId === s.id ? "收起 ▴" : "里程碑 ▾" }}
                 </span>
               </td>
             </tr>
 
             <!-- 展开：竖向里程碑时间线 -->
-            <tr v-if="openId === s.id" :key="s.id + '-tl'">
-              <td colspan="8" class="tl-cell">
+            <tr
+              v-if="openId === s.id"
+              :key="s.id + '-tl'"
+            >
+              <td
+                colspan="8"
+                class="tl-cell"
+              >
                 <div class="tl-head">
-                  <div class="t-row" style="gap: 10px">
+                  <div
+                    class="t-row"
+                    style="gap: 10px"
+                  >
                     <b>货柜 {{ s.id }} · 里程碑时间线</b>
-                    <span class="t-muted" style="font-size: 11.5px">订舱 → 开船 → 在途 → 到港 → 清关 → 入仓</span>
+                    <span
+                      class="t-muted"
+                      style="font-size: 11.5px"
+                    >订舱 → 开船 → 在途 → 到港 → 清关 → 入仓</span>
                   </div>
-                  <button class="t-btn sm flag-btn" @click.stop="flagAnomaly(s)">
-                    <TIcon :path="ICONS.compliance" :size="13" />
+                  <button
+                    class="t-btn sm flag-btn"
+                    @click.stop="flagAnomaly(s)"
+                  >
+                    <TIcon
+                      :path="ICONS.compliance"
+                      :size="13"
+                    />
                     上报异常里程碑 · 进人工闸
                   </button>
                 </div>
@@ -202,14 +297,24 @@ function receiveArrival(s: Shipment) {
                     <div class="tl-body">
                       <div class="tl-t">
                         {{ m.t }}
-                        <TBadge v-if="m.now" tone="amber">进行中</TBadge>
+                        <TBadge
+                          v-if="m.now"
+                          tone="amber"
+                        >
+                          进行中
+                        </TBadge>
                       </div>
-                      <div class="tl-at t-mono">{{ m.at }}</div>
+                      <div class="tl-at t-mono">
+                        {{ m.at }}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div class="t-note warn" style="margin: 12px 0 2px">
+                <div
+                  class="t-note warn"
+                  style="margin: 12px 0 2px"
+                >
                   <b>说明：</b>异常里程碑（跳票 / 滞期 / 路由变更）经上报后进入<b>中央审核看板</b>（人工闸 · milestone-anomaly），运营确认后再回写货柜状态与 ETA。
                 </div>
               </td>
@@ -220,9 +325,15 @@ function receiveArrival(s: Shipment) {
     </TPanel>
 
     <!-- 空态 -->
-    <TPanel v-if="!store.shipments.value.length" pad>
+    <TPanel
+      v-if="!store.shipments.value.length"
+      pad
+    >
       <div class="empty">
-        <TIcon :path="ICONS.logistics" :size="26" />
+        <TIcon
+          :path="ICONS.logistics"
+          :size="26"
+        />
         <div>暂无在途货柜。订舱开船后货代 EDI 回传的里程碑将在此汇总跟踪。</div>
       </div>
     </TPanel>

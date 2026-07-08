@@ -120,7 +120,7 @@ export const useArtifactsStore = defineStore("artifacts", () => {
   async function openFolder(path: string) {
     try {
       await api.openExternal(path.replace(/\/+$/, ""));
-    } catch (_) {
+    } catch {
       /* 忽略：打开失败不影响对话 */
     }
   }
@@ -131,7 +131,7 @@ export const useArtifactsStore = defineStore("artifacts", () => {
     if (isTauri) {
       try {
         await api.openExternal(current.value.path);
-      } catch (_) {
+      } catch {
         /* 忽略：打开失败不影响预览 */
       }
     } else {
@@ -148,7 +148,7 @@ export const useArtifactsStore = defineStore("artifacts", () => {
     if (isTauri) {
       try {
         await api.reveal(current.value.path);
-      } catch (_) {
+      } catch {
         /* 忽略：打开失败不影响预览 */
       }
     } else {

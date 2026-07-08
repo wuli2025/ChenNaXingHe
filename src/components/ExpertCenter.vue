@@ -83,56 +83,119 @@ function onSelectExpert(id: string) {
     <!-- 头部 -->
     <header class="ec-head">
       <div class="ec-title-wrap">
-        <div class="ec-title">🧭 专家团 · 让 AI 更懂你</div>
+        <div class="ec-title">
+          专家团 · 让 AI 更懂你
+        </div>
         <div class="ec-sub">
           按你的知识库与偏好，自动给你配好对应业务的专家团；也可手动浏览全部专家入驻本项目。
         </div>
       </div>
       <div class="ec-proj">
         <label>配置项目</label>
-        <select v-model="projectId" class="ec-proj-sel">
-          <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+        <select
+          v-model="projectId"
+          class="ec-proj-sel"
+        >
+          <option
+            v-for="p in projects"
+            :key="p.id"
+            :value="p.id"
+          >
+            {{ p.name }}
+          </option>
         </select>
       </div>
     </header>
 
     <!-- KB 智能推荐横幅 -->
-    <section class="ec-rec" :class="{ has: rec?.team }">
-      <div v-if="recLoading" class="ec-rec-loading">正在按知识库反推最适合你的专家团…</div>
+    <section
+      class="ec-rec"
+      :class="{ has: rec?.team }"
+    >
+      <div
+        v-if="recLoading"
+        class="ec-rec-loading"
+      >
+        正在按知识库反推最适合你的专家团…
+      </div>
       <template v-else-if="rec?.team">
-        <img v-if="leadAvatar" :src="leadAvatar" class="ec-rec-avatar" :alt="rec.team.name" />
+        <img
+          v-if="leadAvatar"
+          :src="leadAvatar"
+          class="ec-rec-avatar"
+          :alt="rec.team.name"
+        >
         <div class="ec-rec-body">
           <div class="ec-rec-head">
             <span class="ec-rec-badge">按你的知识库推荐</span>
             <span class="ec-rec-name">{{ rec.team.icon }} {{ rec.team.name }}</span>
           </div>
-          <div class="ec-rec-reason">{{ rec.reason }}</div>
-          <div v-if="rec.matchedTopics.length" class="ec-rec-topics">
-            <span v-for="t in rec.matchedTopics.slice(0, 6)" :key="t" class="ec-topic">{{ t }}</span>
+          <div class="ec-rec-reason">
+            {{ rec.reason }}
+          </div>
+          <div
+            v-if="rec.matchedTopics.length"
+            class="ec-rec-topics"
+          >
+            <span
+              v-for="t in rec.matchedTopics.slice(0, 6)"
+              :key="t"
+              class="ec-topic"
+            >{{ t }}</span>
           </div>
         </div>
-        <button class="ec-rec-apply" @click="applyRecommended">一键入驻</button>
+        <button
+          class="ec-rec-apply"
+          @click="applyRecommended"
+        >
+          一键入驻
+        </button>
       </template>
       <template v-else>
         <div class="ec-rec-body">
-          <div class="ec-rec-head"><span class="ec-rec-badge dim">智能匹配 · 默认</span></div>
-          <div class="ec-rec-reason">{{ rec?.reason ?? "正在分析你的知识库…" }}</div>
+          <div class="ec-rec-head">
+            <span class="ec-rec-badge dim">智能匹配 · 默认</span>
+          </div>
+          <div class="ec-rec-reason">
+            {{ rec?.reason ?? "正在分析你的知识库…" }}
+          </div>
         </div>
       </template>
     </section>
 
     <!-- Tab -->
     <div class="ec-tabs">
-      <button class="ec-tab" :class="{ on: tab === 'market' }" @click="tab = 'market'">专家市场</button>
-      <button class="ec-tab" :class="{ on: tab === 'advanced' }" @click="tab = 'advanced'">人格档案 · 高级</button>
+      <button
+        class="ec-tab"
+        :class="{ on: tab === 'market' }"
+        @click="tab = 'market'"
+      >
+        专家市场
+      </button>
+      <button
+        class="ec-tab"
+        :class="{ on: tab === 'advanced' }"
+        @click="tab = 'advanced'"
+      >
+        人格档案 · 高级
+      </button>
     </div>
 
     <!-- 内容 -->
     <div class="ec-body">
-      <div v-show="tab === 'market'" class="ec-market">
-        <ExpertTeam @select-team="onSelectTeam" @select-expert="onSelectExpert" />
+      <div
+        v-show="tab === 'market'"
+        class="ec-market"
+      >
+        <ExpertTeam
+          @select-team="onSelectTeam"
+          @select-expert="onSelectExpert"
+        />
       </div>
-      <div v-if="tab === 'advanced'" class="ec-advanced">
+      <div
+        v-if="tab === 'advanced'"
+        class="ec-advanced"
+      >
         <ClaudeMdPanel />
       </div>
     </div>
@@ -153,7 +216,8 @@ function onSelectExpert(id: string) {
   justify-content: space-between;
   gap: 16px;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
 }
 .ec-title { font-size: 17px; font-weight: 700; color: var(--ink, var(--text)); letter-spacing: 1px; }
 .ec-sub { font-size: 12px; color: var(--muted); margin-top: 4px; max-width: 640px; line-height: 1.5; }
@@ -161,23 +225,30 @@ function onSelectExpert(id: string) {
 .ec-proj label { font-size: 11px; color: var(--dim); }
 .ec-proj-sel {
   padding: 5px 10px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text);
   font-size: 12.5px;
   min-width: 160px;
 }
+.ec-proj-sel:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
 
 .ec-rec {
+  /* 推荐位玻璃卡 */
   display: flex;
   align-items: center;
   gap: 14px;
   margin: 14px 20px 0;
   padding: 14px 16px;
   border-radius: 14px;
-  border: 1px solid var(--border-soft);
-  background: var(--bg-soft);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
 }
 .ec-rec.has {
   border-color: rgba(212, 176, 106, 0.4);
@@ -209,9 +280,10 @@ function onSelectExpert(id: string) {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: filter 0.14s;
+  transition: filter 0.14s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .ec-rec-apply:hover { filter: brightness(1.08); }
+.ec-rec-apply:active { transform: scale(0.98); }
 
 .ec-tabs { display: flex; gap: 4px; padding: 12px 20px 0; }
 .ec-tab {

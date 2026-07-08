@@ -8,6 +8,7 @@
 import { computed } from "vue";
 import {
   Globe,
+  Boxes,
   BookOpen,
   Puzzle,
   MessageSquare,
@@ -18,6 +19,8 @@ import {
 import { useAppStore, type ModuleTab } from "../stores/app";
 import { useTradeStore } from "../modules/trade/useTradeStore";
 import { MODULES, ICONS } from "../modules/trade/types";
+import { useErpStore } from "../modules/erp/useErpStore";
+import { ERP_MODULES, EICONS } from "../modules/erp/types";
 import TIcon from "../modules/trade/components/TIcon.vue";
 
 const app = useAppStore();
@@ -34,13 +37,26 @@ const tradeGroups = computed(() => {
   return gs;
 });
 
+// 星河无头ERP 导航同样并入侧栏，与 ERP 工作区共享 erp.view。
+const erp = useErpStore();
+const erpGroups = computed(() => {
+  const gs: { name: string; items: typeof ERP_MODULES }[] = [];
+  ERP_MODULES.forEach((m) => {
+    let g = gs.find((x) => x.name === m.group);
+    if (!g) { g = { name: m.group, items: [] }; gs.push(g); }
+    g.items.push(m);
+  });
+  return gs;
+});
+
 type NavItem = { key: ModuleTab; label: string; hint: string; icon: typeof Globe };
-// 分区导航：工作台（外贸 OS）/ 知识（知识库·技能中心）。
+// 分区导航：工作台（外贸 OS / 星河ERP）/ 知识（知识库·技能中心）。
 const groups: { title: string; items: NavItem[] }[] = [
   {
     title: "工作台",
     items: [
       { key: "trade", label: "外贸 OS", hint: "北极星外贸 OS · 全链路工作台", icon: Globe },
+      { key: "erp", label: "星河 ERP", hint: "无头ERP · AI 一人公司操作系统", icon: Boxes },
     ],
   },
   {
@@ -54,15 +70,37 @@ const groups: { title: string; items: NavItem[] }[] = [
 </script>
 
 <template>
-  <aside class="sidenav" :class="{ collapsed: app.sidebarCollapsed }">
+  <aside
+    class="sidenav"
+    :class="{ collapsed: app.sidebarCollapsed }"
+  >
     <!-- 品牌 + 收起按钮（顶部区做窗口拖拽区） -->
     <div class="brand-row">
-      <div class="brand" v-if="!app.sidebarCollapsed">
-        <svg class="brand-star" viewBox="0 0 24 24" aria-hidden="true">
+      <div
+        v-if="!app.sidebarCollapsed"
+        class="brand"
+      >
+        <svg
+          class="brand-star"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
           <defs>
-            <linearGradient id="sn-star" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#2f6f63" />
-              <stop offset="1" stop-color="#8fd6c4" />
+            <linearGradient
+              id="sn-star"
+              x1="0"
+              y1="0"
+              x2="1"
+              y2="1"
+            >
+              <stop
+                offset="0"
+                stop-color="#2f6f63"
+              />
+              <stop
+                offset="1"
+                stop-color="#8fd6c4"
+              />
             </linearGradient>
           </defs>
           <path
@@ -88,17 +126,35 @@ const groups: { title: string; items: NavItem[] }[] = [
 
     <!-- 分区导航 -->
     <nav class="nav">
-      <template v-for="g in groups" :key="g.title">
-        <div v-if="!app.sidebarCollapsed" class="nav-group">{{ g.title }}</div>
-        <template v-for="it in g.items" :key="it.key">
+      <template
+        v-for="g in groups"
+        :key="g.title"
+      >
+        <div
+          v-if="!app.sidebarCollapsed"
+          class="nav-group"
+        >
+          {{ g.title }}
+        </div>
+        <template
+          v-for="it in g.items"
+          :key="it.key"
+        >
           <button
             class="nav-item"
             :class="{ active: app.moduleTab === it.key }"
             :title="it.hint"
             @click="app.setModuleTab(it.key)"
           >
-            <span class="ni-ic"><component :is="it.icon" :size="17" :stroke-width="1.7" /></span>
-            <span v-if="!app.sidebarCollapsed" class="ni-label">{{ it.label }}</span>
+            <span class="ni-ic"><component
+              :is="it.icon"
+              :size="17"
+              :stroke-width="1.7"
+            /></span>
+            <span
+              v-if="!app.sidebarCollapsed"
+              class="ni-label"
+            >{{ it.label }}</span>
           </button>
 
           <!-- 外贸 OS 展开：模块导航直接并入侧栏（人工审核看板 + 12 模块分组） -->
@@ -112,12 +168,23 @@ const groups: { title: string; items: NavItem[] }[] = [
               title="人工审核看板"
               @click="trade.go('review')"
             >
-              <span class="ti-ic"><TIcon :path="ICONS.review" :size="15" /></span>
+              <span class="ti-ic"><TIcon
+                :path="ICONS.review"
+                :size="15"
+              /></span>
               <span class="ti-lbl">人工审核看板</span>
-              <span v-if="trade.pendingCount.value" class="ti-pip warn">{{ trade.pendingCount.value }}</span>
+              <span
+                v-if="trade.pendingCount.value"
+                class="ti-pip warn"
+              >{{ trade.pendingCount.value }}</span>
             </button>
-            <template v-for="tg in tradeGroups" :key="tg.name">
-              <div class="trade-group">{{ tg.name }}</div>
+            <template
+              v-for="tg in tradeGroups"
+              :key="tg.name"
+            >
+              <div class="trade-group">
+                {{ tg.name }}
+              </div>
               <button
                 v-for="m in tg.items"
                 :key="m.id"
@@ -126,10 +193,69 @@ const groups: { title: string; items: NavItem[] }[] = [
                 :title="`${m.no} ${m.name} — ${m.sub}`"
                 @click="trade.go(m.id)"
               >
-                <span class="ti-ic"><TIcon :path="m.icon" :size="15" /></span>
+                <span class="ti-ic"><TIcon
+                  :path="m.icon"
+                  :size="15"
+                /></span>
                 <span class="ti-lbl">{{ m.name }}</span>
-                <span v-if="m.star" class="ti-star">★</span>
-                <span v-if="m.pip" class="ti-pip" :class="{ warn: m.warn }">{{ m.pip }}</span>
+                <span
+                  v-if="m.star"
+                  class="ti-star"
+                >★</span>
+                <span
+                  v-if="m.pip"
+                  class="ti-pip"
+                  :class="{ warn: m.warn }"
+                >{{ m.pip }}</span>
+              </button>
+            </template>
+          </div>
+
+          <!-- 星河ERP 展开：审批中心 + 10 模块分组（复用外贸 OS 子导航样式） -->
+          <div
+            v-if="it.key === 'erp' && app.moduleTab === 'erp' && !app.sidebarCollapsed"
+            class="trade-nav"
+          >
+            <button
+              class="trade-item review"
+              :class="{ on: erp.view.value === 'review' }"
+              title="审批中心：AI 备好功课，你只批/驳/改"
+              @click="erp.go('review')"
+            >
+              <span class="ti-ic"><TIcon
+                :path="EICONS.review"
+                :size="15"
+              /></span>
+              <span class="ti-lbl">审批中心</span>
+              <span
+                v-if="erp.pendingCount.value"
+                class="ti-pip warn"
+              >{{ erp.pendingCount.value }}</span>
+            </button>
+            <template
+              v-for="eg in erpGroups"
+              :key="eg.name"
+            >
+              <div class="trade-group">
+                {{ eg.name }}
+              </div>
+              <button
+                v-for="m in eg.items"
+                :key="m.id"
+                class="trade-item"
+                :class="{ on: erp.view.value === m.id }"
+                :title="`${m.no} ${m.name} — ${m.sub}`"
+                @click="erp.go(m.id)"
+              >
+                <span class="ti-ic"><TIcon
+                  :path="m.icon"
+                  :size="15"
+                /></span>
+                <span class="ti-lbl">{{ m.name }}</span>
+                <span
+                  v-if="m.star"
+                  class="ti-star"
+                >★</span>
               </button>
             </template>
           </div>
@@ -137,29 +263,46 @@ const groups: { title: string; items: NavItem[] }[] = [
       </template>
     </nav>
 
-    <div class="spacer"></div>
+    <div class="spacer" />
 
     <!-- 底部：对话抽屉开关 + 更多设置 -->
     <div class="foot-nav">
       <button
-        v-if="app.moduleTab !== 'trade'"
+        v-if="!app.isNativeTab"
         class="nav-item chat"
         :class="{ active: app.chatOpen }"
         title="对话系统：右侧抽屉，可拖宽 / 收起"
         @click="app.toggleChat()"
       >
-        <span class="ni-ic"><MessageSquare :size="17" :stroke-width="1.7" /></span>
-        <span v-if="!app.sidebarCollapsed" class="ni-label">对话</span>
+        <span class="ni-ic"><MessageSquare
+          :size="17"
+          :stroke-width="1.7"
+        /></span>
+        <span
+          v-if="!app.sidebarCollapsed"
+          class="ni-label"
+        >对话</span>
       </button>
       <button
         class="nav-item"
         title="设置 / 更多（含环境配置）"
         @click="app.openSettings()"
       >
-        <span class="ni-ic"><Settings2 :size="17" :stroke-width="1.7" /></span>
-        <span v-if="!app.sidebarCollapsed" class="ni-label">更多</span>
+        <span class="ni-ic"><Settings2
+          :size="17"
+          :stroke-width="1.7"
+        /></span>
+        <span
+          v-if="!app.sidebarCollapsed"
+          class="ni-label"
+        >更多</span>
       </button>
-      <div v-if="!app.sidebarCollapsed" class="foot-brand">PolarisTrade</div>
+      <div
+        v-if="!app.sidebarCollapsed"
+        class="foot-brand"
+      >
+        PolarisTrade
+      </div>
     </div>
   </aside>
 </template>
@@ -262,18 +405,27 @@ const groups: { title: string; items: NavItem[] }[] = [
   color: var(--text-2);
   font-size: 13px;
   text-align: left;
-  transition: background 0.14s, color 0.14s, border-color 0.14s;
+  transition: background 0.14s, color 0.14s, border-color 0.14s,
+    transform 0.12s var(--ease, ease);
+}
+.nav-item:active {
+  transform: scale(0.975); /* v9 按压反馈：玻璃件被指尖压下去一点 */
 }
 .nav-item:hover {
-  background: var(--selection-bg);
+  /* 玻璃胶囊 hover：半透白 + 发丝描边，代替实底色块 */
+  background: var(--card-bg, var(--selection-bg));
+  border-color: var(--card-border, transparent);
+  box-shadow: var(--shadow-sm);
   color: var(--text);
 }
 .nav-item.active {
   background: linear-gradient(160deg, var(--primary), var(--primary-deep));
   color: #fff;
-  border-color: transparent;
-  box-shadow: 0 3px 10px -3px rgba(28, 48, 69, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.22);
+  /* 玻璃按钮三件套：顶部镜面高光 + 底部收暗 + 同色柔光晕 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
 }
 .nav-item.active .ni-ic {
   color: #fff;
@@ -328,14 +480,17 @@ const groups: { title: string; items: NavItem[] }[] = [
   transition: background 0.14s, color 0.14s;
 }
 .trade-item:hover {
-  background: var(--selection-bg);
+  background: var(--card-bg, var(--selection-bg));
+  border-color: var(--card-border, transparent);
   color: var(--text);
 }
 .trade-item.on {
   background: linear-gradient(160deg, var(--primary), var(--primary-deep));
   color: #fff;
-  box-shadow: 0 2px 8px -3px rgba(28, 48, 69, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 4px 12px -5px rgba(28, 48, 69, 0.55);
 }
 .trade-item.on .ti-ic {
   color: #fff;
@@ -405,7 +560,9 @@ const groups: { title: string; items: NavItem[] }[] = [
   flex-direction: column;
   gap: 2px;
   padding-top: 8px;
-  border-top: 1px solid var(--hairline);
+  /* v9 渐隐发丝线：两端淡出的分割线比通长实线更轻盈 */
+  border-top: 1px solid transparent;
+  border-image: var(--hairline-grad, linear-gradient(90deg, transparent, var(--hairline), transparent)) 1;
 }
 .nav-item.chat.active {
   background: linear-gradient(160deg, var(--primary), var(--primary-deep));

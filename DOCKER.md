@@ -88,7 +88,7 @@ docker compose up -d --build
 
 | 卷 | 容器内路径 | 内容 |
 |---|---|---|
-| `polaris-data` | `/root/Polaris` | 知识库 `PolarisKB/`、对话历史、项目、产物、技能 |
+| `polaris-data` | `/root/ChenNaXingHe` | 数据根（server 进程 cwd）：知识库 `PolarisKB/`、对话历史、项目、产物、技能 |
 | `polaris-claude` | `/root/.claude` | claude 凭证、`settings.json`（供应商切换/OAuth 登录态） |
 | `polaris-config` | `/root/.config` | KB 设置等 XDG 配置 |
 

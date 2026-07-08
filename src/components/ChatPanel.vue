@@ -145,6 +145,7 @@ const isMaoProject = computed(() => currentProjectName.value === "毛主席");
 // ─────────── 回复渲染：统一 markdown 管线(lib/markdown) ───────────
 // 已完成回合按原文命中缓存(流式期间不再全量重算);shiki/KaTeX 异步增强,
 // 完成后 mdVersion 变化触发重读缓存。流式中的活跃回合传 enhance=false 省 CPU。
+// eslint-disable-next-line no-control-regex -- 剥离终端 ANSI 转义序列, \x1b 是刻意的
 const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
 function renderMd(text: string, enhance = true): string {
   void mdVersion.value; // 注册响应式依赖:增强完成后刷新
@@ -1113,13 +1114,13 @@ async function onPaste(e: ClipboardEvent) {
 
 const { isOver: dropOver } = useFileDrop({
   // 按真实活动视图 moduleTab 路由(app.view 是遗留字段、几乎恒为 "chat" 会误吞落区):
-  // 仅当对话抽屉真的展开、且主区不是知识库/技能中心/外贸(它们各自处理或不接收落区)时,
-  // 由对话面板认领落区,保证同一次拖拽只被一个 handler 认领。
+  // 仅当对话抽屉真的展开、且主区不是知识库/技能中心/原生模块(外贸OS/星河ERP 各自处理
+  // 或不接收落区)时,由对话面板认领落区,保证同一次拖拽只被一个 handler 认领。
   active: () =>
     app.chatOpen &&
+    !app.isNativeTab &&
     app.moduleTab !== "kb" &&
-    app.moduleTab !== "skill" &&
-    app.moduleTab !== "trade",
+    app.moduleTab !== "skill",
   onDrop: onDropFiles,
 });
 
@@ -1556,13 +1557,26 @@ async function deleteCurrentConv() {
 </script>
 
 <template>
-  <div class="chat" :class="{ 'drag-active': dropOver, wide: app.drawerCollapsed }">
+  <div
+    class="chat"
+    :class="{ 'drag-active': dropOver, wide: app.drawerCollapsed }"
+  >
     <!-- 拖拽上传覆盖层 -->
-    <div v-if="dropOver" class="drop-overlay">
+    <div
+      v-if="dropOver"
+      class="drop-overlay"
+    >
       <div class="drop-card">
-        <Paperclip :size="30" :stroke-width="1.4" />
-        <div class="drop-title">松开以上传到当前对话</div>
-        <div class="drop-sub">文件作为附件，发送时供 Claude 读取</div>
+        <Paperclip
+          :size="30"
+          :stroke-width="1.4"
+        />
+        <div class="drop-title">
+          松开以上传到当前对话
+        </div>
+        <div class="drop-sub">
+          文件作为附件，发送时供 Claude 读取
+        </div>
       </div>
     </div>
     <div class="chat-top">
@@ -1578,7 +1592,7 @@ async function deleteCurrentConv() {
             @keydown.esc.prevent="cancelRename"
             @blur="commitRename"
             @click.stop
-          />
+          >
           <template v-else>
             <Pin
               v-if="app.isPinned(app.currentConvId)"
@@ -1590,21 +1604,40 @@ async function deleteCurrentConv() {
           </template>
 
           <!-- 更多菜单 -->
-          <div v-if="!renaming" class="conv-menu-wrap">
+          <div
+            v-if="!renaming"
+            class="conv-menu-wrap"
+          >
             <button
               class="conv-more"
               :class="{ active: showConvMenu }"
               title="更多"
               @click.stop="toggleConvMenu"
             >
-              <Ellipsis :size="16" :stroke-width="2" />
+              <Ellipsis
+                :size="16"
+                :stroke-width="2"
+              />
             </button>
-            <div v-if="showConvMenu" class="conv-menu" @click.stop>
-              <button class="cm-item" @click="openRename">
-                <PencilLine :size="14" :stroke-width="1.8" />
+            <div
+              v-if="showConvMenu"
+              class="conv-menu"
+              @click.stop
+            >
+              <button
+                class="cm-item"
+                @click="openRename"
+              >
+                <PencilLine
+                  :size="14"
+                  :stroke-width="1.8"
+                />
                 <span>重命名对话</span>
               </button>
-              <button class="cm-item" @click="togglePinCurrent">
+              <button
+                class="cm-item"
+                @click="togglePinCurrent"
+              >
                 <component
                   :is="app.isPinned(app.currentConvId) ? PinOff : Pin"
                   :size="14"
@@ -1614,18 +1647,36 @@ async function deleteCurrentConv() {
                   app.isPinned(app.currentConvId) ? "取消置顶" : "置顶对话"
                 }}</span>
               </button>
-              <div class="cm-sep"></div>
-              <button class="cm-item" @click="copyConvId">
-                <Copy :size="14" :stroke-width="1.8" />
+              <div class="cm-sep" />
+              <button
+                class="cm-item"
+                @click="copyConvId"
+              >
+                <Copy
+                  :size="14"
+                  :stroke-width="1.8"
+                />
                 <span>复制会话 ID</span>
               </button>
-              <button class="cm-item" @click="copyAsMarkdown">
-                <FileText :size="14" :stroke-width="1.8" />
+              <button
+                class="cm-item"
+                @click="copyAsMarkdown"
+              >
+                <FileText
+                  :size="14"
+                  :stroke-width="1.8"
+                />
                 <span>复制为 Markdown</span>
               </button>
-              <div class="cm-sep"></div>
-              <button class="cm-item danger" @click="deleteCurrentConv">
-                <Trash2 :size="14" :stroke-width="1.8" />
+              <div class="cm-sep" />
+              <button
+                class="cm-item danger"
+                @click="deleteCurrentConv"
+              >
+                <Trash2
+                  :size="14"
+                  :stroke-width="1.8"
+                />
                 <span>删除对话</span>
               </button>
               <div
@@ -1644,8 +1695,14 @@ async function deleteCurrentConv() {
         </template>
       </div>
       <Transition name="copy-fade">
-        <div v-if="copied" class="copy-toast">
-          <Check :size="13" :stroke-width="2.2" />
+        <div
+          v-if="copied"
+          class="copy-toast"
+        >
+          <Check
+            :size="13"
+            :stroke-width="2.2"
+          />
           <span>{{ copied }}</span>
         </div>
       </Transition>
@@ -1663,32 +1720,56 @@ async function deleteCurrentConv() {
       </button>
     </div>
 
-    <div class="messages" ref="scrollEl" @scroll.passive="onMessagesScroll">
+    <div
+      ref="scrollEl"
+      class="messages"
+      @scroll.passive="onMessagesScroll"
+    >
       <!-- 历史加载骨架 -->
-      <div v-if="historyLoading && renderTurns.length === 0" class="hist-skeleton">
-        <div class="sk-row user"></div>
-        <div class="sk-row"></div>
-        <div class="sk-row short"></div>
+      <div
+        v-if="historyLoading && renderTurns.length === 0"
+        class="hist-skeleton"
+      >
+        <div class="sk-row user" />
+        <div class="sk-row" />
+        <div class="sk-row short" />
       </div>
       <!-- 历史加载失败:不假装是空对话 -->
-      <div v-else-if="historyErr && renderTurns.length === 0" class="hist-error">
+      <div
+        v-else-if="historyErr && renderTurns.length === 0"
+        class="hist-error"
+      >
         <span>历史加载失败:{{ historyErr }}</span>
-        <button class="hist-retry" @click="retryHistory">重试</button>
+        <button
+          class="hist-retry"
+          @click="retryHistory"
+        >
+          重试
+        </button>
       </div>
-      <div v-else-if="renderTurns.length === 0" class="hero-wrap">
+      <div
+        v-else-if="renderTurns.length === 0"
+        class="hero-wrap"
+      >
         <!-- 毛主席项目彩蛋：未对话前的空白中部 -->
         <template v-if="isMaoProject">
-          <div class="mao-hero">小同志，你好。</div>
+          <div class="mao-hero">
+            小同志，你好。
+          </div>
           <div class="mao-desc">
             这里是<strong>毛主席资料库</strong>。我已经把《毛泽东选集》《毛泽东全集》等
             资料装进了你本地的知识库 —— 你可以在「浏览」里随时翻看。有什么问题，尽管向我提；
             点对话框下的<strong>「请教毛主席」</strong>，我就用实事求是、矛盾分析的法子，
             给你客观地分析分析。
           </div>
-          <div class="mao-slogan">为建设共产主义事业而奋斗</div>
+          <div class="mao-slogan">
+            为建设共产主义事业而奋斗
+          </div>
         </template>
         <template v-else>
-          <div class="hero">你说,北极星画</div>
+          <div class="hero">
+            你说,北极星画
+          </div>
           <!-- KB-first 的工作机制(沿双链取证/脚注溯源)是后台行为, 不在空对话页直接铺给用户;
                需要时挂在下面这行折叠摘要里, 默认收起。 -->
           <details class="hero-note">
@@ -1698,17 +1779,20 @@ async function deleteCurrentConv() {
               wiki 沿 <code>[[双链]]</code> 取证 · 命中标脚注来源 · 查不到才允许自由作答
             </div>
             <div class="hero-meta">
-              <span class="hm-pill">📚 知识库写死优先</span>
-              <span class="hm-pill">🔗 沿 <code>[[双链]]</code> 续读</span>
-              <span class="hm-pill">📑 命中标脚注 <code>[^1]</code> 来源</span>
-              <span class="hm-pill">⚠️ 查不到就标「资料不足」</span>
+              <span class="hm-pill">知识库写死优先</span>
+              <span class="hm-pill">沿 <code>[[双链]]</code> 续读</span>
+              <span class="hm-pill">命中标脚注 <code>[^1]</code> 来源</span>
+              <span class="hm-pill">查不到就标「资料不足」</span>
             </div>
           </details>
         </template>
       </div>
 
       <!-- 专家团工作台：入驻了团/专家（expert-team / single-expert）时显示在消息区下方 -->
-      <div v-if="(agentMode === 'expert-team' || agentMode === 'single-expert') && app.currentProjectId" class="expert-team-studio-wrap">
+      <div
+        v-if="(agentMode === 'expert-team' || agentMode === 'single-expert') && app.currentProjectId"
+        class="expert-team-studio-wrap"
+      >
         <ExpertTeamStudio
           :project-id="app.currentProjectId"
           :agents-status="teamAgentsStatus"
@@ -1716,25 +1800,46 @@ async function deleteCurrentConv() {
       </div>
 
       <!-- 历史折叠:更早的回合不渲染,点击逐段放开 -->
-      <div v-if="hiddenCount > 0" class="earlier-wrap">
-        <button class="earlier-btn" @click="showEarlier">
+      <div
+        v-if="hiddenCount > 0"
+        class="earlier-wrap"
+      >
+        <button
+          class="earlier-btn"
+          @click="showEarlier"
+        >
           加载更早的 {{ hiddenCount }} 个回合
         </button>
       </div>
 
-      <div v-for="t in visibleTurns" :key="t.key" class="turn">
+      <div
+        v-for="t in visibleTurns"
+        :key="t.key"
+        class="turn"
+      >
         <!-- 用户消息：右侧中性气泡，无头像 -->
-        <div v-if="t.user" class="msg user">
+        <div
+          v-if="t.user"
+          class="msg user"
+        >
           <button
             v-if="t.user.text && !sending"
             class="u-edit"
             title="编辑并重发"
             @click="editTurn(t)"
           >
-            <PencilLine :size="13" :stroke-width="1.8" />
+            <PencilLine
+              :size="13"
+              :stroke-width="1.8"
+            />
           </button>
           <div class="bubble-user">
-            <div v-if="t.user.text" class="u-text">{{ t.user.text }}</div>
+            <div
+              v-if="t.user.text"
+              class="u-text"
+            >
+              {{ t.user.text }}
+            </div>
             <div
               v-if="t.user.files && t.user.files.length"
               class="attach-chips in-bubble"
@@ -1745,7 +1850,11 @@ async function deleteCurrentConv() {
                 class="attach-chip readonly"
                 :title="f.path"
               >
-                <component :is="attachIcon(f.kind)" :size="14" :stroke-width="1.7" />
+                <component
+                  :is="attachIcon(f.kind)"
+                  :size="14"
+                  :stroke-width="1.7"
+                />
                 <span class="ac-name">{{ f.name }}</span>
               </div>
             </div>
@@ -1756,16 +1865,22 @@ async function deleteCurrentConv() {
         <div
           v-if="
             t.hasAssistant ||
-            t.tools.length ||
-            t.artifacts.length ||
-            t.errors.length ||
-            isPending(t)
+              t.tools.length ||
+              t.artifacts.length ||
+              t.errors.length ||
+              isPending(t)
           "
           class="msg ai"
         >
           <!-- 工具调用：低调 pill,点击展开输入摘要 -->
-          <div v-if="t.tools.length" class="tool-strip">
-            <template v-for="(tl, j) in t.tools" :key="j">
+          <div
+            v-if="t.tools.length"
+            class="tool-strip"
+          >
+            <template
+              v-for="(tl, j) in t.tools"
+              :key="j"
+            >
               <button
                 class="tool-pill"
                 :class="{
@@ -1774,38 +1889,68 @@ async function deleteCurrentConv() {
                 }"
                 @click="tl.details.length && toggleTool(t.key, j)"
               >
-                <Wrench :size="11" :stroke-width="1.8" />
+                <Wrench
+                  :size="11"
+                  :stroke-width="1.8"
+                />
                 {{ toolLabel(tl.name) }}
-                <span v-if="tl.count > 1" class="tp-count">×{{ tl.count }}</span>
+                <span
+                  v-if="tl.count > 1"
+                  class="tp-count"
+                >×{{ tl.count }}</span>
               </button>
             </template>
           </div>
           <div
             v-for="(tl, j) in t.tools"
-            :key="'d' + j"
             v-show="expandedTool === `${t.key}:${j}`"
+            :key="'d' + j"
             class="tool-detail"
           >
-            <div class="td-head">{{ toolLabel(tl.name) }} · 输入摘要</div>
-            <div v-for="(d, x) in tl.details" :key="x" class="td-line">{{ d }}</div>
+            <div class="td-head">
+              {{ toolLabel(tl.name) }} · 输入摘要
+            </div>
+            <div
+              v-for="(d, x) in tl.details"
+              :key="x"
+              class="td-line"
+            >
+              {{ d }}
+            </div>
           </div>
 
           <!-- 正文：markdown 渲染(流式中的活跃回合跳过异步高亮排队) -->
-          <div v-if="t.text" class="md" v-html="renderMd(t.text, !isPending(t))"></div>
+          <div
+            v-if="t.text"
+            class="md"
+            v-html="renderMd(t.text, !isPending(t))"
+          />
 
           <!-- 生成中：三点呼吸 -->
-          <div v-if="isPending(t)" class="typing">
-            <span></span><span></span><span></span>
+          <div
+            v-if="isPending(t)"
+            class="typing"
+          >
+            <span /><span /><span />
           </div>
 
           <!-- 错误行 -->
-          <div v-for="(e, j) in t.errors" :key="'e' + j" class="err-line">
+          <div
+            v-for="(e, j) in t.errors"
+            :key="'e' + j"
+            class="err-line"
+          >
             {{ e }}
           </div>
 
           <!-- 生成的文件：统一收在回答末尾 -->
-          <div v-if="t.artifacts.length" class="files">
-            <div class="files-head">生成的文件 · {{ t.artifacts.length }}</div>
+          <div
+            v-if="t.artifacts.length"
+            class="files"
+          >
+            <div class="files-head">
+              生成的文件 · {{ t.artifacts.length }}
+            </div>
             <div class="files-list">
               <button
                 v-for="a in t.artifacts"
@@ -1821,7 +1966,11 @@ async function deleteCurrentConv() {
                   :stroke-width="1.7"
                 />
                 <span class="af-name">{{ fileName(a) }}</span>
-                <ExternalLink :size="12" :stroke-width="1.8" class="af-open" />
+                <ExternalLink
+                  :size="12"
+                  :stroke-width="1.8"
+                  class="af-open"
+                />
               </button>
             </div>
           </div>
@@ -1831,8 +1980,15 @@ async function deleteCurrentConv() {
             v-if="t.hasAssistant && t.text && !isPending(t)"
             class="turn-actions"
           >
-            <button class="ta-btn" title="复制回答" @click="copyTurn(t)">
-              <Copy :size="13" :stroke-width="1.8" />
+            <button
+              class="ta-btn"
+              title="复制回答"
+              @click="copyTurn(t)"
+            >
+              <Copy
+                :size="13"
+                :stroke-width="1.8"
+              />
               <span>复制</span>
             </button>
             <button
@@ -1841,10 +1997,16 @@ async function deleteCurrentConv() {
               title="用同样的问题再生成一次"
               @click="regenerate(t)"
             >
-              <RotateCcw :size="13" :stroke-width="1.8" />
+              <RotateCcw
+                :size="13"
+                :stroke-width="1.8"
+              />
               <span>重新生成</span>
             </button>
-            <span v-if="t.at" class="ta-time">{{ fmtTime(t.at) }}</span>
+            <span
+              v-if="t.at"
+              class="ta-time"
+            >{{ fmtTime(t.at) }}</span>
           </div>
         </div>
       </div>
@@ -1857,7 +2019,10 @@ async function deleteCurrentConv() {
           title="回到底部"
           @click="scrollToBottom()"
         >
-          <ChevronDown :size="16" :stroke-width="2" />
+          <ChevronDown
+            :size="16"
+            :stroke-width="2"
+          />
         </button>
       </Transition>
     </div>
@@ -1865,16 +2030,33 @@ async function deleteCurrentConv() {
     <!-- 输入区域 -->
     <div class="input-area">
       <!-- 技能选择弹窗 -->
-      <div v-if="showSkillPanel" class="skill-panel">
+      <div
+        v-if="showSkillPanel"
+        class="skill-panel"
+      >
         <div class="skill-panel-head">
           <span class="skill-panel-title">选择技能</span>
-          <button class="skill-panel-close" @click="showSkillPanel = false">
-            <X :size="14" :stroke-width="2" />
+          <button
+            class="skill-panel-close"
+            @click="showSkillPanel = false"
+          >
+            <X
+              :size="14"
+              :stroke-width="2"
+            />
           </button>
         </div>
         <div class="skill-panel-search">
-          <SearchGlass :size="14" :stroke-width="1.8" class="sp-search-icon" />
-          <input v-model="skillSearch" placeholder="搜索技能..." type="text" />
+          <SearchGlass
+            :size="14"
+            :stroke-width="1.8"
+            class="sp-search-icon"
+          />
+          <input
+            v-model="skillSearch"
+            placeholder="搜索技能..."
+            type="text"
+          >
         </div>
         <div class="skill-panel-list">
           <div
@@ -1891,28 +2073,49 @@ async function deleteCurrentConv() {
               class="sp-item-icon"
             />
             <div class="sp-item-info">
-              <div class="sp-item-name">{{ s.name }}</div>
-              <div class="sp-item-desc">{{ s.description }}</div>
+              <div class="sp-item-name">
+                {{ s.name }}
+              </div>
+              <div class="sp-item-desc">
+                {{ s.description }}
+              </div>
             </div>
           </div>
         </div>
         <div class="skill-panel-foot">
-          <button class="sp-manage" @click="goToSkillCenter">
-            <ArrowRight :size="12" :stroke-width="2" />
+          <button
+            class="sp-manage"
+            @click="goToSkillCenter"
+          >
+            <ArrowRight
+              :size="12"
+              :stroke-width="2"
+            />
             <span>探索和管理技能</span>
           </button>
         </div>
       </div>
 
       <!-- 「API / 模型」切换器：每个对话各用各的供应商(选项自动来自左下角 API 中心) -->
-      <div v-if="showProviderPanel" class="mode-panel provider-panel">
+      <div
+        v-if="showProviderPanel"
+        class="mode-panel provider-panel"
+      >
         <div class="skill-panel-head">
           <span class="skill-panel-title">自动模式</span>
-          <button class="skill-panel-close" @click="showProviderPanel = false">
-            <X :size="14" :stroke-width="2" />
+          <button
+            class="skill-panel-close"
+            @click="showProviderPanel = false"
+          >
+            <X
+              :size="14"
+              :stroke-width="2"
+            />
           </button>
         </div>
-        <div class="prov-hint">这条对话用哪个 API · 每个对话各记各的、互不串台</div>
+        <div class="prov-hint">
+          这条对话用哪个 API · 每个对话各记各的、互不串台
+        </div>
         <div class="mode-list">
           <button
             v-for="opt in providerOptions"
@@ -1924,32 +2127,55 @@ async function deleteCurrentConv() {
             <span class="mr-tx">
               <span class="mr-nm">
                 {{ opt.name }}
-                <span v-if="opt.auto" class="mr-default">默认</span>
+                <span
+                  v-if="opt.auto"
+                  class="mr-default"
+                >默认</span>
               </span>
               <span class="mr-ds">{{ opt.sub }}</span>
             </span>
-            <span class="mr-radio" :class="{ on: currentProviderId === opt.id }"></span>
+            <span
+              class="mr-radio"
+              :class="{ on: currentProviderId === opt.id }"
+            />
           </button>
         </div>
-        <button class="prov-add" @click="providersStore.openAdd(null)">
+        <button
+          class="prov-add"
+          @click="providersStore.openAdd(null)"
+        >
           ＋ 配置 / 添加供应商
         </button>
       </div>
 
 
       <!-- 输入卡片 -->
-      <div class="input-card" :class="{ 'goal-on': goalMode }">
+      <div
+        class="input-card"
+        :class="{ 'goal-on': goalMode }"
+      >
         <!-- Skill 标签 -->
-        <div v-if="skillsStore.enabledSkills.size > 0" class="skill-tags">
+        <div
+          v-if="skillsStore.enabledSkills.size > 0"
+          class="skill-tags"
+        >
           <div
             v-for="s in skillsList.filter((x) => skillsStore.has(x.id))"
             :key="s.id"
             class="skill-tag"
             @click="clearActiveSkill(s.id)"
           >
-            <component :is="skillIcon(s.id)" :size="12" :stroke-width="1.8" />
+            <component
+              :is="skillIcon(s.id)"
+              :size="12"
+              :stroke-width="1.8"
+            />
             <span>{{ s.name }}</span>
-            <X :size="10" :stroke-width="2" class="tag-close" />
+            <X
+              :size="10"
+              :stroke-width="2"
+              class="tag-close"
+            />
           </div>
         </div>
         <!-- 待发送附件 -->
@@ -1963,11 +2189,22 @@ async function deleteCurrentConv() {
             class="attach-chip"
             :title="f.path"
           >
-            <component :is="attachIcon(f.kind)" :size="14" :stroke-width="1.7" />
+            <component
+              :is="attachIcon(f.kind)"
+              :size="14"
+              :stroke-width="1.7"
+            />
             <span class="ac-name">{{ f.name }}</span>
             <span class="ac-size">{{ humanSize(f.size) }}</span>
-            <button class="ac-remove" title="移除" @click="removeAttachment(i)">
-              <X :size="11" :stroke-width="2" />
+            <button
+              class="ac-remove"
+              title="移除"
+              @click="removeAttachment(i)"
+            >
+              <X
+                :size="11"
+                :stroke-width="2"
+              />
             </button>
           </div>
           <div
@@ -1976,7 +2213,11 @@ async function deleteCurrentConv() {
             class="attach-chip pending"
             :title="p.name"
           >
-            <LoaderCircle :size="14" :stroke-width="2" class="spin" />
+            <LoaderCircle
+              :size="14"
+              :stroke-width="2"
+              class="spin"
+            />
             <span class="ac-name">{{ p.name }}</span>
           </div>
         </div>
@@ -1987,14 +2228,14 @@ async function deleteCurrentConv() {
             sending
               ? '生成中 …（按 Esc 或点 ■ 停止本轮）'
               : goalMode
-              ? '目标模式：在此写下完成条件，Claude 会持续推进直到达成 (Enter 发送) …'
-              : '请输入消息 (Enter 发送 · Shift + Enter 换行，可拖文件进来作为附件) …'
+                ? '目标模式：在此写下完成条件，Claude 会持续推进直到达成 (Enter 发送) …'
+                : '请输入消息 (Enter 发送 · Shift + Enter 换行，可拖文件进来作为附件) …'
           "
           rows="2"
           @keydown="onKeydown"
           @input="autoGrow"
           @paste="onPaste"
-        ></textarea>
+        />
         <div class="toolbar">
           <div class="toolbar-left">
             <button
@@ -2002,7 +2243,10 @@ async function deleteCurrentConv() {
               :class="{ active: showSkillPanel }"
               @click="showSkillPanel = !showSkillPanel"
             >
-              <Puzzle :size="14" :stroke-width="1.8" />
+              <Puzzle
+                :size="14"
+                :stroke-width="1.8"
+              />
               <span>技能</span>
             </button>
             <button
@@ -2010,7 +2254,10 @@ async function deleteCurrentConv() {
               :class="{ active: showProviderPanel || currentProviderId !== 'auto' }"
               @click="showProviderPanel = !showProviderPanel"
             >
-              <Layers :size="14" :stroke-width="1.8" />
+              <Layers
+                :size="14"
+                :stroke-width="1.8"
+              />
               <span>{{ currentProviderName }}</span>
               <ChevronDown
                 :size="12"
@@ -2036,11 +2283,19 @@ async function deleteCurrentConv() {
               :title="voiceBusy ? '识别中…' : dictating ? '正在听写 · 点击 / 右 Alt 结束' : '语音输入 · 点击 / 按右 Alt 开始，再按一下结束'"
               @click="toggleDictate"
             >
-              <Mic :size="15" :stroke-width="1.9" />
-              <span v-if="dictating || voiceBusy" class="mic-ping"></span>
+              <Mic
+                :size="15"
+                :stroke-width="1.9"
+              />
+              <span
+                v-if="dictating || voiceBusy"
+                class="mic-ping"
+              />
               <div class="mic-tip">
                 语音输入 · 按 <b>右 Alt</b> 快捷开关
-                <div class="mic-tip-sub">说话时文字实时长进输入框，再按一下结束</div>
+                <div class="mic-tip-sub">
+                  说话时文字实时长进输入框，再按一下结束
+                </div>
               </div>
             </button>
             <button
@@ -2049,7 +2304,11 @@ async function deleteCurrentConv() {
               title="停止 (Esc)"
               @click="cancel"
             >
-              <Square :size="14" :stroke-width="2" fill="currentColor" />
+              <Square
+                :size="14"
+                :stroke-width="2"
+                fill="currentColor"
+              />
             </button>
             <button
               v-else
@@ -2058,12 +2317,14 @@ async function deleteCurrentConv() {
               :disabled="!input.trim() && !attachments.length"
               @click="send()"
             >
-              <ArrowRight :size="16" :stroke-width="2" />
+              <ArrowRight
+                :size="16"
+                :stroke-width="2"
+              />
             </button>
           </div>
         </div>
       </div>
-
     </div>
 
     <!-- 今日建议 · 居中大弹窗（开软件自动弹一次，胶囊可重开） -->
@@ -2075,16 +2336,24 @@ async function deleteCurrentConv() {
       >
         <div class="brief-modal">
           <div class="bm-head">
-            <span class="bm-ic"><Sparkles :size="18" :stroke-width="1.7" /></span>
+            <span class="bm-ic"><Sparkles
+              :size="18"
+              :stroke-width="1.7"
+            /></span>
             <div class="bm-tt">
               <span class="bm-title">为你准备的下一步</span>
-              <span class="bm-sub"
-                >读了你最近的对话、新资料和还没收尾的项目，我想到这几件可以替你做的事。</span
-              >
+              <span class="bm-sub">读了你最近的对话、新资料和还没收尾的项目，我想到这几件可以替你做的事。</span>
             </div>
             <span class="bm-count">{{ briefings.length }}</span>
-            <button class="bm-close" title="关闭" @click="briefOpen = false">
-              <X :size="17" :stroke-width="1.9" />
+            <button
+              class="bm-close"
+              title="关闭"
+              @click="briefOpen = false"
+            >
+              <X
+                :size="17"
+                :stroke-width="1.9"
+              />
             </button>
           </div>
           <div class="bm-cards">
@@ -2103,22 +2372,50 @@ async function deleteCurrentConv() {
                   />
                 </span>
                 <span class="bmc-kind">{{ briefKind(s).label }}</span>
-                <span v-if="s.source" class="bmc-src" :title="'依据：' + s.source">
-                  <BookOpen :size="11" :stroke-width="2" />
+                <span
+                  v-if="s.source"
+                  class="bmc-src"
+                  :title="'依据：' + s.source"
+                >
+                  <BookOpen
+                    :size="11"
+                    :stroke-width="2"
+                  />
                   <span class="bmc-src-t">{{ s.source }}</span>
                 </span>
               </div>
-              <div class="bmc-title">{{ s.title }}</div>
-              <div v-if="s.why" class="bmc-why">{{ s.why }}</div>
-              <div v-if="s.how" class="bmc-how">
+              <div class="bmc-title">
+                {{ s.title }}
+              </div>
+              <div
+                v-if="s.why"
+                class="bmc-why"
+              >
+                {{ s.why }}
+              </div>
+              <div
+                v-if="s.how"
+                class="bmc-how"
+              >
                 <span class="bmc-how-tag">怎么做</span>{{ s.how }}
               </div>
               <div class="bmc-act">
-                <button class="bmc-go" @click="runBriefing(s)">
+                <button
+                  class="bmc-go"
+                  @click="runBriefing(s)"
+                >
                   <span>让我去做</span>
-                  <ArrowRight :size="14" :stroke-width="2.1" />
+                  <ArrowRight
+                    :size="14"
+                    :stroke-width="2.1"
+                  />
                 </button>
-                <button class="bmc-dismiss" @click="dismissBriefing(s.id)">先放一放</button>
+                <button
+                  class="bmc-dismiss"
+                  @click="dismissBriefing(s.id)"
+                >
+                  先放一放
+                </button>
               </div>
             </div>
           </div>
@@ -2240,10 +2537,13 @@ async function deleteCurrentConv() {
   z-index: 40;
   min-width: 184px;
   padding: 5px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow-lg);
+  /* 悬浮 chrome：真磨砂玻璃下拉（琉璃材质） */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   animation: cm-pop 130ms ease;
 }
 @keyframes cm-pop {
@@ -2493,17 +2793,20 @@ async function deleteCurrentConv() {
 }
 .earlier-btn {
   padding: 5px 16px;
-  border: 1px solid var(--border-soft);
-  background: var(--panel);
+  /* 玻璃胶囊：渐变玻璃底 + 白玻璃描边 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--muted);
   border-radius: 999px;
   font-size: 11.5px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  box-shadow: var(--card-shadow);
+  transition: color 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 .earlier-btn:hover {
   color: var(--text);
-  border-color: var(--border);
+  transform: translateY(-1px);
+  box-shadow: var(--card-shadow-hover);
 }
 
 /* 回到底部悬浮钮(sticky 钉在滚动容器视口底部) */
@@ -2515,14 +2818,17 @@ async function deleteCurrentConv() {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  /* 悬浮小圆钮：磨砂 chrome，消息从玻璃下滑过 */
+  border: 1px solid var(--chrome-border);
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
   color: var(--text-2);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--chrome-shadow);
 }
 .to-bottom:hover {
   color: var(--primary);
@@ -2562,9 +2868,11 @@ async function deleteCurrentConv() {
 }
 .bubble-user {
   max-width: 82%;
-  background: var(--bg-soft);
-  border: 1px solid var(--border-soft);
+  /* 用户气泡升级为玻璃卡：渐变玻璃底 + 发丝暗环 + 顶部镜面高光 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
+  box-shadow: var(--card-shadow);
   padding: 9px 15px;
 }
 .u-text {
@@ -2720,17 +3028,18 @@ async function deleteCurrentConv() {
   align-items: center;
   gap: 5px;
   padding: 4px 9px;
-  border: 1px solid var(--border-soft);
-  background: var(--panel);
+  /* 次级玻璃按钮 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--muted);
   font-size: 11.5px;
-  border-radius: 7px;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  border-radius: 10px;
+  transition: color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 .ta-btn:hover {
-  border-color: var(--border);
   color: var(--text);
-  background: var(--bg-soft);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 .ta-time {
   align-self: center;
@@ -3153,21 +3462,42 @@ html[data-theme="aurora-dark"] .bm-card:hover {
   left: 32px;
   width: 360px;
   max-height: 420px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
+  /* 悬浮 chrome：真磨砂玻璃弹出面板 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   z-index: 30;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+/* v9：顶级 chrome 弹出面板的棱边折射环（1px，跟随圆角） */
+.skill-panel::before,
+.mode-panel::before,
+.dropdown::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .skill-panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px 8px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
 }
 .skill-panel-title {
   font-size: 14px;
@@ -3260,7 +3590,8 @@ html[data-theme="aurora-dark"] .bm-card:hover {
 }
 .skill-panel-foot {
   padding: 8px 14px;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
 }
 .sp-manage {
   display: inline-flex;
@@ -3300,10 +3631,13 @@ html[data-theme="aurora-dark"] .bm-card:hover {
   left: 32px;
   width: 360px;
   max-height: 420px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
+  /* 悬浮 chrome：真磨砂玻璃弹出面板 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -3911,9 +4245,13 @@ html[data-theme="dark"] .btn-tooltip-inner {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background 0.14s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .send-btn:hover {
   background: var(--primary);
+}
+.send-btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 .send-btn:disabled {
   background: var(--border);
@@ -4048,15 +4386,17 @@ html[data-theme="dark"] .btn-tooltip-inner {
   margin-right: 2px;
 }
 
-/* 授权下拉菜单 — 向上展开 */
+/* 授权下拉菜单 — 向上展开（磨砂 chrome 材质） */
 .dropdown {
   position: absolute;
   right: 0;
   bottom: calc(100% + 6px);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: var(--shadow-lg);
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   width: 280px;
   padding: 6px;
   z-index: 20;
@@ -4098,7 +4438,9 @@ html[data-theme="dark"] .btn-tooltip-inner {
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(1px);
+  /* 拖拽时磨砂虚化底下内容，玻璃门质感 */
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   pointer-events: none;
 }
 .drop-card {

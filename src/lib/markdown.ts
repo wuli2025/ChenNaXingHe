@@ -128,10 +128,71 @@ function scheduleEnhance(key: string, html: string) {
 }
 
 // ── 懒加载 shiki / katex ──
-let shikiMod: Promise<typeof import("shiki")> | null = null;
-function getShiki() {
-  if (!shikiMod) shikiMod = import("shiki");
-  return shikiMod;
+// 用 shiki/core 细粒度按需导入: 只把白名单里的语言 + 单一主题打进产物,
+// 避免主入口 codeToHtml 把 bundledLanguages(~200 语言)全部 code-split 成 chunk。
+// 新增语言 = 在下方 SHIKI_LANGS 里加一行 import(...), 不会拖进其余语言。
+const SHIKI_THEME = "one-dark-pro";
+/* Promise<any> 而非 unknown：shiki createHighlighterCore 的 langs 形参是
+   Promise<MaybeModule<...>>，unknown 不可赋值会挂 vue-tsc */
+const SHIKI_LANGS: Record<string, () => Promise<any>> = {
+  javascript: () => import("shiki/langs/javascript.mjs"),
+  typescript: () => import("shiki/langs/typescript.mjs"),
+  jsx: () => import("shiki/langs/jsx.mjs"),
+  tsx: () => import("shiki/langs/tsx.mjs"),
+  json: () => import("shiki/langs/json.mjs"),
+  python: () => import("shiki/langs/python.mjs"),
+  rust: () => import("shiki/langs/rust.mjs"),
+  bash: () => import("shiki/langs/bash.mjs"),
+  shell: () => import("shiki/langs/shellscript.mjs"),
+  html: () => import("shiki/langs/html.mjs"),
+  css: () => import("shiki/langs/css.mjs"),
+  vue: () => import("shiki/langs/vue.mjs"),
+  yaml: () => import("shiki/langs/yaml.mjs"),
+  toml: () => import("shiki/langs/toml.mjs"),
+  sql: () => import("shiki/langs/sql.mjs"),
+  markdown: () => import("shiki/langs/markdown.mjs"),
+  go: () => import("shiki/langs/go.mjs"),
+  java: () => import("shiki/langs/java.mjs"),
+  c: () => import("shiki/langs/c.mjs"),
+  cpp: () => import("shiki/langs/cpp.mjs"),
+};
+// 常见别名 → 白名单键
+const SHIKI_ALIAS: Record<string, string> = {
+  js: "javascript",
+  ts: "typescript",
+  py: "python",
+  rs: "rust",
+  sh: "bash",
+  zsh: "bash",
+  yml: "yaml",
+  md: "markdown",
+  "c++": "cpp",
+  golang: "go",
+};
+
+let highlighterP: Promise<{
+  codeToHtml: (code: string, opts: { lang: string; theme: string }) => string;
+  getLoadedLanguages: () => string[];
+} | null> | null = null;
+function getHighlighter() {
+  if (!highlighterP) {
+    highlighterP = (async () => {
+      const [{ createHighlighterCore }, { createOnigurumaEngine }] = await Promise.all([
+        import("shiki/core"),
+        import("shiki/engine/oniguruma"),
+      ]);
+      return createHighlighterCore({
+        themes: [import("shiki/themes/one-dark-pro.mjs")],
+        langs: Object.values(SHIKI_LANGS).map((load) => load()),
+        engine: createOnigurumaEngine(import("shiki/wasm")),
+      });
+    })().catch(() => null);
+  }
+  return highlighterP;
+}
+function resolveLang(lang: string): string | null {
+  const key = SHIKI_ALIAS[lang] ?? lang;
+  return key in SHIKI_LANGS ? key : null;
 }
 let katexMod: Promise<any> | null = null;
 function getKatex() {
@@ -155,18 +216,20 @@ async function enhanceHtml(
   let changed = false;
 
   if (needCode) {
-    const { codeToHtml } = await getShiki();
-    const blocks = tpl.content.querySelectorAll(".code-block");
+    const highlighter = await getHighlighter();
+    const blocks = highlighter ? tpl.content.querySelectorAll(".code-block") : [];
     for (const blk of Array.from(blocks)) {
       const codeEl = blk.querySelector("pre > code");
       const pre = blk.querySelector("pre");
       if (!codeEl || !pre) continue;
-      const lang = (blk.getAttribute("data-lang") || "").toLowerCase();
-      if (!lang || lang === "text" || lang === "plain") continue;
+      const raw = (blk.getAttribute("data-lang") || "").toLowerCase();
+      if (!raw || raw === "text" || raw === "plain") continue;
+      const lang = resolveLang(raw);
+      if (!lang) continue; // 未在白名单:保留无高亮原样
       try {
-        const out = await codeToHtml(codeEl.textContent || "", {
+        const out = highlighter!.codeToHtml(codeEl.textContent || "", {
           lang,
-          theme: "one-dark-pro",
+          theme: SHIKI_THEME,
         });
         const t2 = document.createElement("template");
         t2.innerHTML = out;

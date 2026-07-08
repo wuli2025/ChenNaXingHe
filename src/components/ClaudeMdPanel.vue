@@ -243,13 +243,19 @@ onMounted(refresh);
   <div class="cmd-root">
     <div class="cmd-head">
       <div>
-        <div class="title">人格 · 项目的灵魂与专属知识库</div>
+        <div class="title">
+          人格 · 项目的灵魂与专属知识库
+        </div>
         <div class="sub">
           每个项目就是一个人格(它的 <code>CLAUDE.md</code>)。可一键套用预设人格,
           并绑定该人格的专属知识库范围。发消息前自动注入(身份+人格+时间+对应知识库)。
         </div>
       </div>
-      <button class="btn ghost" @click="refresh" :disabled="loading">
+      <button
+        class="btn ghost"
+        :disabled="loading"
+        @click="refresh"
+      >
         {{ loading ? "刷新中…" : "重新扫描" }}
       </button>
     </div>
@@ -257,17 +263,22 @@ onMounted(refresh);
     <div class="cmd-body">
       <!-- Left: list -->
       <aside class="list">
-        <div class="grp-head">知识库 · 全局共享</div>
+        <div class="grp-head">
+          知识库 · 全局共享
+        </div>
         <button
           class="item"
           :class="{
             active: selected?.kind === 'kb',
             on: kbInfo?.active,
           }"
-          @click="selectKb"
           :title="kbInfo?.absPath"
+          @click="selectKb"
         >
-          <span class="dot" :class="{ on: kbInfo?.active }" />
+          <span
+            class="dot"
+            :class="{ on: kbInfo?.active }"
+          />
           <span class="rel">PolarisKB</span>
           <span
             class="badge"
@@ -277,7 +288,9 @@ onMounted(refresh);
           </span>
         </button>
 
-        <div class="grp-head">项目 · {{ projects.length }}</div>
+        <div class="grp-head">
+          项目 · {{ projects.length }}
+        </div>
         <button
           v-for="p in projects"
           :key="p.projectId"
@@ -288,10 +301,13 @@ onMounted(refresh);
               selected.projectId === p.projectId,
             on: p.active,
           }"
-          @click="selectProject(p)"
           :title="p.absPath"
+          @click="selectProject(p)"
         >
-          <span class="dot" :class="{ on: p.active }" />
+          <span
+            class="dot"
+            :class="{ on: p.active }"
+          />
           <span class="rel">{{ p.projectName }}</span>
           <span
             class="badge"
@@ -301,14 +317,20 @@ onMounted(refresh);
           </span>
         </button>
 
-        <div v-if="projects.length === 0 && !loading" class="empty">
+        <div
+          v-if="projects.length === 0 && !loading"
+          class="empty"
+        >
           没有项目。请先到左边栏新建项目。
         </div>
       </aside>
 
       <!-- Right: editor -->
       <section class="editor">
-        <div v-if="!selected || !selectedMeta" class="placeholder">
+        <div
+          v-if="!selected || !selectedMeta"
+          class="placeholder"
+        >
           ← 从左边挑一个
         </div>
         <template v-else>
@@ -327,30 +349,40 @@ onMounted(refresh);
             <div class="ed-actions">
               <button
                 class="btn ghost"
-                @click="stripMarker"
                 :disabled="!/polaris:placeholder/.test(content)"
                 title="一键删掉顶部 polaris:placeholder 行 → 启用"
+                @click="stripMarker"
               >
                 启用 (删占位行)
               </button>
-              <button class="btn ghost" @click="revert" :disabled="!dirty">
+              <button
+                class="btn ghost"
+                :disabled="!dirty"
+                @click="revert"
+              >
                 还原
               </button>
               <button
                 class="btn primary"
-                @click="save"
                 :disabled="!dirty || saving"
+                @click="save"
               >
                 {{ saving ? "保存中…" : dirty ? "保存" : "已保存" }}
               </button>
             </div>
           </div>
-          <div class="ed-fullpath" :title="selectedMeta.sub">
+          <div
+            class="ed-fullpath"
+            :title="selectedMeta.sub"
+          >
             {{ selectedMeta.sub }}
           </div>
 
           <!-- 板块⑫: 人格条 —— 仅项目可套用预设人格 + 绑定知识库 scope -->
-          <div v-if="selected.kind === 'project' && personaAvailable" class="persona-bar">
+          <div
+            v-if="selected.kind === 'project' && personaAvailable"
+            class="persona-bar"
+          >
             <div class="pb-left">
               <span class="pb-icon">{{ currentPersona?.icon ?? "🧩" }}</span>
               <span class="pb-name">{{ currentPersona?.name ?? "自定义人格" }}</span>
@@ -361,26 +393,52 @@ onMounted(refresh);
                 v-model="kbScope"
                 placeholder="raw/子目录 (空=全库)"
                 @keydown.enter="saveScope"
-              />
-              <button class="btn ghost mini" @click="saveScope">绑定</button>
+              >
+              <button
+                class="btn ghost mini"
+                @click="saveScope"
+              >
+                绑定
+              </button>
             </div>
-            <button class="btn primary mini" @click="showGallery = !showGallery">
+            <button
+              class="btn primary mini"
+              @click="showGallery = !showGallery"
+            >
               {{ showGallery ? "收起" : "选择人格" }}
             </button>
           </div>
 
           <!-- 内联覆盖确认（替代原生 confirm，避免模态卡死） -->
-          <div v-if="pendingOverwrite" class="ow-bar">
+          <div
+            v-if="pendingOverwrite"
+            class="ow-bar"
+          >
             <span>「{{ pendingOverwrite.name }}」会覆盖当前项目的人格内容，确认？</span>
             <div class="ow-actions">
-              <button class="btn primary mini" @click="doApply(pendingOverwrite, true)">确认覆盖</button>
-              <button class="btn ghost mini" @click="pendingOverwrite = null">取消</button>
+              <button
+                class="btn primary mini"
+                @click="doApply(pendingOverwrite, true)"
+              >
+                确认覆盖
+              </button>
+              <button
+                class="btn ghost mini"
+                @click="pendingOverwrite = null"
+              >
+                取消
+              </button>
             </div>
           </div>
 
           <!-- 预设人格画廊（仿 WeSight 右侧选人格）：专家团 + 单专家两组 -->
-          <div v-if="selected.kind === 'project' && showGallery && personaAvailable" class="gallery-wrap">
-            <div class="g-grp">专家团 · 战略师领衔（注入后默认单 agent，值得才升级）</div>
+          <div
+            v-if="selected.kind === 'project' && showGallery && personaAvailable"
+            class="gallery-wrap"
+          >
+            <div class="g-grp">
+              专家团 · 战略师领衔（注入后默认单 agent，值得才升级）
+            </div>
             <div class="gallery">
               <button
                 v-for="ps in teamPresets"
@@ -388,16 +446,21 @@ onMounted(refresh);
                 class="p-card team"
                 :class="{ on: currentPersona?.id === ps.id }"
                 :disabled="applying"
-                @click="applyPreset(ps)"
                 :title="ps.description"
+                @click="applyPreset(ps)"
               >
                 <span class="pc-icon">{{ ps.icon }}</span>
                 <span class="pc-name">{{ ps.name }}</span>
                 <span class="pc-desc">{{ ps.description }}</span>
-                <span v-if="ps.kbScope" class="pc-scope">📚 {{ ps.kbScope }}</span>
+                <span
+                  v-if="ps.kbScope"
+                  class="pc-scope"
+                >{{ ps.kbScope }}</span>
               </button>
             </div>
-            <div class="g-grp">单专家</div>
+            <div class="g-grp">
+              单专家
+            </div>
             <div class="gallery">
               <button
                 v-for="ps in singlePresets"
@@ -405,18 +468,25 @@ onMounted(refresh);
                 class="p-card"
                 :class="{ on: currentPersona?.id === ps.id }"
                 :disabled="applying"
-                @click="applyPreset(ps)"
                 :title="ps.description"
+                @click="applyPreset(ps)"
               >
                 <span class="pc-icon">{{ ps.icon }}</span>
                 <span class="pc-name">{{ ps.name }}</span>
                 <span class="pc-desc">{{ ps.description }}</span>
-                <span v-if="ps.kbScope" class="pc-scope">📚 {{ ps.kbScope }}</span>
+                <span
+                  v-if="ps.kbScope"
+                  class="pc-scope"
+                >{{ ps.kbScope }}</span>
               </button>
             </div>
           </div>
 
-          <div v-if="message" class="msg" :class="message.kind">
+          <div
+            v-if="message"
+            class="msg"
+            :class="message.kind"
+          >
             {{ message.text }}
           </div>
           <textarea
@@ -424,7 +494,7 @@ onMounted(refresh);
             class="ed-area-input"
             spellcheck="false"
             placeholder="编辑 CLAUDE.md…"
-          ></textarea>
+          />
         </template>
       </section>
     </div>
@@ -442,7 +512,9 @@ onMounted(refresh);
 
 .cmd-head {
   padding: 14px 18px 10px;
-  border-bottom: 1px solid var(--border-soft);
+  /* v9：头部渐隐发丝线 */
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -609,15 +681,24 @@ onMounted(refresh);
 
 .btn {
   padding: 5px 12px;
-  border-radius: 3px;
+  border-radius: 10px;
   font-size: 12px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  /* 液态玻璃：次级按钮走 card 配方 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text);
   cursor: pointer;
 }
-.btn:hover {
-  background: var(--selection-bg);
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+/* v9：主 CTA 按压反馈（hover 有 translateY，按压归位再收缩） */
+.btn {
+  transition: transform 0.12s var(--ease, ease), box-shadow 0.12s var(--ease, ease);
+}
+.btn.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -628,12 +709,14 @@ onMounted(refresh);
 }
 .btn.primary {
   background: var(--btn-solid-bg);
-  border-color: var(--btn-solid-bg);
   color: var(--btn-solid-text);
+  /* 液态玻璃：主按钮玻璃三件套高光 */
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
 }
-.btn.primary:hover {
+.btn.primary:hover:not(:disabled) {
   background: var(--primary);
-  border-color: var(--primary);
 }
 
 .msg {
@@ -723,7 +806,7 @@ onMounted(refresh);
   width: 160px;
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 10px;
   font-size: 12px;
   background: var(--panel);
   color: var(--text);
@@ -731,6 +814,7 @@ onMounted(refresh);
 .pb-scope input:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .gallery-wrap {
   padding: 10px 18px 14px;
@@ -752,7 +836,7 @@ onMounted(refresh);
   gap: 10px;
 }
 .p-card.team {
-  background: linear-gradient(180deg, var(--panel), var(--bg-soft));
+  background: var(--card-bg);
   border-color: var(--primary);
 }
 .p-card {
@@ -760,9 +844,11 @@ onMounted(refresh);
   flex-direction: column;
   gap: 4px;
   padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel);
+  /* 液态玻璃：预设卡片走 card 配方 */
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   text-align: left;
   cursor: pointer;
   transition: border-color 0.13s, transform 0.13s, box-shadow 0.13s;
@@ -770,7 +856,7 @@ onMounted(refresh);
 .p-card:hover {
   border-color: var(--primary);
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--card-shadow-hover);
 }
 .p-card:disabled {
   opacity: 0.5;

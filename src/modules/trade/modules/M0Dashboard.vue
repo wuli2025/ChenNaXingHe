@@ -76,8 +76,8 @@ async function genBriefing() {
   } catch (e) {
     // 后端不可用时给出可见反馈，避免静默失败 + 未处理的 promise 拒绝。
     const msg = (e as Error).message || String(e);
-    briefText.value = `❌ 晨报生成失败：${msg}`;
-    store.log("error", `❌ 晨报生成失败：${msg}`);
+    briefText.value = `晨报生成失败：${msg}`;
+    store.log("error", `晨报生成失败：${msg}`);
   } finally {
     briefBusy.value = false;
   }
@@ -87,18 +87,31 @@ async function genBriefing() {
 <template>
   <div class="t-view-anim m0">
     <!-- ═══ 顶部：标题 + 一键晨报 ═══ -->
-    <TSection title="经营驾驶舱" sub="澳鲸进口 · 全链路真实状态实时派生 · 点卡片下钻">
+    <TSection
+      title="经营驾驶舱"
+      sub="澳鲸进口 · 全链路真实状态实时派生 · 点卡片下钻"
+    >
       <template #actions>
         <span class="t-pill">今日 · {{ todayStr }}</span>
-        <button class="t-btn primary" :disabled="briefBusy || store.busy.value" @click="genBriefing">
-          <TIcon :path="ICONS.workflow" :size="14" />
+        <button
+          class="t-btn primary"
+          :disabled="briefBusy || store.busy.value"
+          @click="genBriefing"
+        >
+          <TIcon
+            :path="ICONS.workflow"
+            :size="14"
+          />
           {{ briefBusy ? "聚合各模块中…" : "一键生成今日晨报" }}
         </button>
       </template>
     </TSection>
 
     <!-- ═══ 6 张 KPI（真实派生 · 可点击下钻） ═══ -->
-    <div v-if="store.dashKpi.value.length" class="t-grid t-g6">
+    <div
+      v-if="store.dashKpi.value.length"
+      class="t-grid t-g6"
+    >
       <div
         v-for="(x, i) in store.dashKpi.value"
         :key="i"
@@ -109,15 +122,34 @@ async function genBriefing() {
         @click="drill(kpiTargets[i])"
         @keydown.enter="drill(kpiTargets[i])"
       >
-        <TKpi :value="x.v" :label="x.l" :delta="x.d" :up="x.up" :acc="accOf(x)" :icon="x.ico" />
+        <TKpi
+          :value="x.v"
+          :label="x.l"
+          :delta="x.d"
+          :up="x.up"
+          :acc="accOf(x)"
+          :icon="x.ico"
+        />
       </div>
     </div>
-    <TPanel v-else pad><div class="empty">暂无经营指标</div></TPanel>
+    <TPanel
+      v-else
+      pad
+    >
+      <div class="empty">
+        暂无经营指标
+      </div>
+    </TPanel>
 
     <!-- ═══ 无人化仪表 + 最近已执行 ═══ -->
     <div class="auto-row">
-      <TPanel pad class="auto-meter">
-        <div class="am-h">无人化仪表</div>
+      <TPanel
+        pad
+        class="auto-meter"
+      >
+        <div class="am-h">
+          无人化仪表
+        </div>
         <div class="am-main">
           <span class="am-v">{{ autonomy.autoRate }}%</span>
           <span class="am-l">自动放行占比</span>
@@ -125,35 +157,86 @@ async function genBriefing() {
         <div class="am-sub">
           共执行 <b>{{ autonomy.total }}</b> 项 · 自动 <b>{{ autonomy.auto }}</b> · 人工闸 <b>{{ autonomy.human }}</b>
         </div>
-        <div class="am-hint">高置信自动放行率越高，人越只需守关键闸口（目标 ≥90%）。</div>
+        <div class="am-hint">
+          高置信自动放行率越高，人越只需守关键闸口（目标 ≥90%）。
+        </div>
       </TPanel>
-      <TPanel pad class="auto-feed">
-        <div class="am-h">最近已执行 · 核准即生效</div>
-        <div v-if="recentActions.length" class="af-list">
-          <div v-for="a in recentActions" :key="a.id" class="af-row">
-            <span class="af-tag" :class="a.by === 'auto' ? 'af-auto' : 'af-human'">{{ a.by === 'auto' ? '自动' : '人工' }}</span>
-            <div class="af-body"><b>{{ a.title }}</b><span>{{ a.detail }}</span></div>
+      <TPanel
+        pad
+        class="auto-feed"
+      >
+        <div class="am-h">
+          最近已执行 · 核准即生效
+        </div>
+        <div
+          v-if="recentActions.length"
+          class="af-list"
+        >
+          <div
+            v-for="a in recentActions"
+            :key="a.id"
+            class="af-row"
+          >
+            <span
+              class="af-tag"
+              :class="a.by === 'auto' ? 'af-auto' : 'af-human'"
+            >{{ a.by === 'auto' ? '自动' : '人工' }}</span>
+            <div class="af-body">
+              <b>{{ a.title }}</b><span>{{ a.detail }}</span>
+            </div>
           </div>
         </div>
-        <div v-else class="af-empty">暂无已执行动作 —— 在各模块跑 AI 或到审核看板核准后，这里实时记录「到底做了什么」。</div>
+        <div
+          v-else
+          class="af-empty"
+        >
+          暂无已执行动作 —— 在各模块跑 AI 或到审核看板核准后，这里实时记录「到底做了什么」。
+        </div>
       </TPanel>
     </div>
 
     <!-- ═══ 经营趋势 ═══ -->
-    <TSection title="经营趋势" sub="销售额 · 毛利率 · 现金转换周期 · 近 12 周">
-      <template #actions><span class="t-pill">示例趋势 · 待接入历史库</span></template>
+    <TSection
+      title="经营趋势"
+      sub="销售额 · 毛利率 · 现金转换周期 · 近 12 周"
+    >
+      <template #actions>
+        <span class="t-pill">示例趋势 · 待接入历史库</span>
+      </template>
     </TSection>
-    <div v-if="store.trends.value.length" class="t-grid t-g3">
-      <TPanel v-for="(t, i) in store.trends.value" :key="i" pad class="tr-card">
+    <div
+      v-if="store.trends.value.length"
+      class="t-grid t-g3"
+    >
+      <TPanel
+        v-for="(t, i) in store.trends.value"
+        :key="i"
+        pad
+        class="tr-card"
+      >
         <div class="tr-head">
           <span class="tr-val">{{ t.v }}</span>
-          <TBadge :tone="t.up ? 'green' : 'red'">{{ t.up ? "▲" : "▼" }} {{ t.delta }}</TBadge>
+          <TBadge :tone="t.up ? 'green' : 'red'">
+            {{ t.up ? "▲" : "▼" }} {{ t.delta }}
+          </TBadge>
         </div>
-        <div class="tr-lbl">{{ t.l }}</div>
-        <TSpark :series="t.series" :tone="trendTone(t.up)" />
+        <div class="tr-lbl">
+          {{ t.l }}
+        </div>
+        <TSpark
+          :series="t.series"
+          :tone="trendTone(t.up)"
+        />
       </TPanel>
     </div>
-    <TPanel v-else pad><div class="empty">暂无趋势数据</div></TPanel>
+    <TPanel
+      v-else
+      pad
+    >
+      <div class="empty">
+        暂无趋势数据
+      </div>
+    </TPanel>
 
     <!-- ═══ 端到端流水线 ═══ -->
     <TSection
@@ -161,8 +244,14 @@ async function genBriefing() {
       sub="选品 → 建联 → 采购 → 在途 → 待报关 → 在库 → 分销 → 待对账"
     />
     <TPanel pad>
-      <div v-if="store.pipeline.value.length" class="pipe">
-        <template v-for="(p, i) in store.pipeline.value" :key="i">
+      <div
+        v-if="store.pipeline.value.length"
+        class="pipe"
+      >
+        <template
+          v-for="(p, i) in store.pipeline.value"
+          :key="i"
+        >
           <div
             class="pipe-node"
             role="button"
@@ -171,56 +260,109 @@ async function genBriefing() {
             @click="drill(pipeTargets[i])"
             @keydown.enter="drill(pipeTargets[i])"
           >
-            <div class="pn-c">{{ p.c }}</div>
-            <div class="pn-l">{{ p.l }}</div>
+            <div class="pn-c">
+              {{ p.c }}
+            </div>
+            <div class="pn-l">
+              {{ p.l }}
+            </div>
           </div>
-          <div v-if="i < store.pipeline.value.length - 1" class="pipe-arrow">
+          <div
+            v-if="i < store.pipeline.value.length - 1"
+            class="pipe-arrow"
+          >
             <span>›</span>
           </div>
         </template>
       </div>
-      <div v-else class="empty">暂无流水线数据</div>
+      <div
+        v-else
+        class="empty"
+      >
+        暂无流水线数据
+      </div>
     </TPanel>
     <div class="t-note info">
       <b>数字为各模块当前在办量</b>，点节点即下钻进对应模块。带 ★ 的环节（报关确认 / 三单硬差异 / 缺证放行）派单进<b>人工审核看板</b>，硬闸不可跳过导出。
     </div>
 
     <!-- ═══ 今日晨报 ═══ -->
-    <TSection title="今日晨报" sub="Claude Code 聚合各模块当日状态生成">
+    <TSection
+      title="今日晨报"
+      sub="Claude Code 聚合各模块当日状态生成"
+    >
       <template #actions>
         <span class="t-pill">昨日完成 / 今日待办 / 风险预警</span>
       </template>
     </TSection>
 
     <!-- Claude 生成结果（点了按钮才出现） -->
-    <div v-if="briefBusy" class="t-note info brief-live">
+    <div
+      v-if="briefBusy"
+      class="t-note info brief-live"
+    >
       <span class="dot" /> Claude Code 正在聚合选品 / 建联 / 报关 / 物流 / 分销 /
       财务各模块今日状态，生成过程见右侧控制台…
     </div>
-    <TPanel v-else-if="briefText" pad class="brief-out">
+    <TPanel
+      v-else-if="briefText"
+      pad
+      class="brief-out"
+    >
       <div class="brief-out-h">
-        <TBadge tone="blue">AI 晨报</TBadge>
+        <TBadge tone="blue">
+          AI 晨报
+        </TBadge>
         <span class="t-muted">Claude Code · 聚合生成</span>
       </div>
       <pre class="brief-text">{{ briefText }}</pre>
     </TPanel>
 
     <!-- 结构化晨报（种子/派生，始终可见） -->
-    <div v-if="store.briefing.value.length" class="t-grid t-g3">
-      <TPanel v-for="(b, i) in store.briefing.value" :key="i" pad class="brief-card">
-        <div class="brief-k" :class="`bk-${briefTone(b.k)}`">
+    <div
+      v-if="store.briefing.value.length"
+      class="t-grid t-g3"
+    >
+      <TPanel
+        v-for="(b, i) in store.briefing.value"
+        :key="i"
+        pad
+        class="brief-card"
+      >
+        <div
+          class="brief-k"
+          :class="`bk-${briefTone(b.k)}`"
+        >
           <span class="brief-dot" />{{ b.k }}
           <span class="brief-n">{{ b.items.length }}</span>
         </div>
-        <ul v-if="b.items.length" class="brief-list">
-          <li v-for="(it, j) in b.items" :key="j">
+        <ul
+          v-if="b.items.length"
+          class="brief-list"
+        >
+          <li
+            v-for="(it, j) in b.items"
+            :key="j"
+          >
             <span class="li-dot">·</span><span>{{ it }}</span>
           </li>
         </ul>
-        <div v-else class="empty">暂无条目</div>
+        <div
+          v-else
+          class="empty"
+        >
+          暂无条目
+        </div>
       </TPanel>
     </div>
-    <TPanel v-else pad><div class="empty">暂无晨报数据</div></TPanel>
+    <TPanel
+      v-else
+      pad
+    >
+      <div class="empty">
+        暂无晨报数据
+      </div>
+    </TPanel>
   </div>
 </template>
 

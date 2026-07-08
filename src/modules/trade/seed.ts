@@ -213,8 +213,8 @@ export function seedRecon(): ReconMatch[] {
 
 export function seedCompliance(): ComplianceRow[] {
   return [
-    { container: "0617", wet: "已算 $21,548.16", gst: "已算 $9,585.22", tga: "N/A", fsanz: "标签合规 ✓", biosecurity: "待申报", release: "待放行", ok: false },
-    { container: "0621", wet: "已算 $16,878.00", gst: "已算 $7,507.80", tga: "N/A", fsanz: "标签合规 ✓", biosecurity: "已通过", release: "可放行", ok: true },
+    { container: "0617", wet: "已算 $21,548.16", gst: "已算 $9,585.22", tga: "N/A", fsanz: "标签合规", biosecurity: "待申报", release: "待放行", ok: false },
+    { container: "0621", wet: "已算 $16,878.00", gst: "已算 $7,507.80", tga: "N/A", fsanz: "标签合规", biosecurity: "已通过", release: "可放行", ok: true },
     { container: "0625", wet: "待算", gst: "待算", tga: "N/A", fsanz: "缺英文背标", biosecurity: "待申报", release: "缺证拦发货", ok: false },
   ];
 }

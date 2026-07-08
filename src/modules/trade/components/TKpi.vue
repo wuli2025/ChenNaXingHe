@@ -42,30 +42,64 @@ watch(() => props.value, animateTo);
 </script>
 
 <template>
-  <div class="t-kpi" :class="`acc-${acc || 'gold'}`">
+  <div
+    class="t-kpi"
+    :class="`acc-${acc || 'gold'}`"
+  >
     <div class="k-top">
       <span class="k-val">{{ shown }}</span>
-      <span v-if="icon" class="k-ico"><TIcon :path="icon" :size="16" /></span>
+      <span
+        v-if="icon"
+        class="k-ico"
+      ><TIcon
+        :path="icon"
+        :size="16"
+      /></span>
     </div>
-    <div class="k-lbl">{{ label }}</div>
-    <div v-if="delta" class="k-delta" :class="{ up: up, down: up === false }">{{ delta }}</div>
+    <div class="k-lbl">
+      {{ label }}
+    </div>
+    <div
+      v-if="delta"
+      class="k-delta"
+      :class="{ up: up, down: up === false }"
+    >
+      {{ delta }}
+    </div>
   </div>
 </template>
 
 <style scoped>
 .t-kpi {
-  background: var(--panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
+  background: var(--card-bg, var(--panel));
+  border: 1px solid var(--card-border, var(--border-soft));
+  border-radius: 16px;
   padding: 14px 16px;
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow), var(--glass-hi);
+  box-shadow: var(--card-shadow, var(--shadow));
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 .t-kpi:hover {
-  box-shadow: var(--shadow-lg), var(--glass-hi);
+  box-shadow: var(--card-shadow-hover, var(--shadow-lg));
   transform: translateY(-2px);
+}
+/* v9 掠光：hover 时一道细流光从左掠到右，像光滑玻璃面转了个角度 */
+.t-kpi::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--sheen);
+  background-size: 260% 100%;
+  background-position: 120% 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease, ease);
+}
+.t-kpi:hover::after {
+  opacity: 1;
+  background-position: -120% 0;
+  transition: opacity 0.2s var(--ease, ease), background-position 0.9s var(--ease, ease);
 }
 .t-kpi::before {
   content: "";
@@ -87,6 +121,16 @@ watch(() => props.value, animateTo);
   letter-spacing: -0.5px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+/* v9 墨色渐变数字：上实下淡，像墨在玻璃上晕开。
+   透明填充必须和渐变绑在同一 @supports 里，否则老内核下文字会整个隐形 */
+@supports (color: color-mix(in srgb, red 50%, transparent)) {
+  .k-val {
+    background: linear-gradient(180deg, var(--text), color-mix(in srgb, var(--text) 66%, transparent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 }
 .k-ico { color: var(--muted); opacity: 0.7; }
 .k-lbl { font-size: 11.5px; color: var(--muted); margin-top: 3px; }

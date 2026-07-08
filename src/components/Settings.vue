@@ -71,11 +71,15 @@ function useDefault() {
   <div class="settings">
     <header class="head">
       <h1>设置</h1>
-      <p class="sub">配置 Polaris 工作台的本地路径与运行参数。</p>
+      <p class="sub">
+        配置 Polaris 工作台的本地路径与运行参数。
+      </p>
     </header>
 
     <section class="block">
-      <div class="b-title">外观</div>
+      <div class="b-title">
+        外观
+      </div>
       <div class="b-desc">
         浅色=暖白水墨；黑夜=石墨炭黑；「极光琉璃」两套=内容保持干净、只把
         画框做成琉璃质感:软白画框(浅底+彩虹极光边)、墨黑灰框(深底+中性灰边、不突兀)。
@@ -88,8 +92,8 @@ function useDefault() {
           @click="app.setTheme('light')"
         >
           <span class="theme-swatch light-sw">
-            <span class="sw-side"></span>
-            <span class="sw-main"><span class="sw-card"></span></span>
+            <span class="sw-side" />
+            <span class="sw-main"><span class="sw-card" /></span>
           </span>
           <span class="theme-name">浅色 · 暖白水墨</span>
         </button>
@@ -99,8 +103,8 @@ function useDefault() {
           @click="app.setTheme('dark')"
         >
           <span class="theme-swatch dark-sw">
-            <span class="sw-side"></span>
-            <span class="sw-main"><span class="sw-card"></span></span>
+            <span class="sw-side" />
+            <span class="sw-main"><span class="sw-card" /></span>
           </span>
           <span class="theme-name">黑夜 · 石墨炭黑</span>
         </button>
@@ -110,9 +114,9 @@ function useDefault() {
           @click="app.setTheme('aurora-light')"
         >
           <span class="theme-swatch aurora-light-sw">
-            <span class="sw-aurora"></span>
-            <span class="sw-side"></span>
-            <span class="sw-main"><span class="sw-card"></span></span>
+            <span class="sw-aurora" />
+            <span class="sw-side" />
+            <span class="sw-main"><span class="sw-card" /></span>
           </span>
           <span class="theme-name">极光琉璃 · 软白画框</span>
         </button>
@@ -122,9 +126,9 @@ function useDefault() {
           @click="app.setTheme('aurora-dark')"
         >
           <span class="theme-swatch aurora-dark-sw">
-            <span class="sw-aurora"></span>
-            <span class="sw-side"></span>
-            <span class="sw-main"><span class="sw-card"></span></span>
+            <span class="sw-aurora" />
+            <span class="sw-side" />
+            <span class="sw-main"><span class="sw-card" /></span>
           </span>
           <span class="theme-name">极光琉璃 · 墨黑灰框</span>
         </button>
@@ -132,29 +136,45 @@ function useDefault() {
     </section>
 
     <section class="block">
-      <div class="b-title">语音输入「极速说」</div>
+      <div class="b-title">
+        语音输入「极速说」
+      </div>
       <div class="b-desc">
         按住右 Alt 说话、字随声出、松手上屏(采集/注入运行时为下一阶段)。本页可配:识别引擎 / 激活方式 /
         防污染档位(秒达·重型)/ 个人词表(热词·同音纠错)/ 词表自学。默认本地 SenseVoice + 秒达防污染,纯本地零出域。
       </div>
       <div class="row">
-        <button class="btn primary" @click="app.setView('voice_input')">打开语音设置</button>
+        <button
+          class="btn primary"
+          @click="app.setView('voice_input')"
+        >
+          打开语音设置
+        </button>
       </div>
     </section>
 
     <section class="block">
-      <div class="b-title">寓言计划 · 感官 API</div>
+      <div class="b-title">
+        寓言计划 · 感官 API
+      </div>
       <div class="b-desc">
         听(转写)/ 看(视觉)/ 嵌入 / 重排 / 读(扫描件)的服务商管理:本地模型按需下载,
         云服务商填 key 即用;含「回声 · 每日做梦」(定时收录对话沉淀为记忆)。
       </div>
       <div class="row">
-        <button class="btn primary" @click="app.setView('sense_api')">打开管理页</button>
+        <button
+          class="btn primary"
+          @click="app.setView('sense_api')"
+        >
+          打开管理页
+        </button>
       </div>
     </section>
 
     <section class="block">
-      <div class="b-title">知识库根目录(KB 根)</div>
+      <div class="b-title">
+        知识库根目录(KB 根)
+      </div>
       <div class="b-desc">
         Polaris 在此目录下维护
         <code>raw/</code> · <code>output/</code> · <code>wiki/</code>
@@ -165,27 +185,41 @@ function useDefault() {
         <span>当前</span>
       </div>
       <div class="row">
-        <input class="path-ro" :value="currentRoot" readonly />
+        <input
+          class="path-ro"
+          :value="currentRoot"
+          readonly
+        >
       </div>
 
       <div class="row labels">
         <span>新路径</span>
-        <button class="link-btn" @click="useDefault" :disabled="busy">
+        <button
+          class="link-btn"
+          :disabled="busy"
+          @click="useDefault"
+        >
           填入默认 ({{ defaultRoot }})
         </button>
       </div>
       <div class="row">
         <input
-          class="path-in"
           v-model="draft"
+          class="path-in"
           placeholder="例如 C:\Users\mi\ChenNaXingHe\PolarisKB"
           :disabled="busy"
-        />
-        <button class="btn" @click="pickFolder" :disabled="busy">浏览…</button>
+        >
+        <button
+          class="btn"
+          :disabled="busy"
+          @click="pickFolder"
+        >
+          浏览…
+        </button>
         <button
           class="btn primary"
-          @click="save"
           :disabled="busy || draft.trim() === currentRoot"
+          @click="save"
         >
           {{ busy ? "正在切换…" : "保存并重扫" }}
         </button>
@@ -201,7 +235,9 @@ function useDefault() {
     </section>
 
     <section class="block muted">
-      <div class="b-title sm">即将开放</div>
+      <div class="b-title sm">
+        即将开放
+      </div>
       <ul class="todo">
         <li>Claude Code 二进制路径</li>
         <li>沙箱镜像名 / Docker socket</li>
@@ -220,7 +256,9 @@ function useDefault() {
   width: 100%;
 }
 .head {
-  border-bottom: 1px solid var(--hairline);
+  /* v9：页头渐隐发丝线 */
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   padding-bottom: 18px;
   margin-bottom: 32px;
 }
@@ -240,12 +278,13 @@ function useDefault() {
 }
 
 .block {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: 2px;
+  /* 液态玻璃：设置分块走 card 配方 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
   padding: 22px 24px;
   margin-bottom: 22px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
 }
 .block.muted {
   background: transparent;
@@ -299,7 +338,7 @@ function useDefault() {
   flex: 1;
   padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: 10px;
   font-family: var(--mono);
   font-size: 12px;
   background: var(--panel);
@@ -312,21 +351,32 @@ function useDefault() {
 .path-in:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .btn {
   padding: 8px 14px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 2px;
+  /* 液态玻璃：次级按钮走 card 配方 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
   color: var(--text-2);
   font-size: 12.5px;
   letter-spacing: 0.5px;
   cursor: pointer;
 }
 .btn:hover:not(:disabled) {
-  border-color: var(--ink);
   color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+/* v9：主 CTA 按压反馈（hover 有 translateY，按压归位再收缩） */
+.btn {
+  transition: transform 0.12s var(--ease, ease), box-shadow 0.12s var(--ease, ease),
+    color 0.12s var(--ease, ease);
+}
+.btn.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -335,11 +385,13 @@ function useDefault() {
 .btn.primary {
   background: var(--btn-solid-bg);
   color: var(--btn-solid-text);
-  border-color: var(--btn-solid-bg);
+  /* 液态玻璃：主按钮玻璃三件套高光 */
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
 }
 .btn.primary:hover:not(:disabled) {
   background: var(--primary);
-  border-color: var(--primary);
 }
 
 .link-btn {

@@ -67,12 +67,14 @@ async function finish() {
     <div class="card">
       <!-- 顶部北极星徽记 -->
       <div class="badge">
-        <span class="star"></span>
+        <span class="star" />
       </div>
 
       <!-- 第一步：欢迎 -->
       <template v-if="step === 1">
-        <h1 class="title">欢迎来到北极星</h1>
+        <h1 class="title">
+          欢迎来到北极星
+        </h1>
         <p class="lead">
           Polaris 是一个本地优先的 AI 工作台。你的对话、知识库与生成的成品，
           都会安放在<strong>你自己的电脑</strong>上一个叫「工作文件夹」的地方。
@@ -81,13 +83,20 @@ async function finish() {
           在开始之前，先帮你把这个文件夹安顿好——它是你与北极星一切协作的落脚点。
         </p>
         <div class="actions">
-          <button class="btn primary" @click="step = 2">下一步 · 选择工作文件夹</button>
+          <button
+            class="btn primary"
+            @click="step = 2"
+          >
+            下一步 · 选择工作文件夹
+          </button>
         </div>
       </template>
 
       <!-- 第二步：选工作文件夹 -->
       <template v-else>
-        <h1 class="title">把工作文件夹放在哪里？</h1>
+        <h1 class="title">
+          把工作文件夹放在哪里？
+        </h1>
         <p class="lead">
           Polaris 会在这个目录下维护三层结构：
           <code>raw/</code> 原始素材 · <code>output/</code> 生成成品 ·
@@ -101,7 +110,11 @@ async function finish() {
 
         <div class="field-label">
           <span>工作文件夹路径</span>
-          <button class="link" @click="useDefault" :disabled="busy">
+          <button
+            class="link"
+            :disabled="busy"
+            @click="useDefault"
+          >
             用推荐位置
           </button>
         </div>
@@ -111,18 +124,42 @@ async function finish() {
             class="path"
             :placeholder="defaultRoot || 'C:\\Users\\you\\Polaris\\PolarisKB'"
             :disabled="busy"
-          />
-          <button class="btn ghost" @click="pickFolder" :disabled="busy">浏览…</button>
+          >
+          <button
+            class="btn ghost"
+            :disabled="busy"
+            @click="pickFolder"
+          >
+            浏览…
+          </button>
         </div>
-        <p class="rec" v-if="defaultRoot">
+        <p
+          v-if="defaultRoot"
+          class="rec"
+        >
           推荐位置：<code>{{ defaultRoot }}</code>
         </p>
 
-        <p v-if="error" class="err">{{ error }}</p>
+        <p
+          v-if="error"
+          class="err"
+        >
+          {{ error }}
+        </p>
 
         <div class="actions split">
-          <button class="btn text" @click="step = 1" :disabled="busy">返回</button>
-          <button class="btn primary" @click="finish" :disabled="busy">
+          <button
+            class="btn text"
+            :disabled="busy"
+            @click="step = 1"
+          >
+            返回
+          </button>
+          <button
+            class="btn primary"
+            :disabled="busy"
+            @click="finish"
+          >
             {{ busy ? "正在创建工作文件夹…" : "进入北极星" }}
           </button>
         </div>
@@ -144,14 +181,33 @@ async function finish() {
   padding: 40px;
 }
 .card {
+  position: relative;
   width: 100%;
   max-width: 560px;
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: 6px;
-  box-shadow: var(--shadow-lg);
+  /* 悬浮 chrome:磨砂玻璃引导卡(大弹窗用 20px 圆角) */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 20px;
+  box-shadow: var(--chrome-shadow);
   padding: 42px 46px 38px;
-  animation: cardIn 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: cardIn 0.5s var(--ease, cubic-bezier(0.2, 0.7, 0.2, 1));
+}
+/* 棱边折射环:跟随圆角的 1px 玻璃棱光 */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(14px); }
@@ -252,7 +308,7 @@ code {
   flex: 1;
   padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 10px;
   font-family: var(--mono);
   font-size: 12px;
   background: var(--panel);
@@ -261,6 +317,7 @@ code {
 .path:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .rec {
   font-size: 11.5px;
@@ -288,28 +345,37 @@ code {
 }
 .btn {
   padding: 9px 18px;
-  border-radius: 3px;
+  border-radius: 10px;
   font-size: 13px;
   letter-spacing: 0.5px;
   border: 1px solid transparent;
+  transition: transform 0.12s var(--ease, ease), box-shadow 0.12s var(--ease, ease);
 }
 .btn.primary {
   background: var(--btn-solid-bg);
   color: var(--btn-solid-text);
-  border-color: var(--btn-solid-bg);
+  border-color: rgba(255, 255, 255, 0.22);
+  /* 玻璃三件套:顶部镜面高光 + 底部收边 + 柔和投影 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
 }
 .btn.primary:hover:not(:disabled) {
   background: var(--primary);
-  border-color: var(--primary);
+}
+.btn.primary:active:not(:disabled) {
+  transform: scale(0.98);
 }
 .btn.ghost {
-  background: transparent;
-  border-color: var(--border);
+  /* 次级玻璃按钮 */
+  background: var(--card-bg);
+  border-color: var(--card-border);
   color: var(--text-2);
 }
 .btn.ghost:hover:not(:disabled) {
   border-color: var(--ink);
   color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 .btn.text {
   background: transparent;

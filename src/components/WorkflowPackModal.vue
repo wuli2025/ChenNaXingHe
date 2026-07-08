@@ -109,16 +109,32 @@ function submit() {
 
 <template>
   <Teleport to="body">
-    <div class="modal-overlay" @click="store.closeEditor()">
-      <div class="modal" @click.stop>
+    <div
+      class="modal-overlay"
+      @click="store.closeEditor()"
+    >
+      <div
+        class="modal"
+        @click.stop
+      >
         <div class="m-accent" />
         <header class="m-head">
           <div class="m-title">
-            <Workflow :size="17" :stroke-width="1.7" class="m-title-ic" />
+            <Workflow
+              :size="17"
+              :stroke-width="1.7"
+              class="m-title-ic"
+            />
             {{ isEdit ? "编辑工作流包" : "新建工作流包" }}
           </div>
-          <button class="icon-btn" @click="store.closeEditor()">
-            <X :size="17" :stroke-width="1.8" />
+          <button
+            class="icon-btn"
+            @click="store.closeEditor()"
+          >
+            <X
+              :size="17"
+              :stroke-width="1.8"
+            />
           </button>
         </header>
 
@@ -127,7 +143,10 @@ function submit() {
           <div class="f-grid">
             <label class="field">
               <span class="f-lab">名称</span>
-              <input v-model="form.name" placeholder="例如：深度调研报告" />
+              <input
+                v-model="form.name"
+                placeholder="例如：深度调研报告"
+              >
             </label>
             <label class="field">
               <span class="f-lab">强调色</span>
@@ -155,7 +174,7 @@ function submit() {
             <input
               v-model="form.description"
               placeholder="一句话说明这个工作流包的用途（可选）"
-            />
+            >
           </label>
 
           <!-- 环节编排 -->
@@ -165,14 +184,18 @@ function submit() {
           </div>
 
           <div class="steps">
-            <div v-for="(s, i) in form.steps" :key="s.id" class="step">
+            <div
+              v-for="(s, i) in form.steps"
+              :key="s.id"
+              class="step"
+            >
               <div class="step-bar">
                 <span class="step-no">{{ i + 1 }}</span>
                 <input
                   v-model="s.label"
                   class="step-label"
                   placeholder="环节标题，如「约束」"
-                />
+                >
                 <div class="step-ops">
                   <button
                     class="op"
@@ -180,7 +203,10 @@ function submit() {
                     :disabled="i === 0"
                     @click="moveStep(i, -1)"
                   >
-                    <ChevronUp :size="14" :stroke-width="2" />
+                    <ChevronUp
+                      :size="14"
+                      :stroke-width="2"
+                    />
                   </button>
                   <button
                     class="op"
@@ -188,10 +214,20 @@ function submit() {
                     :disabled="i === form.steps.length - 1"
                     @click="moveStep(i, 1)"
                   >
-                    <ChevronDown :size="14" :stroke-width="2" />
+                    <ChevronDown
+                      :size="14"
+                      :stroke-width="2"
+                    />
                   </button>
-                  <button class="op danger" title="删除环节" @click="removeStep(i)">
-                    <Trash2 :size="13" :stroke-width="1.9" />
+                  <button
+                    class="op danger"
+                    title="删除环节"
+                    @click="removeStep(i)"
+                  >
+                    <Trash2
+                      :size="13"
+                      :stroke-width="1.9"
+                    />
                   </button>
                 </div>
               </div>
@@ -204,13 +240,25 @@ function submit() {
             </div>
           </div>
 
-          <button class="add-step" @click="addStep">
-            <Plus :size="14" :stroke-width="2.2" /> 添加环节
+          <button
+            class="add-step"
+            @click="addStep"
+          >
+            <Plus
+              :size="14"
+              :stroke-width="2.2"
+            /> 添加环节
           </button>
 
           <!-- 拼装预览 -->
-          <div class="preview-head" @click="showPreview = !showPreview">
-            <WandSparkles :size="13" :stroke-width="1.8" />
+          <div
+            class="preview-head"
+            @click="showPreview = !showPreview"
+          >
+            <WandSparkles
+              :size="13"
+              :stroke-width="1.8"
+            />
             <span>拼装预览</span>
             <component
               :is="showPreview ? ChevronUp : ChevronDown"
@@ -219,17 +267,36 @@ function submit() {
               class="pv-caret"
             />
           </div>
-          <pre v-if="showPreview" class="preview">{{
+          <pre
+            v-if="showPreview"
+            class="preview"
+          >{{
             preview || "（环节都为空，暂无可拼装内容）"
           }}</pre>
 
-          <div v-if="localErr" class="err">{{ localErr }}</div>
+          <div
+            v-if="localErr"
+            class="err"
+          >
+            {{ localErr }}
+          </div>
         </div>
 
         <footer class="m-foot">
-          <button class="btn-cancel" @click="store.closeEditor()">取消</button>
-          <button class="btn-add" @click="submit">
-            <Check :size="14" :stroke-width="2.4" />
+          <button
+            class="btn-cancel"
+            @click="store.closeEditor()"
+          >
+            取消
+          </button>
+          <button
+            class="btn-add"
+            @click="submit"
+          >
+            <Check
+              :size="14"
+              :stroke-width="2.4"
+            />
             {{ isEdit ? "保存修改" : "创建" }}
           </button>
         </footer>
@@ -243,8 +310,10 @@ function submit() {
   position: fixed;
   inset: 0;
   z-index: 400;
-  background: rgba(20, 20, 25, 0.28);
-  backdrop-filter: blur(2px);
+  /* 液态玻璃遮罩：统一 scrim 配方 */
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -257,16 +326,35 @@ function submit() {
   }
 }
 .modal {
+  position: relative;
   width: min(680px, 96vw);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--hairline);
+  /* 液态玻璃：弹窗走 chrome 真磨砂配方 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   overflow: hidden;
   animation: pop 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* v9：弹窗主容器一圈棱边折射环 */
+.modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 @keyframes pop {
   from {
@@ -346,7 +434,7 @@ function submit() {
   width: 100%;
   padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 10px;
   font-size: 13px;
   background: var(--bg-soft);
   color: var(--text);
@@ -354,6 +442,7 @@ function submit() {
 .field input:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
   background: var(--panel);
 }
 
@@ -400,9 +489,11 @@ function submit() {
   gap: 10px;
 }
 .step {
-  border: 1px solid var(--border-soft);
-  border-radius: 11px;
-  background: var(--bg-soft);
+  /* 液态玻璃：内部子卡片走 card 配方 */
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   padding: 9px 10px 10px;
   transition: border-color 120ms ease;
 }
@@ -488,6 +579,7 @@ function submit() {
 .step-content:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .add-step {
@@ -555,31 +647,45 @@ function submit() {
   justify-content: flex-end;
   gap: 9px;
   padding: 12px 18px;
-  border-top: 1px solid var(--border-soft);
-  background: var(--bg-soft);
+  /* v9：脚部渐隐发丝线 */
+  border-top: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
+  /* 液态玻璃：脚部透出 chrome 磨砂，不再压实底 */
+  background: transparent;
 }
 .btn-cancel,
 .btn-add {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  /* 液态玻璃：次级按钮走 card 配方 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text-2);
   font-size: 13px;
   padding: 8px 18px;
-  border-radius: 9px;
+  border-radius: 10px;
 }
 .btn-cancel:hover {
-  background: var(--selection-bg);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 .btn-add {
   background: var(--btn-solid-bg);
   color: var(--btn-solid-text);
-  border-color: var(--btn-solid-bg);
+  /* 液态玻璃：主按钮玻璃三件套高光 */
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
 }
 .btn-add:hover {
   background: var(--primary);
-  border-color: var(--primary);
+}
+/* v9：主 CTA 按压反馈 */
+.btn-add {
+  transition: background 120ms var(--ease, ease), transform 0.12s var(--ease, ease);
+}
+.btn-add:active {
+  transform: scale(0.98);
 }
 </style>

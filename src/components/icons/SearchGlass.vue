@@ -20,7 +20,11 @@ withDefaults(defineProps<{ size?: number | string; strokeWidth?: number | string
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <circle cx="10" cy="10" r="6.5" />
+    <circle
+      cx="10"
+      cy="10"
+      r="6.5"
+    />
     <path d="m20.5 20.5-5.9-5.9" />
   </svg>
 </template>

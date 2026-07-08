@@ -48,16 +48,26 @@ const lastChecked = computed(() => {
   <div class="up-panel">
     <header class="up-header">
       <h1>更新</h1>
-      <p class="up-sub">保持 Polaris 为最新版本</p>
+      <p class="up-sub">
+        保持 Polaris 为最新版本
+      </p>
     </header>
 
     <div class="up-body">
       <!-- 当前版本 -->
       <div class="ver-card">
-        <img class="ver-logo" src="../assets/logo.png" alt="北极星" />
+        <img
+          class="ver-logo"
+          src="../assets/logo.png"
+          alt="北极星"
+        >
         <div class="ver-meta">
-          <div class="ver-name">北极星 · Polaris</div>
-          <div class="ver-num">当前版本 v{{ currentVersion || "—" }}</div>
+          <div class="ver-name">
+            北极星 · Polaris
+          </div>
+          <div class="ver-num">
+            当前版本 v{{ currentVersion || "—" }}
+          </div>
         </div>
         <button
           class="ck-btn"
@@ -70,7 +80,11 @@ const lastChecked = computed(() => {
             :stroke-width="2"
             class="spin"
           />
-          <RefreshCw v-else :size="15" :stroke-width="2" />
+          <RefreshCw
+            v-else
+            :size="15"
+            :stroke-width="2"
+          />
           <span>{{ checking ? "检查中…" : "检查更新" }}</span>
         </button>
       </div>
@@ -78,9 +92,15 @@ const lastChecked = computed(() => {
       <!-- 状态 / 更新区 -->
       <div class="state">
         <!-- 发现新版本 -->
-        <div v-if="updateVersion" class="found">
+        <div
+          v-if="updateVersion"
+          class="found"
+        >
           <div class="found-top">
-            <span class="found-badge"><Sparkles :size="18" :stroke-width="1.7" /></span>
+            <span class="found-badge"><Sparkles
+              :size="18"
+              :stroke-width="1.7"
+            /></span>
             <div>
               <div class="found-title">
                 发现新版本 <b>v{{ updateVersion }}</b>
@@ -91,52 +111,101 @@ const lastChecked = computed(() => {
             </div>
           </div>
 
-          <div v-if="updateNotes && !updating" class="found-notes">{{ updateNotes }}</div>
-
-          <div v-if="updating" class="bar">
-            <div class="bar-fill" :style="{ width: updateProgress + '%' }"></div>
+          <div
+            v-if="updateNotes && !updating"
+            class="found-notes"
+          >
+            {{ updateNotes }}
           </div>
 
-          <button class="go-btn" :disabled="updating" @click="applyUpdate">
+          <div
+            v-if="updating"
+            class="bar"
+          >
+            <div
+              class="bar-fill"
+              :style="{ width: updateProgress + '%' }"
+            />
+          </div>
+
+          <button
+            class="go-btn"
+            :disabled="updating"
+            @click="applyUpdate"
+          >
             <LoaderCircle
               v-if="updating"
               :size="15"
               :stroke-width="2"
               class="spin"
             />
-            <Rocket v-else :size="15" :stroke-width="1.9" />
+            <Rocket
+              v-else
+              :size="15"
+              :stroke-width="1.9"
+            />
             <span>{{ updating ? `更新中 ${updateProgress}%` : "立即更新" }}</span>
           </button>
         </div>
 
         <!-- 已是最新 -->
-        <div v-else-if="upToDate" class="ok">
-          <CheckCircle2 :size="18" :stroke-width="1.8" />
+        <div
+          v-else-if="upToDate"
+          class="ok"
+        >
+          <CheckCircle2
+            :size="18"
+            :stroke-width="1.8"
+          />
           <span>已是最新版本</span>
         </div>
 
         <!-- 自动检查失败（非静默，引导用户手动检查） -->
-        <div v-else-if="checkFailed && !updateVersion" class="err">
+        <div
+          v-else-if="checkFailed && !updateVersion"
+          class="err"
+        >
           <div>自动检查更新失败: {{ updateError || "网络或服务端异常" }}</div>
           <div style="margin-top:4px;font-size:11px;color:var(--dim)">
             可点击上方「检查更新」重试，或前往
-            <a href="https://github.com/wuli2025/ChenNaXingHe/releases" target="_blank" style="color:var(--primary)">GitHub Releases</a>
+            <a
+              href="https://github.com/wuli2025/ChenNaXingHe/releases"
+              target="_blank"
+              style="color:var(--primary)"
+            >GitHub Releases</a>
             手动下载
           </div>
         </div>
 
         <!-- 错误 -->
-        <div v-else-if="updateError" class="err">{{ updateError }}</div>
+        <div
+          v-else-if="updateError"
+          class="err"
+        >
+          {{ updateError }}
+        </div>
 
         <!-- 空闲 -->
-        <div v-else class="idle">Polaris 启动时会自动检查更新</div>
+        <div
+          v-else
+          class="idle"
+        >
+          Polaris 启动时会自动检查更新
+        </div>
 
-        <div v-if="lastChecked" class="last">上次检查 {{ lastChecked }}</div>
+        <div
+          v-if="lastChecked"
+          class="last"
+        >
+          上次检查 {{ lastChecked }}
+        </div>
       </div>
 
       <!-- 工作原理 -->
       <div class="how">
-        <div class="how-title">更新是怎么工作的</div>
+        <div class="how-title">
+          更新是怎么工作的
+        </div>
         <ol>
           <li>启动时自动检查 GitHub 上有没有新版本</li>
           <li>发现新版会在屏幕中央弹一个轻提示，点「立即更新」即可</li>
@@ -182,9 +251,11 @@ const lastChecked = computed(() => {
   align-items: center;
   gap: 14px;
   padding: 16px 18px;
-  background: var(--panel);
-  border: 1px solid var(--border-soft);
+  /* 玻璃卡片:渐变底 + 白玻璃描边 + 发丝投影 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 14px;
+  box-shadow: var(--card-shadow);
 }
 .ver-logo {
   width: 40px;
@@ -214,17 +285,24 @@ const lastChecked = computed(() => {
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border: 1px solid var(--border);
+  /* 次级玻璃按钮 */
+  border: 1px solid var(--card-border);
   border-radius: 10px;
-  background: var(--bg-soft);
+  background: var(--card-bg);
   color: var(--text);
   font-size: 12.5px;
   font-weight: 500;
   flex-shrink: 0;
+  transition: transform 0.12s var(--ease, ease), box-shadow 0.12s var(--ease, ease);
 }
 .ck-btn:hover:not(:disabled) {
   border-color: var(--primary);
   color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.ck-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 .ck-btn:disabled {
   opacity: 0.65;
@@ -239,6 +317,8 @@ const lastChecked = computed(() => {
   background: var(--primary-soft);
   border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   border-radius: 14px;
+  /* 主色 tint 保留,只补玻璃投影提层次 */
+  box-shadow: var(--card-shadow);
 }
 .found-top {
   display: flex;
@@ -309,9 +389,16 @@ const lastChecked = computed(() => {
   align-items: center;
   justify-content: center;
   gap: 7px;
+  /* 玻璃三件套:顶部镜面高光 + 底部收边 + 柔和投影 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
+  transition: background 0.15s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .go-btn:hover:not(:disabled) {
   background: var(--primary);
+}
+.go-btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 .go-btn:disabled {
   opacity: 0.85;
@@ -343,9 +430,11 @@ const lastChecked = computed(() => {
 .how {
   margin-top: 4px;
   padding: 16px 18px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border-soft);
+  /* 玻璃卡片:与上方版本卡统一材质 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 14px;
+  box-shadow: var(--card-shadow);
 }
 .how-title {
   font-family: var(--serif);

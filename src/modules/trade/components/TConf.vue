@@ -6,10 +6,23 @@ const tone = computed(() => (props.value < 60 ? "low" : props.value < 85 ? "mid"
 </script>
 
 <template>
-  <div class="t-conf" :title="`置信度 ${value}%`">
-    <span v-if="label" class="cf-l">{{ label }}</span>
-    <span class="cf-bar"><span class="cf-fill" :class="tone" :style="{ width: Math.max(0, Math.min(100, value)) + '%' }" /></span>
-    <span class="cf-v" :class="tone">{{ value }}%</span>
+  <div
+    class="t-conf"
+    :title="`置信度 ${value}%`"
+  >
+    <span
+      v-if="label"
+      class="cf-l"
+    >{{ label }}</span>
+    <span class="cf-bar"><span
+      class="cf-fill"
+      :class="tone"
+      :style="{ width: Math.max(0, Math.min(100, value)) + '%' }"
+    /></span>
+    <span
+      class="cf-v"
+      :class="tone"
+    >{{ value }}%</span>
   </div>
 </template>
 

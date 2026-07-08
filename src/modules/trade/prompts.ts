@@ -3,7 +3,7 @@
  * 全部走 useAgentRunner.run/runJson（唯一大脑官方 Claude Code）。
  * 方法论硬约束 + 输出 schema 拼进 prompt；反幻觉：字段级置信度、低分转人工闸。
  */
-import type { SupplierLead, CustomsDeclaration, SkuCandidate, ReconMatch } from "./types";
+import type { SupplierLead, CustomsDeclaration, ReconMatch } from "./types";
 
 export const JSON_RULE = `【JSON 输出铁律】
 - 最终只输出一个合法 JSON，前后不要任何解释文字、不要 markdown 围栏。
@@ -142,9 +142,10 @@ ${JSON_RULE}`;
 }
 
 /* ── M7 报价单 / 对客邮件 ── */
-export function promptQuoteOut(customer: string, sku: string, inclPrice: number, feedback?: string): string {
+export function promptQuoteOut(customer: string, sku: string, bottles: number, inclUnit: number, inclTotal: number, feedback?: string): string {
+  const qty = bottles > 0 ? `${bottles} 瓶` : "整批";
   return `${BIZ}
-请给分销客户「${customer}」起草一封报价邮件，标的 ${sku}，含税价（WET+GST）AUD ${inclPrice.toFixed(2)}/瓶。含税价与合规中心同一函数取数。专业友好，中文，直接输出正文。${feedbackBlock(feedback)}`;
+请给分销客户「${customer}」起草一封报价邮件，标的 ${sku}，数量 ${qty}，含税单价（WET+GST）AUD ${inclUnit.toFixed(2)}/瓶，含税总额 AUD ${inclTotal.toFixed(2)}。含税价与合规中心同一函数取数。专业友好，中文，直接输出正文。${feedbackBlock(feedback)}`;
 }
 
 /* ── M8 对账辅助 ── */

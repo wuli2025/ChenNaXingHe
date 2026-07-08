@@ -14,9 +14,9 @@ import type {
   SupplierLead, OutreachFunnelStage, CustomsDeclaration, CustomsKpi, CustomsFlowStep,
   Shipment, Supplier, SkuCandidate, StockLot, ReplenishSuggestion, Customer, SalesOrder,
   ReconMatch, ComplianceRow, WorkflowRun, KbEntry, DashKpi, Trend, PipelineNode, BriefingBlock,
-  ConsoleLine, AgentRun, ReviewTask, ReviewKind, ReviewRisk, ReviewStatus, ModId, ExecutedAction,
+  ConsoleLine, AgentRun, ReviewTask, ReviewKind, ReviewStatus, ModId, ExecutedAction,
 } from "./types";
-import { LS, computeWineTax, round2, ICONS } from "./types";
+import { LS, computeWineTax, round2, toAud, ICONS } from "./types";
 import * as seed from "./seed";
 import * as P from "./prompts";
 
@@ -162,7 +162,7 @@ function create() {
         if (text.trim()) log("text", text);
       },
       onTool: (tool: string, detail?: string) => {
-        log("tool", `🔧 ${tool}${detail ? " · " + detail : ""}`);
+        log("tool", `${tool}${detail ? " · " + detail : ""}`);
         toolSink?.push({ tool, detail, at: Date.now() });
       },
     };
@@ -178,17 +178,43 @@ function create() {
     if (executedActions.value.length > 200) executedActions.value.length = 200;
     lsSave(LS.executed, executedActions.value);
   }
-  /** 派单进流水线（去重：同 kind+refId 未决则不重复入列）。 */
+  /** 派单进流水线（去重：同 kind+refId 未决则刷新为最新提案）。 */
   function enqueueReview(t: Omit<ReviewTask, "id" | "status" | "createdAt">): ReviewTask | null {
     const dup = reviewTasks.value.find(
       (x) => x.kind === t.kind && x.refId === t.refId && (x.status === "pending" || x.status === "in_review")
     );
-    if (dup) return dup;
+    if (dup) {
+      // 同一业务对象重复入闸：刷新为最新提案，防止「新报价/新数量被静默丢弃、批准时按旧 payload 生成订单」。
+      dup.title = t.title;
+      dup.summary = t.summary;
+      dup.facts = t.facts;
+      dup.risk = t.risk;
+      dup.hardGate = t.hardGate;
+      dup.payload = t.payload;
+      dup.origin = t.origin;
+      dup.createdAt = Date.now();
+      saveReviews();
+      log("info", `审核任务已刷新为最新提案：${dup.title}`);
+      return dup;
+    }
     const task: ReviewTask = { id: uid("rv"), status: "pending", createdAt: Date.now(), ...t };
     reviewTasks.value.unshift(task);
     saveReviews();
-    log("info", `📋 新审核任务入列：${task.title}`);
+    log("info", `新审核任务入列：${task.title}`);
     return task;
+  }
+  /** 对账候选是否为真实匹配对象：排除空串与「未找到候选/无匹配/—」等伪候选占位，防假闭合。 */
+  function isRealReconTarget(s: unknown): boolean {
+    const t = String(s || "").trim();
+    return !!t && !/未找到|无候选|无匹配|待匹配|待定|none|no\s*match|n\/a|^[-—－]+$/i.test(t);
+  }
+  /** HS 编码格式合法（4 位大类 + 1~3 段两位子目，如 2204.21 / 2204.21.00）。 */
+  function isValidHsCode(s: unknown): boolean {
+    return /^\d{4}(\.\d{2}){1,3}$/.test(String(s || "").trim());
+  }
+  /** 报关单每个行项目都有合法 HS 且行非空 —— 放行前置条件（缺 HS/非法 HS 不得报关放行）。 */
+  function hsLinesValid(d: { lines?: { hs?: string }[] }): boolean {
+    return Array.isArray(d.lines) && d.lines.length > 0 && d.lines.every((l) => isValidHsCode(l.hs));
   }
   function claimReview(id: string) {
     const t = reviewTasks.value.find((x) => x.id === id);
@@ -199,25 +225,36 @@ function create() {
   }
   function approveReview(id: string, note?: string) {
     const t = reviewTasks.value.find((x) => x.id === id);
-    if (!t) return;
+    // 幂等守卫：已决任务再 approve 会二次回写（重复台账/重复置已匹配），与 ERP 侧口径一致。
+    if (!t || (t.status !== "pending" && t.status !== "in_review")) return;
+    const prev = t.status;
     t.status = "approved";
     t.decidedAt = Date.now();
     t.note = note;
     t.decidedBy = "运营";
-    onReviewDecided(t, true);
+    // 回写被 guard 拒绝时回滚，避免「审核显示已通过但账项/业务未落」的状态不一致。
+    const ok = onReviewDecided(t, true);
+    if (!ok) {
+      t.status = prev;
+      t.decidedAt = undefined;
+      t.decidedBy = undefined;
+      saveReviews();
+      log("error", `审核未生效：${t.title} 的回写被校验拒绝，卡片退回待审`);
+      return;
+    }
     saveReviews();
-    log("ok", `✅ 审核通过：${t.title}`);
+    log("ok", `审核通过：${t.title}`);
   }
   function rejectReview(id: string, note?: string) {
     const t = reviewTasks.value.find((x) => x.id === id);
-    if (!t) return;
+    if (!t || (t.status !== "pending" && t.status !== "in_review")) return;
     t.status = "rejected";
     t.decidedAt = Date.now();
     t.note = note;
     t.decidedBy = "运营";
     onReviewDecided(t, false);
     saveReviews();
-    log("error", `⛔ 审核驳回：${t.title}${note ? " · " + note : ""}`);
+    log("error", `审核驳回：${t.title}${note ? " · " + note : ""}`);
     // 驳回自动带批注重跑：AI 产出类任务被驳回后，用批注作反馈重新生成并重新入闸（闭环，不再死胡同）。
     if (!t.reran && RERUNNABLE.has(t.kind)) void rerunFromReject(t, note);
   }
@@ -234,16 +271,27 @@ function create() {
       if (t.kind === "hs-review" && p.decId) await runHsClassify(String(p.decId), fb);
       else if (t.kind === "recon-match" && p.item) await runRecon(String(p.item), fb);
       else if (t.kind === "outreach-send" && p.leadId) await runOutreach(String(p.leadId), String(p.lang || "en"), fb);
-      else if (t.kind === "quote-out" && p.customer) await runQuoteOut(String(p.customer), String(p.sku || ""), Number(p.taxable) || 0, fb);
+      else if (t.kind === "quote-out" && p.customer) await runQuoteOut(String(p.customer), String(p.sku || ""), Number(p.taxable) || 0, Number(p.bottles) || 0, fb);
     } catch (e) {
       log("error", `↻ 自动重跑失败：${(e as Error).message}`);
     }
   }
   function resetReview(id: string) {
     const t = reviewTasks.value.find((x) => x.id === id);
-    if (t) {
+    // 只允许重开「已驳回」的卡片：已批准的回写已执行，重开再批会双重执行副作用（与 ERP 口径一致）。
+    if (!t || t.status !== "rejected") return;
+    // 驳回自动重跑已生成同 kind+refId 的新待审卡时，禁止重开旧卡（否则双待审，批旧卡会用陈旧 payload 重复外发/重复建单）。
+    const hasLiveTwin = reviewTasks.value.some(
+      (x) => x.id !== t.id && x.kind === t.kind && x.refId === t.refId && (x.status === "pending" || x.status === "in_review")
+    );
+    if (hasLiveTwin) {
+      log("info", `↻ ${t.title} 已有更新的待审卡片，旧卡不重开`);
+      return;
+    }
+    {
       t.status = "pending";
       t.decidedAt = undefined;
+      t.reran = false;
       saveReviews();
     }
   }
@@ -251,14 +299,26 @@ function create() {
   /**
    * 审核结论回写业务对象（把闸的效果真正落到数据上）——「核准即执行」。
    * 13 种 kind 全部有回写分支；核准成功后记一条 executedAction 台账。
+   * 返回是否成功回写：批准遇 guard 拒绝返回 false（供 approveReview 回滚卡片），驳回恒 true。
    */
-  function onReviewDecided(t: ReviewTask, approved: boolean) {
+  function onReviewDecided(t: ReviewTask, approved: boolean): boolean {
     const p = t.payload || {};
     switch (t.kind) {
       /* ── M4 报关草稿确认（闸1）：核准→放行+推进流程 ── */
       case "customs-draft": {
         const d = t.refId ? declarations.value.find((x) => x.id === t.refId) : null;
         if (d) {
+          // 放行前复核硬差异：草稿卡在待审期间若三单出现硬差异（severity==="hard"），不得走普通闸放行，
+          // 须先修正三单或走硬差异裁决硬闸，否则会带硬差异违规放行报关。
+          if (approved && d.checks.some((c) => c.severity === "hard")) {
+            log("error", `报关放行拒绝：货柜 ${d.id} 现存三单硬差异，须先修正三单或走硬差异裁决闸`);
+            return false;
+          }
+          // HS 归类完整性：每个行项目必须有合法 HS 编码（数字.数字格式），缺 HS/非法 HS 不得放行，否则申报虚假归类。
+          if (approved && !hsLinesValid(d)) {
+            log("error", `报关放行拒绝：货柜 ${d.id} 存在缺 HS 或非法 HS 的行项目，须先完成 HS 归类`);
+            return false;
+          }
           d.status = approved ? "released" : "draft";
           if (approved) {
             const s5 = customsFlow.value.find((s) => s.n === 5);
@@ -277,6 +337,11 @@ function create() {
         const d = t.refId ? declarations.value.find((x) => x.id === t.refId) : null;
         if (d) {
           if (approved) {
+            // 硬差异可人工裁决接受，但 HS 归类完整性是独立的报关合规前置：缺 HS/非法 HS 仍不得放行（即使裁决硬差异）。
+            if (!hsLinesValid(d)) {
+              log("error", `硬差异裁决放行拒绝：货柜 ${d.id} 存在缺 HS 或非法 HS 的行项目，须先完成 HS 归类`);
+              return false;
+            }
             d.status = "released";
             const s5 = customsFlow.value.find((s) => s.n === 5);
             if (s5) s5.state = "done";
@@ -349,6 +414,11 @@ function create() {
       case "recon-match": {
         const r = t.refId ? recon.value.find((x) => x.item === t.refId) : null;
         if (r && approved) {
+          // 脏卡兜底：只有「待确认」且带真实候选（非「未找到候选」占位）的账项能闭合，防未达/无候选行被批准假闭合为「已匹配」。
+          if (r.status !== "待确认" || !isRealReconTarget(r.match)) {
+            log("error", `对账回写拒绝：${r.item} 状态非待确认或无有效候选（match「${r.match}」/状态「${r.status}」）`);
+            return false;
+          }
           r.status = "已匹配";
           lsSave(LS.recon, recon.value);
           recordAction({ mod: "m8", kind: t.kind, refId: r.item, by: "human", title: `对账匹配 · ${r.item}`, detail: `候选匹配 ${r.match} 经核准回写，账项置「已匹配」。` });
@@ -366,22 +436,32 @@ function create() {
       /* ── M3 报价回写：核准→回写采购并自动生成 M4 报关草稿（M3→M4 接通） ── */
       case "quote-writeback": {
         if (approved) {
-          const decId = createDeclarationDraftFromQuote({
-            supplier: String(p.supplier || t.title),
-            goods: String(p.goods || "进口葡萄酒"),
-            qty: Number(p.qty) || 0,
-            unit: Number(p.unit) || 0,
-            origin: String(p.origin || ""),
-          });
-          recordAction({ mod: "m3", kind: t.kind, refId: t.refId, by: "human", title: `采购回写 · ${p.supplier || t.title}`, detail: `报价核准回写采购单，并自动生成报关草稿（货柜 ${decId}），已进 M4 待归类。` });
+          // 数量/单价/供应商/货品必须齐备且正：脏 payload 用业务默认值(3000/5)兜底会生成虚假 FOB/CIF/WET/GST 报关数据。
+          const qty = Number(p.qty), unit = Number(p.unit);
+          const supplier = String(p.supplier || "").trim(), goods = String(p.goods || "").trim();
+          // 瓶数须为正整数（酒按瓶报关，无半瓶），单价有限正数，供应商/货品非空。
+          if (!Number.isInteger(qty) || qty <= 0 || !Number.isFinite(unit) || unit <= 0 || !supplier || !goods) {
+            log("error", `报价回写拒绝：数量/单价/供应商/货品非法（qty=${p.qty} unit=${p.unit} supplier「${p.supplier}」goods「${p.goods}」）`);
+            return false;
+          }
+          const decId = createDeclarationDraftFromQuote({ supplier, goods, qty, unit, origin: String(p.origin || ""), currency: String(p.currency || "AUD") });
+          recordAction({ mod: "m3", kind: t.kind, refId: t.refId, by: "human", title: `采购回写 · ${supplier}`, detail: `报价核准回写采购单，并自动生成报关草稿（货柜 ${decId}），已进 M4 待归类。` });
         }
         break;
       }
       /* ── M7 报价单外发：核准→生成销售订单（报价已发） ── */
       case "quote-out": {
         if (approved) {
-          const soId = createSalesOrder(String(p.customer || t.title), String(p.lines || `${p.sku || "报价标的"}`), Number(p.incl) || 0);
-          recordAction({ mod: "m7", kind: t.kind, refId: t.refId, by: "human", title: `报价外发 · ${p.customer || t.title}`, detail: `含税报价经核准外发，生成销售订单 ${soId}（状态：报价已发）。` });
+          // 含税金额必须为有限正数、客户/明细非空：脏 payload 会生成 incl=0 或负数的销售订单。
+          const incl = Number(p.incl);
+          const customer = String(p.customer || "").trim();
+          const lines = String(p.lines || "").trim();
+          if (!Number.isFinite(incl) || incl <= 0 || !customer || !lines) {
+            log("error", `报价外发拒绝：含税额/客户/明细非法（incl=${p.incl} customer「${p.customer}」lines「${p.lines}」）`);
+            return false;
+          }
+          const soId = createSalesOrder(customer, lines, incl);
+          recordAction({ mod: "m7", kind: t.kind, refId: t.refId, by: "human", title: `报价外发 · ${customer}`, detail: `含税报价经核准外发，生成销售订单 ${soId}（状态：报价已发）。` });
         }
         break;
       }
@@ -409,6 +489,7 @@ function create() {
       default:
         break;
     }
+    return true;
   }
 
   /** 时间戳（MM-DD HH:MM，用于线程/里程碑）。 */
@@ -426,12 +507,15 @@ function create() {
     return id;
   }
 
-  /** M3→M4：由核准的采购报价自动生成一张报关草稿（待归类）。 */
-  function createDeclarationDraftFromQuote(q: { supplier: string; goods: string; qty: number; unit: number; origin: string }): string {
+  /** M3→M4：由核准的采购报价自动生成一张报关草稿（待归类）。
+   *  供应商可能以外币（USD/EUR）报价，报关完税价须折算为 AUD，否则 FOB/CIF/WET/GST 全线口径错。 */
+  function createDeclarationDraftFromQuote(q: { supplier: string; goods: string; qty: number; unit: number; origin: string; currency?: string }): string {
     const id = shortId("N", (x) => declarations.value.some((d) => d.id === x));
     const qty = q.qty > 0 ? q.qty : 3000;
     const unit = q.unit > 0 ? q.unit : 5;
-    const fob = Math.round(qty * unit);
+    // 单价按报价币种折 AUD 后再计 FOB（报关完税价单点真相为 AUD）。
+    const unitAud = toAud(unit, String(q.currency || "AUD"));
+    const fob = Math.round(qty * unitAud);
     const freight = Math.round(fob * 0.08);
     const insurance = Math.round(fob * 0.01);
     const cif = fob + freight + insurance;
@@ -444,7 +528,7 @@ function create() {
       packages: Math.max(1, Math.round(qty / 12)), grossWt: Math.round(qty * 1.5), netWt: Math.round(qty * 1.4),
       agreement: "—", coCertNo: "", duty: 0, wet: tax.wet, gst: tax.gst,
       status: "draft", fillRate: 60, hsComplete: 0, checkStatus: "pass",
-      lines: [{ sku: "SKU-NEW", desc: q.goods, hs: "", hsConf: 0, uom: "升/瓶(750ml)", uomConf: 90, qty, unit, amount: fob, origin: origin.slice(0, 2).toUpperCase(), dutyRate: "待归类", dutyConf: 0 }],
+      lines: [{ sku: "SKU-NEW", desc: q.goods, hs: "", hsConf: 0, uom: "升/瓶(750ml)", uomConf: 90, qty, unit: unitAud, amount: fob, origin: origin.slice(0, 2).toUpperCase(), dutyRate: "待归类", dutyConf: 0 }],
       checks: [{ field: "品名", severity: "pass", decl: q.goods, inv: q.goods, pack: q.goods, bl: "—" }],
     };
     declarations.value.unshift(dec);
@@ -456,6 +540,18 @@ function create() {
   function receiveArrival(shipmentId: string): string | null {
     const sh = shipments.value.find((s) => s.id === shipmentId);
     if (!sh || /入仓/.test(sh.status)) return null;
+    // 清关合规前置（红线）：同柜报关须已放行、合规无缺证，否则不得开 GRN 入仓——
+    // 未清关入仓＝违规提货，绕过 M4 报关放行闸与 M9 缺证硬闸。
+    const dec = declarations.value.find((d) => d.id === shipmentId || d.container === shipmentId);
+    if (dec && dec.status !== "released") {
+      log("error", `货柜 ${shipmentId} 报关未放行（当前「${dec.status}」），不能开 GRN 入仓 —— 先在 M4 完成报关放行`);
+      return null;
+    }
+    const comp = compliance.value.find((c) => c.container === shipmentId);
+    if (comp && !comp.ok) {
+      log("error", `货柜 ${shipmentId} 合规未过（缺证/放行未就绪），不能开 GRN 入仓 —— 先在 M9 完成缺证放行`);
+      return null;
+    }
     sh.status = "已入仓";
     sh.pct = 100;
     sh.milestones.forEach((m) => (m.now = false));
@@ -651,7 +747,7 @@ function create() {
   async function runSourcing(criteria: { keywords: string; region: string; category: string; limit: number }): Promise<number> {
     clearConsole();
     runStatus.value = "采集中…";
-    log("info", `🚀 选品采集：${criteria.keywords || "默认条件"}`);
+    log("info", `选品采集：${criteria.keywords || "默认条件"}`);
     const toolSink: AgentRun["tools"] = [];
     try {
       const { data } = await runJson<{ skus: SkuCandidate[] }>({
@@ -661,11 +757,11 @@ function create() {
       list.forEach((s) => skus.value.unshift({ ...s, id: uid("sku"), provenance: "ai", state: "candidate" }));
       saveSkus();
       addRun({ mod: "m1", kind: "collect", inputSummary: criteria.keywords, resultSummary: `采集 ${list.length} 个候选`, tools: toolSink });
-      runStatus.value = `✅ 采集完成，新增 ${list.length} 个`;
+      runStatus.value = `采集完成，新增 ${list.length} 个`;
       log("ok", runStatus.value);
       return list.length;
     } catch (e) {
-      runStatus.value = `❌ 采集失败：${(e as Error).message}`;
+      runStatus.value = `采集失败：${(e as Error).message}`;
       log("error", runStatus.value);
       return 0;
     }
@@ -676,7 +772,7 @@ function create() {
     const l = leads.value.find((x) => x.id === leadId);
     if (!l) return null;
     runStatus.value = `写开发信 @${l.company}…`;
-    log("info", `✍️ 生成 ${lang} 开发信 · ${l.company}`);
+    log("info", `生成 ${lang} 开发信 · ${l.company}`);
     const toolSink: AgentRun["tools"] = [];
     try {
       const res = await run({ prompt: P.promptOutreach(l, lang, feedback), useKb: true, ...makeCallbacks(toolSink) });
@@ -696,11 +792,11 @@ function create() {
         risk: "normal",
         payload: { leadId: l.id, lang, body: res.raw.trim() },
       });
-      runStatus.value = `✅ 开发信已生成，入外发核准闸`;
+      runStatus.value = `开发信已生成，入外发核准闸`;
       log("ok", runStatus.value);
       return res.raw.trim();
     } catch (e) {
-      runStatus.value = `❌ 生成失败：${(e as Error).message}`;
+      runStatus.value = `生成失败：${(e as Error).message}`;
       log("error", runStatus.value);
       return null;
     }
@@ -721,17 +817,17 @@ function create() {
       const cls = ALLOWED_REPLY.find((c) => c === data.replyClass);
       if (!cls) {
         // 模型返回了非法枚举：不改 lead 状态，避免渲染空白徽标 / 阻断后续转化。
-        log("error", `❌ 意向分类返回非法值「${data.replyClass}」，已忽略未回写`);
+        log("error", `意向分类返回非法值「${data.replyClass}」，已忽略未回写`);
         return null;
       }
       l.replyClass = cls;
       l.status = "replied";
       saveLeads();
       addRun({ mod: "m2", kind: "reply-class", inputSummary: l.company, resultSummary: `意向：${cls}`, tools: toolSink });
-      log("ok", `✅ 回信意向：${cls}`);
+      log("ok", `回信意向：${cls}`);
       return cls;
     } catch (e) {
-      log("error", `❌ 意向分类失败：${(e as Error).message}`);
+      log("error", `意向分类失败：${(e as Error).message}`);
       return null;
     }
   }
@@ -741,19 +837,28 @@ function create() {
     const d = declarations.value.find((x) => x.id === decId);
     if (!d) return false;
     runStatus.value = `HS 归类 · 货柜 ${d.id}…`;
-    log("info", `🏷️ HS 归类 · ${d.goods}`);
+    log("info", `HS 归类 · ${d.goods}`);
     const toolSink: AgentRun["tools"] = [];
     try {
       const { data } = await runJson<{ hsCode: string; reasoning: string; dutyRate: string; hsConf: number; dutyConf: number }>({
         prompt: P.promptHsClassify(d, feedback), useKb: true, ...makeCallbacks(toolSink),
       });
-      if (d.lines[0]) {
-        d.lines[0].hs = data.hsCode || d.lines[0].hs;
-        d.lines[0].hsConf = Number(data.hsConf) || 0;
-        d.lines[0].dutyRate = data.dutyRate || d.lines[0].dutyRate;
-        d.lines[0].dutyConf = Number(data.dutyConf) || 0;
+      // AI 输出不可信：模型漏字段/给非法 HS（如 "abc"）时不得把已有的好数据覆盖成 0/空。
+      // 只有拿到「格式合法」的 hsCode 才更新归类字段，且各置信度用 ?? 而非 ||（0 是合法值，缺失才回退）。
+      const hsOk = isValidHsCode(data.hsCode);
+      if (!hsOk) {
+        runStatus.value = `HS 归类：AI 未返回合法编码（${String(data.hsCode)}），保留原值未改动`;
+        log("error", runStatus.value);
+        addRun({ mod: "m4", kind: "hs-classify", inputSummary: d.goods, resultSummary: `AI 输出 HS 非法「${String(data.hsCode)}」，已忽略`, tools: toolSink });
+        return false;
       }
-      d.hsComplete = data.hsCode ? 100 : d.hsComplete;
+      if (d.lines[0]) {
+        d.lines[0].hs = data.hsCode;
+        if (Number.isFinite(Number(data.hsConf))) d.lines[0].hsConf = Number(data.hsConf);
+        if (data.dutyRate) d.lines[0].dutyRate = data.dutyRate;
+        if (Number.isFinite(Number(data.dutyConf))) d.lines[0].dutyConf = Number(data.dutyConf);
+      }
+      d.hsComplete = hsLinesValid(d) ? 100 : d.hsComplete;
       saveDeclarations();
       addRun({ mod: "m4", kind: "hs-classify", inputSummary: d.goods, resultSummary: `${data.hsCode} · ${data.hsConf}%`, tools: toolSink });
       // 置信分流：<85 转人工闸；≥85 自动放行并留痕（无人化 auto 计入无人化仪表）。
@@ -771,11 +876,11 @@ function create() {
       } else {
         recordAction({ mod: "m4", kind: "hs-classify-auto", refId: d.id, by: "auto", title: `HS 归类自动通过 · 货柜 ${d.id}`, detail: `${data.hsCode} 置信 ${data.hsConf}%（≥85），高置信自动放行，无需人工复核。` });
       }
-      runStatus.value = `✅ HS 归类：${data.hsCode}（${data.hsConf}%）`;
+      runStatus.value = `HS 归类：${data.hsCode}（${data.hsConf}%）`;
       log("ok", runStatus.value);
       return true;
     } catch (e) {
-      runStatus.value = `❌ 归类失败：${(e as Error).message}`;
+      runStatus.value = `归类失败：${(e as Error).message}`;
       log("error", runStatus.value);
       return false;
     }
@@ -785,6 +890,11 @@ function create() {
   function submitCustomsDraft(decId: string) {
     const d = declarations.value.find((x) => x.id === decId);
     if (!d) return;
+    // 已放行的报关单不再入确认闸：否则可重复提交、重复放行、重复记交报关行台账。
+    if (d.status === "released") {
+      log("info", `货柜 ${d.id} 已放行，不再重复入报关确认闸`);
+      return;
+    }
     const hard = d.checks.some((c) => c.severity === "hard");
     enqueueReview({
       mod: "m4", kind: hard ? "doc-consistency" : "customs-draft",
@@ -812,29 +922,33 @@ function create() {
         prompt: P.promptRecon(r, feedback), useKb: false, ...makeCallbacks(toolSink),
       });
       const top = (data.candidates || [])[0];
-      if (top) {
-        r.match = top.target;
+      // AI 输出不可信：候选缺 target/伪候选（空串、「未找到候选」占位）时不得覆盖已有匹配、也不入闸假闭合。
+      const target = String(top?.target || "").trim();
+      if (top && isRealReconTarget(target)) {
+        r.match = target;
         r.conf = Number(top.conf) || 0;
         r.status = "待确认";
         lsSave(LS.recon, recon.value);
         enqueueReview({
           mod: "m8", kind: "recon-match", title: `${item} 匹配确认`, refId: item, origin: "ai",
-          summary: `AI 候选匹配 ${top.target}（置信 ${top.conf}%），需人工确认回写。`,
+          summary: `AI 候选匹配 ${target}（置信 ${top.conf}%），需人工确认回写。`,
           facts: [
             { k: "金额", v: r.amount },
-            { k: "候选匹配", v: `${top.target} · 置信 ${top.conf}%` },
+            { k: "候选匹配", v: `${target} · 置信 ${top.conf}%` },
             { k: "匹配依据", v: (top.reason || "").slice(0, 60), source: "凭证/单据比对" },
           ],
           risk: "normal",
           payload: { item },
         });
+      } else {
+        log("info", `${item} 未生成有效候选，保留原状态`);
       }
-      addRun({ mod: "m8", kind: "recon", inputSummary: item, resultSummary: top ? top.target : "无候选", tools: toolSink });
-      runStatus.value = `✅ 对账候选已生成`;
+      addRun({ mod: "m8", kind: "recon", inputSummary: item, resultSummary: target || "无候选", tools: toolSink });
+      runStatus.value = target ? `对账候选已生成` : `对账完成：无有效候选`;
       log("ok", runStatus.value);
       return true;
     } catch (e) {
-      runStatus.value = `❌ 对账失败：${(e as Error).message}`;
+      runStatus.value = `对账失败：${(e as Error).message}`;
       log("error", runStatus.value);
       return false;
     }
@@ -859,35 +973,51 @@ function create() {
           payload: { container },
         });
       }
-      log("ok", `✅ 合规核查完成：${data.release}`);
+      log("ok", `合规核查完成：${data.release}`);
       return true;
     } catch (e) {
-      log("error", `❌ 合规核查失败：${(e as Error).message}`);
+      log("error", `合规核查失败：${(e as Error).message}`);
       return false;
     }
   }
 
-  /** M7 报价：生成对客报价邮件（进外发闸）。feedback 用于驳回后带批注重跑。 */
-  async function runQuoteOut(customer: string, sku: string, taxable: number, feedback?: string): Promise<string | null> {
+  /** M7 报价：生成对客报价邮件（进外发闸）。feedback 用于驳回后带批注重跑。
+   *  taxable = 不含税单价 × 瓶数（总完税价），故 inclTotal 是「含税总额」；
+   *  per-瓶单价须除以瓶数 —— 早期把含税总额当成每瓶价写进报价，属实质报价金额错误，已修正。 */
+  async function runQuoteOut(customer: string, sku: string, taxable: number, bottles: number, feedback?: string): Promise<string | null> {
+    // 瓶数必须为正整数（酒按瓶计价，无半瓶）：非整/非正拒绝生成，避免静默 floor 造成「1 瓶 + 1.5 瓶总额」的错位报价。
+    if (!Number.isInteger(bottles) || bottles <= 0) {
+      log("error", `报价瓶数非法（${bottles}），须为正整数，已拒绝生成`);
+      return null;
+    }
+    // 完税价必须为有限正数：旧卡重跑缺 taxable 或脏数据会生成 incl=0 的空报价。
+    if (!Number.isFinite(taxable) || taxable <= 0) {
+      log("error", `报价完税价非法（${taxable}），须为正数，已拒绝生成`);
+      return null;
+    }
     const tax = computeWineTax(taxable);
+    const btl = bottles;
+    const inclUnit = round2(tax.inclTotal / btl);
+    const qtyLabel = `× ${btl} 瓶`;
     const toolSink: AgentRun["tools"] = [];
     try {
-      const res = await run({ prompt: P.promptQuoteOut(customer, sku, tax.inclTotal, feedback), useKb: false, ...makeCallbacks(toolSink) });
+      const res = await run({ prompt: P.promptQuoteOut(customer, sku, btl, inclUnit, tax.inclTotal, feedback), useKb: false, ...makeCallbacks(toolSink) });
       addRun({ mod: "m7", kind: "quote-out", inputSummary: `${customer}/${sku}`, resultSummary: "报价邮件已生成", tools: toolSink });
       enqueueReview({
         mod: "m7", kind: "quote-out", title: `${customer} 报价单外发核准`, refId: `${customer}-${sku}`, origin: "ai",
-        summary: `${sku} 含税价 AUD ${tax.inclTotal.toFixed(2)}/瓶（WET+GST，与合规中心同一函数），确认后外发。`,
+        summary: `${sku} ${qtyLabel} · 含税单价 AUD ${inclUnit.toFixed(2)}/瓶 · 含税总额 AUD ${tax.inclTotal.toFixed(2)}（WET+GST，与合规中心同一函数），确认后外发。`,
         facts: [
-          { k: "含税价", v: `AUD ${tax.inclTotal.toFixed(2)}`, source: "computeWineTax 单点真相" },
+          { k: "含税单价", v: `AUD ${inclUnit.toFixed(2)}/瓶`, source: "computeWineTax 单点真相" },
+          { k: "含税总额", v: `AUD ${tax.inclTotal.toFixed(2)}` },
           { k: "WET", v: `AUD ${tax.wet.toFixed(2)}` },
           { k: "GST", v: `AUD ${tax.gst.toFixed(2)}` },
         ],
         risk: "normal",
-        payload: { customer, sku, taxable, incl: tax.inclTotal, lines: `${sku} 含税 AUD ${tax.inclTotal.toFixed(2)}/瓶` },
+        payload: { customer, sku, taxable, bottles: btl, incl: tax.inclTotal, inclUnit, lines: `${sku} ${qtyLabel} @ 含税 AUD ${inclUnit.toFixed(2)}/瓶 = AUD ${tax.inclTotal.toFixed(2)}` },
       });
       return res.raw.trim();
     } catch (e) {
-      log("error", `❌ 报价生成失败：${(e as Error).message}`);
+      log("error", `报价生成失败：${(e as Error).message}`);
       return null;
     }
   }

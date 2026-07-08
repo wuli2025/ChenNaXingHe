@@ -66,9 +66,9 @@ export const useKbStore = defineStore("kb", () => {
       }
       const icon =
         ev.kind === "error"
-          ? "⚠ "
+          ? "[错误] "
           : ev.kind === "page"
-            ? "📄 "
+            ? "· "
             : ev.kind === "phase"
               ? "▸ "
               : "· ";
@@ -134,7 +134,7 @@ export const useKbStore = defineStore("kb", () => {
 
   // ── 维护知识网: 自动补双链 (enrich) / 智能去重 (dedup) ──
   // 借鉴 llm_wiki「AI 出决策、代码执行」。复用上面的进度日志 UI (同时只跑一个维护操作)。
-  let unlistenMaintain: (() => void)[] = [];
+  const unlistenMaintain: (() => void)[] = [];
   // 同步幂等闸(理由同 wiringCompile):数组要等两个 await listen() 都兑现才非空,
   // 并发调用会在此之前都通过 length 判断 → enrich/dedup 各被订阅两次。
   let wiringMaintain = false;
@@ -165,7 +165,7 @@ export const useKbStore = defineStore("kb", () => {
         return;
       }
       const icon =
-        ev.kind === "error" ? "⚠ " : ev.kind === "phase" ? "▸ " : "· ";
+        ev.kind === "error" ? "[错误] " : ev.kind === "phase" ? "▸ " : "· ";
       pushCompileLog(icon + t);
     };
     unlistenMaintain.push(await listen<KbMaintainEvent>("kb:enrich", handle));

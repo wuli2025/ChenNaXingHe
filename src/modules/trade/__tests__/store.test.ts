@@ -84,11 +84,21 @@ describe("核准即执行 · onReviewDecided 13 kind 回写", () => {
   });
 
   it("doc-consistency 硬闸：核准=放行；(另一次)驳回=退回 draft", () => {
+    const dec = store.declarations.value.find((d: any) => d.id === "0625");
+    // 0625 种子 hs:""，缺 HS 不得放行（即使裁决硬差异）；先完成 HS 归类再裁决放行（真实前置）。
+    dec.lines[0].hs = "2204.29.00";
     const t = findTask(store, "doc-consistency");
     store.approveReview(t.id);
-    const dec = store.declarations.value.find((d: any) => d.id === "0625");
     expect(dec.status).toBe("released");
     expect(store.executedActions.value.some((a: any) => a.kind === "doc-consistency")).toBe(true);
+  });
+
+  it("doc-consistency 缺 HS 时即使裁决硬差异也不得放行", () => {
+    const dec = store.declarations.value.find((d: any) => d.id === "0625");
+    expect(dec.lines[0].hs).toBe(""); // 种子无 HS
+    const t = findTask(store, "doc-consistency");
+    store.approveReview(t.id);
+    expect(dec.status).not.toBe("released"); // 缺 HS 被拦
   });
 
   it("doc-consistency 驳回 → 退回 draft，不记执行台账", async () => {
@@ -121,6 +131,26 @@ describe("核准即执行 · onReviewDecided 13 kind 回写", () => {
     store.approveReview(t.id);
     const r = store.recon.value.find((x: any) => x.item === "货代账单 INV-FRT-0617");
     expect(r.status).toBe("已匹配");
+  });
+
+  it("recon-match 幂等：重复 approve 只回写一次台账", () => {
+    const t = findTask(store, "recon-match");
+    store.approveReview(t.id);
+    const cntAfterFirst = store.executedActions.value.filter((a: any) => a.kind === "recon-match").length;
+    store.approveReview(t.id); // 已 approved，幂等守卫拦截
+    expect(store.executedActions.value.filter((a: any) => a.kind === "recon-match").length).toBe(cntAfterFirst);
+  });
+
+  it("recon-match 脏卡兜底：未达/无候选账项批准不假闭合为已匹配", () => {
+    const row = store.recon.value.find((x: any) => x.item === "报关行费 BRK-0621"); // 未达 · 无候选
+    expect(row.status).toBe("未达");
+    store.enqueueReview({
+      mod: "m8", kind: "recon-match", title: "脏对账卡", refId: "报关行费 BRK-0621",
+      summary: "x", facts: [], risk: "normal", payload: { item: "报关行费 BRK-0621" },
+    });
+    const t = store.reviewTasks.value.find((x: any) => x.kind === "recon-match" && x.refId === "报关行费 BRK-0621" && x.status === "pending");
+    store.approveReview(t.id);
+    expect(row.status).toBe("未达"); // 未被假闭合
   });
 
   it("replenish 核准 → 标记已下单（ordered）", () => {
@@ -183,6 +213,168 @@ describe("核准即执行 · onReviewDecided 13 kind 回写", () => {
   });
 });
 
+describe("外贸 OS store · 财务/审批纵深守卫（codex 终审）", () => {
+  let store: Store;
+  beforeEach(async () => { store = await freshStore(); });
+
+  it("M7 报价：含税单价 = 含税总额 / 瓶数（不再把总额当每瓶价）", async () => {
+    // taxable = 单价 33 × 100 瓶 = 3300（总完税价）
+    await store.runQuoteOut("Dan Murphy's", "Shiraz-2021", 3300, 100);
+    const t = store.reviewTasks.value.find((x: any) => x.kind === "quote-out");
+    const incl = Number(t.payload.incl);       // 含税总额
+    const inclUnit = Number(t.payload.inclUnit); // 含税单价/瓶
+    expect(inclUnit).toBeCloseTo(incl / 100, 2);
+    expect(inclUnit).toBeLessThan(incl); // 单价必然远小于总额
+    expect(t.summary).toContain("/瓶");
+    expect(t.summary).toContain("含税总额");
+  });
+
+  it("enqueueReview 同 kind+refId 未决卡刷新为最新提案（新报价不被静默丢弃）", async () => {
+    await store.runQuoteOut("Dan Murphy's", "Shiraz-2021", 3300, 100);
+    const first = store.reviewTasks.value.find((x: any) => x.kind === "quote-out");
+    const firstIncl = Number(first.payload.incl);
+    await store.runQuoteOut("Dan Murphy's", "Shiraz-2021", 6600, 100); // 数量/价改了
+    const cards = store.reviewTasks.value.filter((x: any) => x.kind === "quote-out" && x.refId === first.refId);
+    expect(cards.length).toBe(1); // 仍是一张卡
+    expect(Number(cards[0].payload.incl)).not.toBe(firstIncl); // 已刷新为新提案
+  });
+
+  it("recon-match 脏卡批准被拒时卡片回滚（不停留在 approved 假象）", () => {
+    store.enqueueReview({
+      mod: "m8", kind: "recon-match", title: "脏对账卡", refId: "报关行费 BRK-0621",
+      summary: "x", facts: [], risk: "normal", payload: { item: "报关行费 BRK-0621" },
+    });
+    const t = store.reviewTasks.value.find((x: any) => x.kind === "recon-match" && x.refId === "报关行费 BRK-0621");
+    store.approveReview(t.id);
+    expect(t.status).not.toBe("approved"); // 回滚
+    const row = store.recon.value.find((x: any) => x.item === "报关行费 BRK-0621");
+    expect(row.status).toBe("未达");
+  });
+
+  it("resetReview 拒绝重开已有更新待审 twin 的旧驳回卡", () => {
+    const t1 = store.enqueueReview({
+      mod: "m8", kind: "recon-match", title: "旧对账卡", refId: "twin-item",
+      summary: "x", facts: [], risk: "normal", payload: { item: "twin-item" },
+    })!;
+    store.rejectReview(t1.id, "驳回");
+    expect(t1.status).toBe("rejected");
+    const t2 = store.enqueueReview({
+      mod: "m8", kind: "recon-match", title: "新对账卡", refId: "twin-item",
+      summary: "y", facts: [], risk: "normal", payload: { item: "twin-item" },
+    })!;
+    expect(t2.status).toBe("pending");
+    store.resetReview(t1.id);
+    expect(t1.status).toBe("rejected"); // 未重开
+  });
+
+  it("M7 报价：非整数瓶数（1.5）被拒绝生成", async () => {
+    const res = await store.runQuoteOut("Dan Murphy's", "Shiraz-2021", 49.5, 1.5);
+    expect(res).toBeNull();
+    expect(store.reviewTasks.value.some((x: any) => x.kind === "quote-out")).toBe(false);
+  });
+
+  it("recon-match 伪候选「未找到候选」不写回、不入闸", async () => {
+    const row = store.recon.value.find((x: any) => x.item === "报关行费 BRK-0621")!; // 未达
+    const gatesBefore = store.reviewTasks.value.length;
+    h.runJsonResult.value = { candidates: [{ target: "未找到候选", reason: "确实没有", conf: 60 }] };
+    await store.runRecon("报关行费 BRK-0621");
+    expect(row.status).toBe("未达");
+    expect(store.reviewTasks.value.length).toBe(gatesBefore);
+  });
+
+  it("M7 quote-out 批准：脏 payload（incl<=0/空客户）拒绝生成销售订单并回滚", () => {
+    const before = store.salesOrders.value.length;
+    store.enqueueReview({
+      mod: "m7", kind: "quote-out", title: "脏报价", summary: "x", facts: [], risk: "normal",
+      payload: { customer: "", lines: "", incl: -100 },
+    });
+    const t = findTask(store, "quote-out");
+    store.approveReview(t.id);
+    expect(store.salesOrders.value.length).toBe(before); // 未生成
+    expect(t.status).not.toBe("approved"); // 回滚
+  });
+
+  it("M3 quote-writeback 批准：脏 payload（负数量/空供应商）拒绝生成报关草稿", () => {
+    const before = store.declarations.value.length;
+    store.enqueueReview({
+      mod: "m3", kind: "quote-writeback", title: "脏报价回写", summary: "x", facts: [], risk: "normal",
+      payload: { supplier: "", goods: "", qty: -10, unit: 0, origin: "" },
+    });
+    const t = findTask(store, "quote-writeback");
+    store.approveReview(t.id);
+    expect(store.declarations.value.length).toBe(before); // 未生成虚假报关数据
+    expect(t.status).not.toBe("approved");
+  });
+
+  it("M4 customs-draft 批准：待审期间出现硬差异则拒绝放行", () => {
+    const dec = store.declarations.value.find((d: any) => d.id === "0617")!;
+    dec.checks.push({ field: "毛重", severity: "hard", decl: "1000kg", inv: "1200kg", pack: "1200kg", bl: "1200kg" });
+    const t = findTask(store, "customs-draft");
+    store.approveReview(t.id);
+    expect(dec.status).not.toBe("released"); // 未违规放行
+    expect(t.status).not.toBe("approved");
+  });
+
+  it("M3→M4：USD 报价按汇率折 AUD 入报关（不再 1:1 当 AUD）", () => {
+    const beforeDec = store.declarations.value.length;
+    store.enqueueReview({
+      mod: "m3", kind: "quote-writeback", title: "USD 报价回写", summary: "x", facts: [], risk: "normal",
+      payload: { supplier: "Viña Aurora", goods: "Carmenère", qty: 100, unit: 4.2, currency: "USD", origin: "智利" },
+    });
+    const t = findTask(store, "quote-writeback");
+    store.approveReview(t.id);
+    expect(store.declarations.value.length).toBe(beforeDec + 1);
+    const dec = store.declarations.value[0];
+    // 100 瓶 × USD 4.2 × 1.52 ≈ AUD 638（若 1:1 当 AUD 则只有 420）
+    expect(dec.fob).toBeGreaterThan(600);
+    expect(dec.currency).toBe("AUD");
+  });
+
+  it("M4 报关放行前置：缺 HS 的报关草稿不得放行", () => {
+    // 用 M3 报价回写生成一张 hs:"" 的报关草稿
+    store.enqueueReview({
+      mod: "m3", kind: "quote-writeback", title: "新柜", summary: "x", facts: [], risk: "normal",
+      payload: { supplier: "Test Vin", goods: "红酒", qty: 1000, unit: 5, currency: "USD", origin: "智利" },
+    });
+    store.approveReview(findTask(store, "quote-writeback").id);
+    const dec = store.declarations.value[0];
+    expect(dec.lines[0].hs).toBe(""); // 新柜无 HS
+    store.submitCustomsDraft(dec.id);
+    const t = store.reviewTasks.value.find((x: any) => x.refId === dec.id && (x.kind === "customs-draft" || x.kind === "doc-consistency"));
+    store.approveReview(t.id);
+    expect(dec.status).not.toBe("released"); // 缺 HS 不得放行
+  });
+
+  it("M4 HS 归类：AI 返回非法 HS（abc）时拒绝、不覆盖、返回 false", async () => {
+    const dec = store.declarations.value[0];
+    const originHs = dec.lines[0].hs;
+    h.runJsonResult.value = { hsCode: "abc", reasoning: "乱归类", dutyRate: "5%", hsConf: 99, dutyConf: 90 };
+    const ok = await store.runHsClassify(dec.id);
+    expect(ok).toBe(false);
+    expect(dec.lines[0].hs).toBe(originHs); // 未被非法值覆盖
+  });
+
+  it("M4 已放行报关不可再入确认闸（防重复放行）", () => {
+    const t = findTask(store, "customs-draft");
+    store.approveReview(t.id); // 0617 → released
+    const dec = store.declarations.value.find((d: any) => d.id === "0617");
+    expect(dec.status).toBe("released");
+    const gatesBefore = store.reviewTasks.value.filter((x: any) => x.kind === "customs-draft" || x.kind === "doc-consistency").length;
+    store.submitCustomsDraft("0617"); // 已放行，不应再入闸
+    const gatesAfter = store.reviewTasks.value.filter((x: any) => x.kind === "customs-draft" || x.kind === "doc-consistency").length;
+    expect(gatesAfter).toBe(gatesBefore);
+  });
+});
+
+describe("外贸 OS · 财务精度", () => {
+  it("round2 修正 IEEE 分位误差（computeWineTax 含税总额半分进位）", async () => {
+    const { round2, computeWineTax } = await import("../types");
+    expect(round2(1.005)).toBe(1.01);
+    expect(round2(10.075)).toBe(10.08);
+    expect(computeWineTax(105).inclTotal).toBe(149); // 曾算成 148.99
+  });
+});
+
 describe("链路接通 · M1→M2 / M3→M4 / M5→M6", () => {
   let store: Store;
   beforeEach(async () => { store = await freshStore(); });
@@ -233,7 +425,14 @@ describe("链路接通 · M1→M2 / M3→M4 / M5→M6", () => {
     expect(new Set(ids).size).toBe(2); // 两个 id 不相同
   });
 
-  it("M5→M6：receiveArrival 开 GRN 入库 + 幂等", () => {
+  it("M5→M6：receiveArrival 开 GRN 入库 + 幂等（须先清关放行）", () => {
+    // 清关前置：未放行/未合规时不得入仓（合规红线）
+    expect(store.receiveArrival("0617")).toBeNull();
+    // 完成 M4 报关放行 + M9 合规通过后才能开 GRN
+    const dec = store.declarations.value.find((d: any) => d.id === "0617");
+    dec.status = "released";
+    const comp = store.compliance.value.find((c: any) => c.container === "0617");
+    if (comp) comp.ok = true;
     const beforeStock = store.stock.value.length;
     const sku = store.receiveArrival("0617");
     expect(sku).toBe("SKU-0617");

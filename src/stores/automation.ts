@@ -642,7 +642,7 @@ export const useAutomationStore = defineStore("automation", () => {
   load();
   // 随 store 首次被使用即启动调度器(startScheduler 幂等,timer!=null 时直接返回)。
   // 这样即便用户从不打开「自动化」页,到点的 daily/interval 流程也会触发,不再依赖
-  // Automation.vue onMounted。⚠️ 跨文件跟进:为确保应用一启动就起(而非等某处首次
+  // Automation.vue onMounted。跨文件跟进:为确保应用一启动就起(而非等某处首次
   // 用到本 store),建议在 main.ts/App.vue setup 里早期调用一次 useAutomationStore()
   // (或其 startScheduler()) —— 那两个文件不在本次可编辑范围内。
   startScheduler();

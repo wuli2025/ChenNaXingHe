@@ -13,7 +13,6 @@ import {
 
 export const isTauri =
   typeof window !== "undefined" &&
-  // @ts-ignore tauri injects this
   typeof (window as any).__TAURI_INTERNALS__ !== "undefined";
 
 // ──────────────────────────────────────────────────────────────

@@ -222,16 +222,33 @@ async function submitCreate() {
     <!-- Header -->
     <div class="sc-header">
       <div class="sc-title">
-        <Puzzle :size="20" :stroke-width="1.8" class="sc-title-icon" />
+        <Puzzle
+          :size="20"
+          :stroke-width="1.8"
+          class="sc-title-icon"
+        />
         <span>技能中心</span>
       </div>
       <div class="sc-header-actions">
-        <button class="sc-import-btn" @click="openImportModal" title="从外部 URL / git 仓库 / 本地文件导入">
-          <Download :size="14" :stroke-width="2" />
+        <button
+          class="sc-import-btn"
+          title="从外部 URL / git 仓库 / 本地文件导入"
+          @click="openImportModal"
+        >
+          <Download
+            :size="14"
+            :stroke-width="2"
+          />
           <span>导入/下载</span>
         </button>
-        <button class="sc-new-btn" @click="openCreateModal">
-          <Plus :size="14" :stroke-width="2" />
+        <button
+          class="sc-new-btn"
+          @click="openCreateModal"
+        >
+          <Plus
+            :size="14"
+            :stroke-width="2"
+          />
           <span>新技能</span>
         </button>
       </div>
@@ -253,28 +270,56 @@ async function submitCreate() {
           @click="activeTab = 'mine'"
         >
           我的技能
-          <span v-if="mySkills.length > 0" class="sc-tab-badge">{{ mySkills.length }}</span>
+          <span
+            v-if="mySkills.length > 0"
+            class="sc-tab-badge"
+          >{{ mySkills.length }}</span>
         </button>
       </div>
       <div class="sc-search">
-        <SearchGlass :size="14" :stroke-width="1.8" class="sc-search-icon" />
-        <input v-model="searchQuery" placeholder="搜索技能..." type="text" />
+        <SearchGlass
+          :size="14"
+          :stroke-width="1.8"
+          class="sc-search-icon"
+        />
+        <input
+          v-model="searchQuery"
+          placeholder="搜索技能..."
+          type="text"
+        >
       </div>
     </div>
 
     <!-- Skill Grid -->
-    <div v-if="!loading" class="sc-grid">
-      <div v-for="skill in currentSkills" :key="skill.id" class="sc-card">
+    <div
+      v-if="!loading"
+      class="sc-grid"
+    >
+      <div
+        v-for="skill in currentSkills"
+        :key="skill.id"
+        class="sc-card"
+      >
         <div class="sc-card-head">
           <div class="sc-card-icon">
-            <component :is="iconForSkill(skill)" :size="22" :stroke-width="1.6" />
+            <component
+              :is="iconForSkill(skill)"
+              :size="22"
+              :stroke-width="1.6"
+            />
           </div>
           <div class="sc-card-meta">
-            <div class="sc-card-name">{{ skill.name }}</div>
-            <div class="sc-card-source">{{ sourceLabel(skill.source) }}</div>
+            <div class="sc-card-name">
+              {{ skill.name }}
+            </div>
+            <div class="sc-card-source">
+              {{ sourceLabel(skill.source) }}
+            </div>
           </div>
         </div>
-        <div class="sc-card-desc">{{ skill.description }}</div>
+        <div class="sc-card-desc">
+          {{ skill.description }}
+        </div>
         <div class="sc-card-foot">
           <!-- 未安装 → 安装按钮 -->
           <button
@@ -283,7 +328,10 @@ async function submitCreate() {
             :disabled="installing.has(skill.id)"
             @click="onInstall(skill)"
           >
-            <Download :size="13" :stroke-width="1.9" />
+            <Download
+              :size="13"
+              :stroke-width="1.9"
+            />
             <span>{{ installing.has(skill.id) ? "安装中…" : "安装" }}</span>
           </button>
           <!-- 已安装 → 状态 + 卸载 + 开关 -->
@@ -292,17 +340,23 @@ async function submitCreate() {
             <button
               v-if="skill.removable"
               class="sc-card-delete"
-              @click="onDelete(skill)"
               title="卸载 / 删除"
+              @click="onDelete(skill)"
             >
-              <Trash2 :size="13" :stroke-width="1.8" />
+              <Trash2
+                :size="13"
+                :stroke-width="1.8"
+              />
             </button>
-            <label class="switch" title="开启/关闭">
+            <label
+              class="switch"
+              title="开启/关闭"
+            >
               <input
                 type="checkbox"
                 :checked="skillsStore.has(skill.id)"
                 @change="skillsStore.toggle(skill.id)"
-              />
+              >
               <span class="slider round" />
             </label>
           </template>
@@ -311,10 +365,18 @@ async function submitCreate() {
     </div>
 
     <!-- Empty state -->
-    <div v-if="currentSkills.length === 0 && !loading" class="sc-empty">
+    <div
+      v-if="currentSkills.length === 0 && !loading"
+      class="sc-empty"
+    >
       <template v-if="activeTab === 'mine'">
         <div>还没有安装或创建技能 — 去「市场精选」安装，或自己创建一个</div>
-        <button class="sc-empty-btn" @click="openCreateModal">+ 创建第一个技能</button>
+        <button
+          class="sc-empty-btn"
+          @click="openCreateModal"
+        >
+          + 创建第一个技能
+        </button>
       </template>
       <template v-else>
         暂无技能
@@ -322,12 +384,22 @@ async function submitCreate() {
     </div>
 
     <!-- 导入/下载弹窗 -->
-    <div v-if="showImportModal" class="modal-overlay" @click.self="closeImportModal">
+    <div
+      v-if="showImportModal"
+      class="modal-overlay"
+      @click.self="closeImportModal"
+    >
       <div class="modal">
         <div class="modal-head">
           <span class="modal-title">导入 / 下载技能</span>
-          <button class="modal-close" @click="closeImportModal">
-            <X :size="16" :stroke-width="2" />
+          <button
+            class="modal-close"
+            @click="closeImportModal"
+          >
+            <X
+              :size="16"
+              :stroke-width="2"
+            />
           </button>
         </div>
         <div class="modal-body">
@@ -337,7 +409,7 @@ async function submitCreate() {
               v-model="importSource"
               placeholder="git 仓库 / 远程 .md / .zip / 本地路径"
               @keydown.enter="submitImport"
-            />
+            >
           </div>
           <div class="import-hint">
             <div>支持任意来源：</div>
@@ -347,15 +419,36 @@ async function submitCreate() {
               <li><strong>本地</strong>：<code>.md</code> 文件 / <code>.zip</code> 压缩包 / 技能目录</li>
             </ul>
           </div>
-          <button v-if="isTauri" class="import-browse" @click="browseFile">
-            <FolderOpen :size="14" :stroke-width="1.8" />
+          <button
+            v-if="isTauri"
+            class="import-browse"
+            @click="browseFile"
+          >
+            <FolderOpen
+              :size="14"
+              :stroke-width="1.8"
+            />
             <span>选择本地 .md / .zip 文件…</span>
           </button>
-          <div v-if="importError" class="form-error">{{ importError }}</div>
+          <div
+            v-if="importError"
+            class="form-error"
+          >
+            {{ importError }}
+          </div>
         </div>
         <div class="modal-foot">
-          <button class="modal-btn secondary" @click="closeImportModal">取消</button>
-          <button class="modal-btn primary" :disabled="importing" @click="submitImport">
+          <button
+            class="modal-btn secondary"
+            @click="closeImportModal"
+          >
+            取消
+          </button>
+          <button
+            class="modal-btn primary"
+            :disabled="importing"
+            @click="submitImport"
+          >
             {{ importing ? "导入中…" : "导入" }}
           </button>
         </div>
@@ -363,26 +456,46 @@ async function submitCreate() {
     </div>
 
     <!-- 创建弹窗 -->
-    <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateModal">
+    <div
+      v-if="showCreateModal"
+      class="modal-overlay"
+      @click.self="closeCreateModal"
+    >
       <div class="modal">
         <div class="modal-head">
           <span class="modal-title">创建新技能</span>
-          <button class="modal-close" @click="closeCreateModal">
-            <X :size="16" :stroke-width="2" />
+          <button
+            class="modal-close"
+            @click="closeCreateModal"
+          >
+            <X
+              :size="16"
+              :stroke-width="2"
+            />
           </button>
         </div>
         <div class="modal-body">
           <div class="form-row">
             <label>名称</label>
-            <input v-model="createForm.name" placeholder="例如: 高老师风格写作" @input="onNameInput" />
+            <input
+              v-model="createForm.name"
+              placeholder="例如: 高老师风格写作"
+              @input="onNameInput"
+            >
           </div>
           <div class="form-row">
             <label>ID（唯一标识，只能用小写字母、数字、-）</label>
-            <input v-model="createForm.id" placeholder="gao-style-writer" />
+            <input
+              v-model="createForm.id"
+              placeholder="gao-style-writer"
+            >
           </div>
           <div class="form-row">
             <label>描述</label>
-            <input v-model="createForm.description" placeholder="一句话描述这个技能的作用..." />
+            <input
+              v-model="createForm.description"
+              placeholder="一句话描述这个技能的作用..."
+            >
           </div>
           <div class="form-row">
             <label>System Prompt（核心指令）</label>
@@ -390,13 +503,28 @@ async function submitCreate() {
               v-model="createForm.systemPrompt"
               placeholder="# 角色定义&#10;&#10;你是...&#10;&#10;## 工作方式&#10;1. ..."
               rows="8"
-            ></textarea>
+            />
           </div>
-          <div v-if="createError" class="form-error">{{ createError }}</div>
+          <div
+            v-if="createError"
+            class="form-error"
+          >
+            {{ createError }}
+          </div>
         </div>
         <div class="modal-foot">
-          <button class="modal-btn secondary" @click="closeCreateModal">取消</button>
-          <button class="modal-btn primary" @click="submitCreate">创建</button>
+          <button
+            class="modal-btn secondary"
+            @click="closeCreateModal"
+          >
+            取消
+          </button>
+          <button
+            class="modal-btn primary"
+            @click="submitCreate"
+          >
+            创建
+          </button>
         </div>
       </div>
     </div>
@@ -445,25 +573,32 @@ async function submitCreate() {
   border-radius: 6px;
   font-size: 12.5px;
   cursor: pointer;
+  transition: background 0.14s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .sc-new-btn:hover {
   background: var(--primary);
 }
+.sc-new-btn:active {
+  transform: scale(0.98);
+}
 .sc-import-btn {
+  /* 次级玻璃按钮 */
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: transparent;
+  background: var(--card-bg);
   color: var(--text-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
   font-size: 12.5px;
   cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, color 0.15s;
 }
 .sc-import-btn:hover {
-  border-color: var(--primary);
   color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 
 /* 导入弹窗内的提示 */
@@ -584,16 +719,17 @@ async function submitCreate() {
   gap: 16px;
 }
 .sc-card {
-  background: var(--panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
+  /* 技能玻璃卡：渐变玻璃底 + 白玻璃描边 + 发丝暗环投影 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
   padding: 16px;
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.15s, border-color 0.15s;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.15s, transform 0.15s;
 }
 .sc-card:hover {
-  box-shadow: var(--shadow);
-  border-color: var(--border);
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-1px);
 }
 .sc-card-head {
   display: flex;
@@ -620,11 +756,13 @@ async function submitCreate() {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 .sc-card-source {
   font-size: 11px;
   color: var(--muted);
   margin-top: 2px;
+  letter-spacing: 0.02em;
 }
 .sc-card-desc {
   font-size: 12px;
@@ -763,34 +901,58 @@ input:checked + .slider::before {
 .modal-overlay {
   position: fixed;
   inset: 0;
+  /* 磨砂玻璃门遮罩：压暗 + 强模糊虚化底下界面 */
   background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
 }
 .modal {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  /* 悬浮 chrome：真磨砂玻璃弹窗 */
+  position: relative;
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 20px;
   width: 520px;
   max-width: 90vw;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--chrome-shadow);
+}
+/* v9：弹窗棱边折射环 */
+.modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
 }
 .modal-title {
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 .modal-close {
   width: 28px;
@@ -826,7 +988,7 @@ input:checked + .slider::before {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   font-size: 13px;
   background: var(--bg);
   color: var(--text);
@@ -836,6 +998,7 @@ input:checked + .slider::before {
 .form-row input:focus,
 .form-row textarea:focus {
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .form-error {
   color: var(--vermilion);
@@ -847,7 +1010,8 @@ input:checked + .slider::before {
   justify-content: flex-end;
   gap: 10px;
   padding: 12px 20px 16px;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
 }
 .modal-btn {
   padding: 6px 16px;
@@ -866,8 +1030,12 @@ input:checked + .slider::before {
 .modal-btn.primary {
   background: var(--btn-solid-bg);
   color: var(--btn-solid-text);
+  transition: background 0.14s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .modal-btn.primary:hover {
   background: var(--primary);
+}
+.modal-btn.primary:active:not(:disabled) {
+  transform: scale(0.98);
 }
 </style>

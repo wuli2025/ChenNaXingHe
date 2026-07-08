@@ -381,16 +381,9 @@ export const useWorkflowsStore = defineStore("workflows", () => {
     }
   }
 
-  // 200ms debounce:连续保存/删除合并成一次序列化
-  let persistTimer: ReturnType<typeof setTimeout> | undefined;
-  function persist() {
-    clearTimeout(persistTimer);
-    persistTimer = setTimeout(persistNow, 200);
-  }
-  // 关键写入(种入示例包 / 增删包)走同步落盘:否则 debounce 窗口内崩溃会丢掉刚种入的包
-  // 与最后一次编辑(「删除后不回种」/ 丢失 last edit)。清掉待触发 debounce,立即序列化。
+  // 所有写入统一走同步落盘:debounce 窗口内崩溃会丢掉刚种入的包
+  // 与最后一次编辑(「删除后不回种」/ 丢失 last edit)。
   function persistNow() {
-    clearTimeout(persistTimer);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(packs.value));
     } catch {

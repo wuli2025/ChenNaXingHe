@@ -246,7 +246,7 @@ export const useFileTasksStore = defineStore("fileTasks", () => {
     if (id === "index") {
       try { localStorage.setItem("polaris.indexAutoPaused", "1"); } catch { /* ignore */ }
     }
-    // ⚠️ 后端限制:fableCancel() 翻的是**单个全局 AtomicBool**,并无 per-task 取消。
+    // 后端限制:fableCancel() 翻的是**单个全局 AtomicBool**,并无 per-task 取消。
     // 只有盘点/建索引会轮询它优雅停;对其它任务(AI 归类/整理名/构建体系)调它没意义,反而会
     // 误停正在跑的盘点/索引。故仅在停「盘点/建索引」时才翻全局标志;其余任务只做面板乐观收起
     // (后台那一轮自然跑完,不动已落库数据)。若将来后端支持 per-task 取消,这里应改用带 id 的取消。

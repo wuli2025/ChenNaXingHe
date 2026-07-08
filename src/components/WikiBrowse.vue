@@ -477,7 +477,7 @@ async function archiveToCore() {
     await kb.uploadFiles(paths);
     await refreshList();
     await kbStore.startBuildAll(); // 构建知识网(进度走 kb:compile 事件,见「管理」tab)
-    archiveMsg.value = `${paths.length} 个文件已归档,核心层编译已启动(见「管理」tab 进度) ✓`;
+    archiveMsg.value = `${paths.length} 个文件已归档,核心层编译已启动(见「管理」tab 进度)`;
   } catch (e: any) {
     archiveMsg.value = `归入失败:${e?.message ?? e}`;
   } finally {
@@ -556,12 +556,23 @@ function sendTableCmd() {
 </script>
 
 <template>
-  <div class="wiki" :class="{ 'drag-active': dropOver }">
+  <div
+    class="wiki"
+    :class="{ 'drag-active': dropOver }"
+  >
     <!-- 拖拽上传覆盖层 -->
-    <div v-if="dropOver" class="kb-drop-overlay">
+    <div
+      v-if="dropOver"
+      class="kb-drop-overlay"
+    >
       <div class="kb-drop-card">
-        <Upload :size="34" :stroke-width="1.4" />
-        <div class="kb-drop-title">松开以加入知识库</div>
+        <Upload
+          :size="34"
+          :stroke-width="1.4"
+        />
+        <div class="kb-drop-title">
+          松开以加入知识库
+        </div>
         <div class="kb-drop-sub">
           自动转 Markdown 入库并索引 · 支持 PDF / Word / Excel / PPT / 文本 / 代码
         </div>
@@ -569,24 +580,47 @@ function sendTableCmd() {
     </div>
 
     <!-- 上传进度（逐文件） -->
-    <div v-if="uploading.length" class="upload-panel">
-      <div class="upload-head">上传到知识库</div>
+    <div
+      v-if="uploading.length"
+      class="upload-panel"
+    >
+      <div class="upload-head">
+        上传到知识库
+      </div>
       <div
         v-for="(u, i) in uploading"
         :key="i"
         class="upload-row"
         :class="u.status"
       >
-        <LoaderCircle v-if="u.status === 'loading'" :size="15" class="spin" />
-        <CheckCircle2 v-else-if="u.status === 'ok'" :size="15" />
-        <XCircle v-else :size="15" />
-        <span class="up-name" :title="u.name">{{ u.name }}</span>
-        <span class="up-detail" :title="u.detail">{{ u.detail }}</span>
+        <LoaderCircle
+          v-if="u.status === 'loading'"
+          :size="15"
+          class="spin"
+        />
+        <CheckCircle2
+          v-else-if="u.status === 'ok'"
+          :size="15"
+        />
+        <XCircle
+          v-else
+          :size="15"
+        />
+        <span
+          class="up-name"
+          :title="u.name"
+        >{{ u.name }}</span>
+        <span
+          class="up-detail"
+          :title="u.detail"
+        >{{ u.detail }}</span>
       </div>
     </div>
 
     <div class="head">
-      <div class="title">名人知识库</div>
+      <div class="title">
+        名人知识库
+      </div>
       <div class="tabs">
         <button
           v-for="t in [
@@ -603,8 +637,15 @@ function sendTableCmd() {
           {{ t.l }}
         </button>
         <!-- 图谱:并入知识库的小功能键,点开切到星河图谱视图(复用其全屏加载机) -->
-        <button class="tab tab-graph" title="知识图谱·星河" @click="app.setView('graph')">
-          <Waypoints :size="14" :stroke-width="1.8" />
+        <button
+          class="tab tab-graph"
+          title="知识图谱·星河"
+          @click="app.setView('graph')"
+        >
+          <Waypoints
+            :size="14"
+            :stroke-width="1.8"
+          />
           图谱
         </button>
       </div>
@@ -614,10 +655,15 @@ function sendTableCmd() {
       </div>
     </div>
 
-    <div v-if="tab === 'overview'" class="body overview rg">
+    <div
+      v-if="tab === 'overview'"
+      class="body overview rg"
+    >
       <!-- 扫描入口 -->
       <div class="rg-hero glass">
-        <div class="rg-hero-title">把电脑炼成你的数据库</div>
+        <div class="rg-hero-title">
+          把电脑炼成你的数据库
+        </div>
         <div class="rg-hero-sub">
           扫描盘里散落的有用文件 → 逐文件看清内容 → 一键<b class="b-core">归入核心层</b>(大模型把资料编译成可检索的知识灵魂)。暂时把整台电脑都当成你的数据库。
         </div>
@@ -629,28 +675,48 @@ function sendTableCmd() {
             :class="{ on: r.defaultOn }"
             @click="toggleRoot(r)"
           >
-            <span class="dot"></span>{{ r.label }}
+            <span class="dot" />{{ r.label }}
           </button>
-          <span v-if="rootsLoaded && !scanRoots.length" class="muted">未发现可扫描的盘/目录</span>
+          <span
+            v-if="rootsLoaded && !scanRoots.length"
+            class="muted"
+          >未发现可扫描的盘/目录</span>
         </div>
       </div>
 
       <!-- 多维表格 -->
-      <div v-if="rows.length" class="rg-table glass">
+      <div
+        v-if="rows.length"
+        class="rg-table glass"
+      >
         <div class="rg-ttop">
           <span class="rg-ttitle">扫描结果 · 已按价值预选</span>
           <span class="rg-tmeta">
             勾选 <b class="b-core">{{ checkedCount }}</b> · {{ humanBytes(checkedBytes) }}
           </span>
-          <span class="rg-spacer"></span>
-          <button class="rg-chip" @click="selectAll(true)">全选</button>
-          <button class="rg-chip" @click="selectAll(false)">全不选</button>
-          <button class="rg-chip gold" :disabled="archiving || !checkedCount" @click="archiveToCore">
+          <span class="rg-spacer" />
+          <button
+            class="rg-chip"
+            @click="selectAll(true)"
+          >
+            全选
+          </button>
+          <button
+            class="rg-chip"
+            @click="selectAll(false)"
+          >
+            全不选
+          </button>
+          <button
+            class="rg-chip gold"
+            :disabled="archiving || !checkedCount"
+            @click="archiveToCore"
+          >
             归入核心层 {{ checkedCount }}
           </button>
         </div>
         <div class="rg-row rg-hd">
-          <span class="c-cb"></span>
+          <span class="c-cb" />
           <span class="c-name">文件名</span>
           <span class="c-ty">类型</span>
           <span class="c-prev">大概内容</span>
@@ -661,11 +727,11 @@ function sendTableCmd() {
              十几行。于是几万条扫描结果也秒开、不再硬截断到 600;v-model 绑定的是数据对象
              item.checked(非 DOM 节点),配合 key-field=id,回收复用不会串值。 -->
         <RecycleScroller
+          v-slot="{ item }"
           class="rg-list"
           :items="rows"
           :item-size="46"
           key-field="id"
-          v-slot="{ item }"
         >
           <div
             class="rg-row"
@@ -673,28 +739,60 @@ function sendTableCmd() {
             @click="item.checked = !item.checked"
           >
             <span class="c-cb">
-              <input type="checkbox" v-model="item.checked" @click.stop />
+              <input
+                v-model="item.checked"
+                type="checkbox"
+                @click.stop
+              >
             </span>
-            <span class="c-name" :title="item.path">{{ item.name }}</span>
-            <span class="c-ty"><span class="ty" :class="'ty-' + item.kind">{{ kindLabel[item.kind] || item.kind }}</span></span>
-            <span class="c-prev" :title="item.preview">{{ item.preview }}</span>
+            <span
+              class="c-name"
+              :title="item.path"
+            >{{ item.name }}</span>
+            <span class="c-ty"><span
+              class="ty"
+              :class="'ty-' + item.kind"
+            >{{ kindLabel[item.kind] || item.kind }}</span></span>
+            <span
+              class="c-prev"
+              :title="item.preview"
+            >{{ item.preview }}</span>
             <span class="c-size">{{ item.sizeH }}</span>
             <span class="c-score">{{ "★".repeat(item.score) }}</span>
           </div>
         </RecycleScroller>
-        <div v-if="archiveMsg" class="rg-archmsg">{{ archiveMsg }}</div>
+        <div
+          v-if="archiveMsg"
+          class="rg-archmsg"
+        >
+          {{ archiveMsg }}
+        </div>
       </div>
-      <div v-else-if="scanMeta && !resScanning" class="rg-empty muted">
+      <div
+        v-else-if="scanMeta && !resScanning"
+        class="rg-empty muted"
+      >
         没扫到可归档的资源(命中 0)。换个扫描范围试试。
       </div>
-      <div v-else-if="!resScanning" class="rg-empty muted">
+      <div
+        v-else-if="!resScanning"
+        class="rg-empty muted"
+      >
         到「文件中心」点「盘点」扫描你的盘 —— 扫到的有用文件会归入核心层,在这里连成知识网。
       </div>
 
       <!-- 表格对话框 -->
-      <div v-if="rows.length" class="rg-chat glass">
-        <div class="rg-chat-head">✦ 和这张表说话</div>
-        <div v-if="chatLog.length" class="rg-chat-body">
+      <div
+        v-if="rows.length"
+        class="rg-chat glass"
+      >
+        <div class="rg-chat-head">
+          和这张表说话
+        </div>
+        <div
+          v-if="chatLog.length"
+          class="rg-chat-body"
+        >
           <div
             v-for="(m, i) in chatLog"
             :key="i"
@@ -709,26 +807,48 @@ function sendTableCmd() {
             v-model="chatInput"
             placeholder="例:把图片都取消 / 取消两年没动的 / 只留近一年 / 全部归入核心层"
             @keydown.enter="sendTableCmd"
-          />
-          <button class="rg-primary sm" @click="sendTableCmd">发送</button>
+          >
+          <button
+            class="rg-primary sm"
+            @click="sendTableCmd"
+          >
+            发送
+          </button>
         </div>
       </div>
     </div>
 
-    <div v-if="tab === 'packs'" class="body packs">
+    <div
+      v-if="tab === 'packs'"
+      class="body packs"
+    >
       <div class="packs-intro">
         名人资料包:把名人的著作资料<strong>下载到自己的资料库</strong>(<code>raw/</code> 下),
         并附带安装配套技能 —— 技能里写好了这个资料库的使用方法,装完即可在对话里直接请教。
       </div>
       <div class="pack-grid">
-        <div v-for="p in packs" :key="p.id" class="card pack-card">
+        <div
+          v-for="p in packs"
+          :key="p.id"
+          class="card pack-card"
+        >
           <div class="pack-head">
-            <div class="card-title">{{ p.name }}</div>
-            <span v-if="p.installed" class="pack-badge installed">已装入</span>
+            <div class="card-title">
+              {{ p.name }}
+            </div>
+            <span
+              v-if="p.installed"
+              class="pack-badge installed"
+            >已装入</span>
           </div>
-          <div class="card-body">{{ p.description }}</div>
+          <div class="card-body">
+            {{ p.description }}
+          </div>
           <div class="pack-skill">
-            <Sparkles :size="13" :stroke-width="1.8" />
+            <Sparkles
+              :size="13"
+              :stroke-width="1.8"
+            />
             <span>配套技能:<code>{{ p.skillId }}</code></span>
           </div>
           <div class="pack-actions">
@@ -744,7 +864,11 @@ function sendTableCmd() {
                 :stroke-width="1.8"
                 class="spin"
               />
-              <Download v-else :size="14" :stroke-width="1.8" />
+              <Download
+                v-else
+                :size="14"
+                :stroke-width="1.8"
+              />
               <span>{{ packBusy === p.id ? "正在装入…" : "下载到我的资料库" }}</span>
             </button>
             <button
@@ -757,53 +881,100 @@ function sendTableCmd() {
             </button>
           </div>
         </div>
-        <div v-if="!packs.length" class="muted empty">
+        <div
+          v-if="!packs.length"
+          class="muted empty"
+        >
           暂无可用资料包(浏览器模式或资源目录缺失)
         </div>
       </div>
-      <div v-if="packMsg" class="muted pack-msg">{{ packMsg }}</div>
+      <div
+        v-if="packMsg"
+        class="muted pack-msg"
+      >
+        {{ packMsg }}
+      </div>
     </div>
 
-    <div v-if="tab === 'browse'" class="body browse">
+    <div
+      v-if="tab === 'browse'"
+      class="body browse"
+    >
       <div class="left">
         <div class="search-row">
           <input
             v-model="query"
             placeholder="搜索 KB(标题/正文)"
             @keydown.enter="doSearch"
-          />
-          <button class="btn" @click="doSearch">搜</button>
+          >
+          <button
+            class="btn"
+            @click="doSearch"
+          >
+            搜
+          </button>
         </div>
-        <div v-if="hits.length" class="hit-list">
-          <div class="section-title">搜索结果</div>
+        <div
+          v-if="hits.length"
+          class="hit-list"
+        >
+          <div class="section-title">
+            搜索结果
+          </div>
           <div
             v-for="h in hits.slice(0, hitCap)"
             :key="h.path"
             class="hit"
             @click="openFile(h.path)"
           >
-            <div class="hit-title">{{ h.title }}</div>
-            <div class="hit-snip">{{ h.snippet }}</div>
-            <div class="hit-meta">score {{ h.score.toFixed(1) }} · {{ h.path }}</div>
+            <div class="hit-title">
+              {{ h.title }}
+            </div>
+            <div class="hit-snip">
+              {{ h.snippet }}
+            </div>
+            <div class="hit-meta">
+              score {{ h.score.toFixed(1) }} · {{ h.path }}
+            </div>
           </div>
-          <button v-if="hits.length > hitCap" class="btn more" @click="hitCap += 100">
+          <button
+            v-if="hits.length > hitCap"
+            class="btn more"
+            @click="hitCap += 100"
+          >
             展示更多（还有 {{ hits.length - hitCap }} 条）
           </button>
         </div>
-        <div v-if="artHits.length" class="hit-list">
-          <div class="section-title">历史对话产物</div>
+        <div
+          v-if="artHits.length"
+          class="hit-list"
+        >
+          <div class="section-title">
+            历史对话产物
+          </div>
           <div
             v-for="a in artHits.slice(0, hitCap)"
             :key="a.path"
             class="hit"
             @click="openArtifact(a.path)"
           >
-            <div class="hit-title">{{ a.name }}</div>
-            <div v-if="a.snippet" class="hit-snip">{{ a.snippet }}</div>
-            <div class="hit-meta">产物 · {{ a.kind }} · 点开右栏预览</div>
+            <div class="hit-title">
+              {{ a.name }}
+            </div>
+            <div
+              v-if="a.snippet"
+              class="hit-snip"
+            >
+              {{ a.snippet }}
+            </div>
+            <div class="hit-meta">
+              产物 · {{ a.kind }} · 点开右栏预览
+            </div>
           </div>
         </div>
-        <div class="section-title">所有文件</div>
+        <div class="section-title">
+          所有文件
+        </div>
         <RecycleScroller
           v-if="files.length"
           class="file-scroller"
@@ -823,40 +994,75 @@ function sendTableCmd() {
                 title="删除这份资料"
                 @click.stop="doDelete(item.path)"
               >
-                <X :size="13" :stroke-width="2" />
+                <X
+                  :size="13"
+                  :stroke-width="2"
+                />
               </button>
             </div>
           </template>
         </RecycleScroller>
-        <div v-else class="muted empty">
+        <div
+          v-else
+          class="muted empty"
+        >
           KB 为空 —— 把文件直接拖到本页面即可入库,或在「管理」tab 手动 ingest
         </div>
       </div>
       <div class="right">
-        <div v-if="!selected" class="placeholder">
-          <div class="ph-glyph">▥</div>
+        <div
+          v-if="!selected"
+          class="placeholder"
+        >
+          <div class="ph-glyph">
+            ▥
+          </div>
           <div>选择左侧文件浏览</div>
         </div>
-        <div v-else class="md" v-html="rendered"></div>
+        <div
+          v-else
+          class="md"
+          v-html="rendered"
+        />
       </div>
     </div>
 
-    <div v-if="tab === 'manage'" class="body manage">
+    <div
+      v-if="tab === 'manage'"
+      class="body manage"
+    >
       <div class="card">
-        <div class="card-title">Ingest 文件 → KB</div>
+        <div class="card-title">
+          Ingest 文件 → KB
+        </div>
         <div class="card-body">
           直接把文件<strong>拖到本页面</strong>即可入库;也可填本机绝对路径手动 ingest。
           自动转 Markdown 入 <code>raw/</code> 并索引 —— 支持 PDF / Word(docx) /
           Excel(xlsx) / PPT(pptx) / 文本 / 代码;图片等不可转的原样保存。
         </div>
         <div class="ingest-row">
-          <input v-model="ingestPath" placeholder="例:D:\案例文件夹\01_xxx.pdf" />
-          <button class="primary-btn" @click="doIngest">Ingest</button>
+          <input
+            v-model="ingestPath"
+            placeholder="例:D:\案例文件夹\01_xxx.pdf"
+          >
+          <button
+            class="primary-btn"
+            @click="doIngest"
+          >
+            Ingest
+          </button>
         </div>
-        <div v-if="ingestMsg" class="ingest-msg">{{ ingestMsg }}</div>
+        <div
+          v-if="ingestMsg"
+          class="ingest-msg"
+        >
+          {{ ingestMsg }}
+        </div>
       </div>
       <div class="card accent-card">
-        <div class="card-title">构建知识网 · 摄入即编译 + 自动维护</div>
+        <div class="card-title">
+          构建知识网 · 摄入即编译 + 自动维护
+        </div>
         <div class="card-body">
           一键跑完三步:<strong>① 编译</strong>(wiki 维护者读 <code>raw/</code>
           原始资料,抽取实体与思想脉络,在 <code>wiki/</code> 写概念页并用
@@ -865,7 +1071,11 @@ function sendTableCmd() {
           → <strong>③ 去重</strong>(规则粗筛同名页 → AI 判真重复 → 合并并重写全库双链)。
           原始资料只读不改。耗时分钟级。
         </div>
-        <button class="primary-btn" :disabled="compiling" @click="doCompile">
+        <button
+          class="primary-btn"
+          :disabled="compiling"
+          @click="doCompile"
+        >
           <LoaderCircle
             v-if="compiling"
             :size="14"
@@ -874,25 +1084,44 @@ function sendTableCmd() {
           />
           <span>{{ buildLabel }}</span>
         </button>
-        <span v-if="compileMsg" class="muted clear-msg">{{ compileMsg }}</span>
-        <div v-if="compileLog.length" class="compile-log">
-          <div v-for="(l, i) in compileLog" :key="i" class="compile-line">
+        <span
+          v-if="compileMsg"
+          class="muted clear-msg"
+        >{{ compileMsg }}</span>
+        <div
+          v-if="compileLog.length"
+          class="compile-log"
+        >
+          <div
+            v-for="(l, i) in compileLog"
+            :key="i"
+            class="compile-line"
+          >
             {{ l }}
           </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">质量检查 · 纯规则秒级</div>
+        <div class="card-title">
+          质量检查 · 纯规则秒级
+        </div>
         <div class="card-body">
           给知识网体检:扫<strong>死链 / 缺 type / 孤儿页 / 危险路径</strong>,
           不改任何文件、即时出报告。构建完或手动改完 wiki 后随手查一下。
         </div>
         <div class="maintain-row">
-          <button class="primary-btn" :disabled="linting" @click="doLint">
+          <button
+            class="primary-btn"
+            :disabled="linting"
+            @click="doLint"
+          >
             <span>{{ linting ? "体检中…" : "质量检查" }}</span>
           </button>
         </div>
-        <div v-if="lintReport" class="lint-report">
+        <div
+          v-if="lintReport"
+          class="lint-report"
+        >
           <div class="lint-summary">
             共 {{ lintReport.totalPages }} 页 ·
             死链 <b :class="{ bad: lintReport.deadLinks }">{{ lintReport.deadLinks }}</b> ·
@@ -900,7 +1129,10 @@ function sendTableCmd() {
             孤儿 <b :class="{ bad: lintReport.orphans }">{{ lintReport.orphans }}</b> ·
             危险路径 <b :class="{ bad: lintReport.unsafePaths }">{{ lintReport.unsafePaths }}</b>
           </div>
-          <div v-if="lintReport.issues.length" class="lint-issues">
+          <div
+            v-if="lintReport.issues.length"
+            class="lint-issues"
+          >
             <div
               v-for="(it, i) in lintReport.issues.slice(0, 50)"
               :key="i"
@@ -911,11 +1143,18 @@ function sendTableCmd() {
               <span class="lint-detail">{{ it.detail }}</span>
             </div>
           </div>
-          <div v-else class="muted">未发现问题,知识网很健康 ✓</div>
+          <div
+            v-else
+            class="muted"
+          >
+            未发现问题,知识网很健康
+          </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">信源安全扫描 · 防提示词注入</div>
+        <div class="card-title">
+          信源安全扫描 · 防提示词注入
+        </div>
         <div class="card-body">
           扫 <code>raw/</code> 等外部资料里有没有<strong>试图操纵 AI 的隐藏指令</strong>(提示词注入):
           「忽略以上指令」「你现在是…」「运行以下命令」「把密钥发送到…」、零宽隐藏字符、危险链接等。
@@ -923,11 +1162,18 @@ function sendTableCmd() {
           扫到可疑信源可<strong>一键隔离</strong>(移出 raw/,模型不再读到,可逆)。
         </div>
         <div class="maintain-row">
-          <button class="primary-btn" :disabled="scanning" @click="doSecurityScan">
+          <button
+            class="primary-btn"
+            :disabled="scanning"
+            @click="doSecurityScan"
+          >
             <span>{{ scanning ? "扫描中…" : "安全扫描" }}</span>
           </button>
         </div>
-        <div v-if="threatReport" class="lint-report">
+        <div
+          v-if="threatReport"
+          class="lint-report"
+        >
           <div class="lint-summary">
             扫 {{ threatReport.scannedFiles }} 个文件 ·
             可疑文件 <b :class="{ bad: threatReport.flaggedFiles }">{{ threatReport.flaggedFiles }}</b> ·
@@ -935,13 +1181,19 @@ function sendTableCmd() {
             可疑 <b :class="{ bad: threatReport.medium }">{{ threatReport.medium }}</b> ·
             留意 <b>{{ threatReport.low }}</b>
           </div>
-          <div v-if="threatReport.hits.length" class="lint-issues">
+          <div
+            v-if="threatReport.hits.length"
+            class="lint-issues"
+          >
             <div
               v-for="(h, i) in threatReport.hits.slice(0, 80)"
               :key="i"
               class="threat-line"
             >
-              <span class="threat-sev" :class="'sev-' + h.severity">{{ sevLabel[h.severity] || h.severity }}</span>
+              <span
+                class="threat-sev"
+                :class="'sev-' + h.severity"
+              >{{ sevLabel[h.severity] || h.severity }}</span>
               <span class="lint-kind">{{ catLabel[h.category] || h.category }}</span>
               <span class="threat-where">
                 <span class="lint-path">{{ h.path }}</span>
@@ -957,11 +1209,18 @@ function sendTableCmd() {
               </button>
             </div>
           </div>
-          <div v-else class="muted">未发现注入痕迹,信源干净 ✓</div>
+          <div
+            v-else
+            class="muted"
+          >
+            未发现注入痕迹,信源干净
+          </div>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">批量转换 md 文件 · 非视频类</div>
+        <div class="card-title">
+          批量转换 md 文件 · 非视频类
+        </div>
         <div class="card-body">
           填本机文件或文件夹绝对路径(文件夹递归展开),把里面的<strong>非视频类</strong>文件
           批量转换成 Markdown 入 <code>raw/</code> 并索引 —— 支持 PDF / Word / Excel /
@@ -973,7 +1232,7 @@ function sendTableCmd() {
             v-model="convertPath"
             placeholder="例:D:\资料文件夹 或 D:\资料\报告.pdf"
             @keydown.enter="doConvertBatch"
-          />
+          >
           <button
             class="primary-btn"
             :disabled="converting"
@@ -988,20 +1247,36 @@ function sendTableCmd() {
             <span>{{ converting ? "转换中…" : "批量转换" }}</span>
           </button>
         </div>
-        <div v-if="convertMsg" class="ingest-msg">{{ convertMsg }}</div>
+        <div
+          v-if="convertMsg"
+          class="ingest-msg"
+        >
+          {{ convertMsg }}
+        </div>
       </div>
       <div class="card danger-card">
-        <div class="card-title">清空资料库</div>
+        <div class="card-title">
+          清空资料库
+        </div>
         <div class="card-body">
           删除 <code>raw/</code> 下的<strong>全部资料</strong>(含已安装的名人资料包),
           保留目录结构。此操作<strong>不可撤销</strong>;名人资料包可在「名人资料包」tab
           重新安装。也可在「浏览」里逐条点 × 删除单份资料。
         </div>
-        <button class="danger-btn" @click="doClear">
-          <Trash2 :size="14" :stroke-width="1.8" />
+        <button
+          class="danger-btn"
+          @click="doClear"
+        >
+          <Trash2
+            :size="14"
+            :stroke-width="1.8"
+          />
           <span>清空资料库</span>
         </button>
-        <span v-if="clearMsg" class="muted clear-msg">{{ clearMsg }}</span>
+        <span
+          v-if="clearMsg"
+          class="muted clear-msg"
+        >{{ clearMsg }}</span>
       </div>
     </div>
   </div>
@@ -1016,7 +1291,8 @@ function sendTableCmd() {
 }
 .head {
   padding: 18px 28px 0;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
 }
 .title {
   font-family: var(--serif);
@@ -1165,9 +1441,11 @@ function sendTableCmd() {
   gap: 14px;
 }
 .card {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: 4px;
+  /* 内容玻璃卡：渐变玻璃底 + 白玻璃描边 + 发丝暗环投影 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
   padding: 16px 18px;
 }
 .card-title {
@@ -1201,10 +1479,12 @@ function sendTableCmd() {
 }
 
 .left {
-  border: 1px solid var(--hairline);
-  border-radius: 4px;
+  /* 左列文件树：玻璃卡材质 */
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
   padding: 10px;
-  background: var(--panel);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1214,11 +1494,13 @@ function sendTableCmd() {
   min-height: 0;
 }
 .right {
-  border: 1px solid var(--hairline);
-  border-radius: 4px;
+  /* 右侧阅读区：玻璃卡材质 */
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
   padding: 22px 28px;
   overflow-y: auto;
-  background: var(--panel);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
 }
 .search-row {
   display: flex;
@@ -1229,23 +1511,28 @@ function sendTableCmd() {
   flex: 1;
   padding: 6px 8px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 10px;
   font-size: 12.5px;
   background: var(--bg);
 }
 .search-row input:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .btn {
+  /* 次级玻璃按钮 */
   padding: 6px 12px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  border-radius: 3px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  border-radius: 10px;
   font-size: 12.5px;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
 .btn:hover {
   border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 
 .section-title {
@@ -1602,7 +1889,9 @@ function sendTableCmd() {
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(1px);
+  /* 拖拽时磨砂虚化底下内容，玻璃门质感 */
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   pointer-events: none;
 }
 .kb-drop-card {
@@ -1634,10 +1923,13 @@ function sendTableCmd() {
   width: 320px;
   max-height: 50vh;
   overflow-y: auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow-lg);
+  /* 悬浮 chrome：真磨砂玻璃浮条 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   padding: 10px 12px;
 }
 .upload-head {
@@ -1807,6 +2099,10 @@ html[data-theme="dark"] .rg .glass {
   font-size: 13.5px;
   cursor: pointer;
   box-shadow: 0 8px 20px -9px rgba(212, 176, 106, 0.85);
+  transition: transform 0.12s var(--ease, ease), box-shadow 0.14s var(--ease, ease);
+}
+.rg-primary:active:not(:disabled) {
+  transform: scale(0.98);
 }
 .rg-primary.sm {
   padding: 8px 16px;

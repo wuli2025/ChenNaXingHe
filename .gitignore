@@ -8,7 +8,7 @@ dist-ssr
 .DS_Store
 src-tauri/target
 src-tauri/gen
-src-tauri/Cargo.lock
+# Cargo.lock 应随二进制应用提交, 保证发版可复现 (不再忽略)
 
 # Runtime outputs / local logs
 .dev.log
@@ -77,3 +77,6 @@ _face_crops/
 _tauri*.log
 _tradeos*
 _*.log
+
+# vitest 崩溃残留的临时配置
+vitest.config.ts.timestamp-*.mjs

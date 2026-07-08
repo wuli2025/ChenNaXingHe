@@ -12,13 +12,32 @@ const icons: Record<ToastKind, any> = {
 </script>
 
 <template>
-  <div class="toast-host" aria-live="polite">
+  <div
+    class="toast-host"
+    aria-live="polite"
+  >
     <TransitionGroup name="toast">
-      <div v-for="t in items" :key="t.id" class="toast" :class="t.kind">
-        <component :is="icons[t.kind]" :size="15" :stroke-width="2" class="t-ic" />
+      <div
+        v-for="t in items"
+        :key="t.id"
+        class="toast"
+        :class="t.kind"
+      >
+        <component
+          :is="icons[t.kind]"
+          :size="15"
+          :stroke-width="2"
+          class="t-ic"
+        />
         <span class="t-text">{{ t.text }}</span>
-        <button class="t-close" @click="dismiss(t.id)">
-          <X :size="12" :stroke-width="2.2" />
+        <button
+          class="t-close"
+          @click="dismiss(t.id)"
+        >
+          <X
+            :size="12"
+            :stroke-width="2.2"
+          />
         </button>
       </div>
     </TransitionGroup>
@@ -39,19 +58,38 @@ const icons: Record<ToastKind, any> = {
   pointer-events: none;
 }
 .toast {
+  position: relative;
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   max-width: min(560px, 80vw);
   padding: 9px 14px;
-  border-radius: 10px;
+  border-radius: 14px;
   font-size: 12.5px;
   line-height: 1.5;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  /* 悬浮 chrome:磨砂玻璃 toast */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
   color: var(--text);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--chrome-shadow);
+}
+/* 棱边折射环:跟随圆角的 1px 玻璃棱光 */
+.toast::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .toast.success .t-ic {
   color: var(--ok, #3a9d6e);
@@ -87,7 +125,7 @@ const icons: Record<ToastKind, any> = {
 }
 .toast-enter-active,
 .toast-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.18s var(--ease, ease), transform 0.18s var(--ease, ease);
 }
 .toast-enter-from,
 .toast-leave-to {

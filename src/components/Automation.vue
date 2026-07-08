@@ -166,11 +166,18 @@ function stopFlow(f: AutomationFlow) {
 
 <template>
   <div class="auto-wrap">
-    <div class="auto-main" :class="{ 'with-panel': auto.activeConvId }">
+    <div
+      class="auto-main"
+      :class="{ 'with-panel': auto.activeConvId }"
+    >
       <!-- 头部 -->
       <header class="head">
         <div class="title-row">
-          <Clock :size="20" :stroke-width="1.7" class="t-icon" />
+          <Clock
+            :size="20"
+            :stroke-width="1.7"
+            class="t-icon"
+          />
           <h1>自动化</h1>
         </div>
         <p class="lead">
@@ -180,63 +187,102 @@ function stopFlow(f: AutomationFlow) {
       </header>
 
       <!-- 自动做梦 · 每日晨报（回声层）-->
-      <section v-if="echo" class="dream-card" :class="{ collapsed: dreamCollapsed }">
+      <section
+        v-if="echo"
+        class="dream-card"
+        :class="{ collapsed: dreamCollapsed }"
+      >
         <div class="dc-head">
-          <span class="dc-ic"><Moon :size="15" :stroke-width="1.8" color="#fff" /></span>
+          <span class="dc-ic"><Moon
+            :size="15"
+            :stroke-width="1.8"
+            color="#fff"
+          /></span>
           <div class="dc-tt">
             <span class="dc-name">自动做梦 · 每日晨报</span>
-            <span v-if="!dreamCollapsed" class="dc-sub"
-              >每天自动整理你的对话与新资料，归类进记忆，并据新内容给出工程化建议 —— 别的 AI 把功能做得更强，我们让 AI 更懂你。</span
-            >
+            <span
+              v-if="!dreamCollapsed"
+              class="dc-sub"
+            >每天自动整理你的对话与新资料，归类进记忆，并据新内容给出工程化建议 —— 别的 AI 把功能做得更强，我们让 AI 更懂你。</span>
           </div>
-          <label class="dc-switch" :title="echo.enabled ? '已开启' : '已关闭'">
+          <label
+            class="dc-switch"
+            :title="echo.enabled ? '已开启' : '已关闭'"
+          >
             <input
               type="checkbox"
               :checked="echo.enabled"
               @change="setEcho({ enabled: ($event.target as HTMLInputElement).checked })"
-            />
-            <span class="dc-track"></span>
+            >
+            <span class="dc-track" />
           </label>
           <button
             class="dc-fold"
             :title="dreamCollapsed ? '展开' : '收起'"
             @click="toggleDream"
           >
-            <ChevronDown :size="16" :stroke-width="2" :class="{ up: !dreamCollapsed }" />
+            <ChevronDown
+              :size="16"
+              :stroke-width="2"
+              :class="{ up: !dreamCollapsed }"
+            />
           </button>
         </div>
 
-        <div v-if="echo.enabled && !dreamCollapsed" class="dc-body">
+        <div
+          v-if="echo.enabled && !dreamCollapsed"
+          class="dc-body"
+        >
           <div class="dc-row">
-            <span class="dc-label"><Clock :size="13" :stroke-width="1.7" /> 每天执行时间</span>
+            <span class="dc-label"><Clock
+              :size="13"
+              :stroke-width="1.7"
+            /> 每天执行时间</span>
             <select
               class="dc-select"
               :value="echo.hour"
               @change="setEcho({ hour: Number(($event.target as HTMLSelectElement).value) })"
             >
-              <option v-for="h in dreamHours" :key="h" :value="h">
+              <option
+                v-for="h in dreamHours"
+                :key="h"
+                :value="h"
+              >
                 {{ String(h).padStart(2, "0") }}:00
               </option>
             </select>
           </div>
           <div class="dc-row">
-            <span class="dc-label"><Power :size="13" :stroke-width="1.7" /> 开机补做</span>
-            <label class="dc-mini-switch" title="错过固定时间（如开机前）则开机后自动补一次">
+            <span class="dc-label"><Power
+              :size="13"
+              :stroke-width="1.7"
+            /> 开机补做</span>
+            <label
+              class="dc-mini-switch"
+              title="错过固定时间（如开机前）则开机后自动补一次"
+            >
               <input
                 type="checkbox"
                 :checked="echo.run_on_boot"
                 @change="setEcho({ runOnBoot: ($event.target as HTMLInputElement).checked })"
-              />
-              <span class="dc-track sm"></span>
+              >
+              <span class="dc-track sm" />
             </label>
           </div>
           <div class="dc-stats">
             <span class="dc-stat">记忆 <b>{{ echo.memory_count }}</b> 条</span>
             <span class="dc-stat">今日建议 <b>{{ echo.briefing_today }}</b> 条</span>
-            <span v-if="echo.last_dream_day" class="dc-stat">上次 {{ echo.last_dream_day }}</span>
+            <span
+              v-if="echo.last_dream_day"
+              class="dc-stat"
+            >上次 {{ echo.last_dream_day }}</span>
           </div>
           <div class="dc-act">
-            <button class="dc-btn" :disabled="echo.dreaming" @click="dreamNow">
+            <button
+              class="dc-btn"
+              :disabled="echo.dreaming"
+              @click="dreamNow"
+            >
               <component
                 :is="echo.dreaming ? LoaderCircle : Moon"
                 :size="13"
@@ -245,12 +291,26 @@ function stopFlow(f: AutomationFlow) {
               />
               {{ echo.dreaming ? "处理中…" : "现在做一次梦" }}
             </button>
-            <button class="dc-btn ghost" :disabled="echo.dreaming" @click="briefNow">
-              <Sparkles :size="13" :stroke-width="1.9" /> 现在生成晨报
+            <button
+              class="dc-btn ghost"
+              :disabled="echo.dreaming"
+              @click="briefNow"
+            >
+              <Sparkles
+                :size="13"
+                :stroke-width="1.9"
+              /> 现在生成晨报
             </button>
           </div>
-          <div v-if="echo.log.length" class="dc-log">
-            <div v-for="(l, i) in echo.log.slice(0, 3)" :key="i" class="dc-log-line">
+          <div
+            v-if="echo.log.length"
+            class="dc-log"
+          >
+            <div
+              v-for="(l, i) in echo.log.slice(0, 3)"
+              :key="i"
+              class="dc-log-line"
+            >
               <span class="dll-day">{{ l.day }}</span>{{ l.summary }}
             </div>
           </div>
@@ -259,41 +319,117 @@ function stopFlow(f: AutomationFlow) {
 
       <!-- 流程卡片 -->
       <div class="grid">
-        <button class="card new" @click="auto.openCreate()">
-          <span class="new-plus"><Plus :size="22" :stroke-width="1.8" /></span>
+        <button
+          class="card new"
+          @click="auto.openCreate()"
+        >
+          <span class="new-plus"><Plus
+            :size="22"
+            :stroke-width="1.8"
+          /></span>
           <span class="new-text">新建自动化</span>
         </button>
 
-        <div v-for="f in auto.flows" :key="f.id" class="card flow">
+        <div
+          v-for="f in auto.flows"
+          :key="f.id"
+          class="card flow"
+        >
           <div class="c-head">
-            <span class="c-icon" :style="{ background: f.color }">
-              <component :is="iconOf(f)" :size="15" :stroke-width="1.8" color="#fff" />
+            <span
+              class="c-icon"
+              :style="{ background: f.color }"
+            >
+              <component
+                :is="iconOf(f)"
+                :size="15"
+                :stroke-width="1.8"
+                color="#fff"
+              />
             </span>
-            <span class="c-name" :title="f.name">{{ f.name }}</span>
-            <span v-if="running(f)" class="run-tag">
-              <LoaderCircle :size="12" :stroke-width="2" class="spin" /> 运行中
+            <span
+              class="c-name"
+              :title="f.name"
+            >{{ f.name }}</span>
+            <span
+              v-if="running(f)"
+              class="run-tag"
+            >
+              <LoaderCircle
+                :size="12"
+                :stroke-width="2"
+                class="spin"
+              /> 运行中
             </span>
           </div>
-          <p class="c-desc">{{ f.description || "（无描述）" }}</p>
+          <p class="c-desc">
+            {{ f.description || "（无描述）" }}
+          </p>
           <div class="c-meta">
-            <span class="meta"><Folder :size="12" :stroke-width="1.6" /> {{ projectLabel(f) }}</span>
-            <span class="meta"><Clock :size="12" :stroke-width="1.6" /> {{ scheduleLabel(f) }}</span>
-            <span v-if="f.deepResearch" class="meta"><Telescope :size="12" :stroke-width="1.6" /> 深度</span>
-            <span v-if="f.loopCount > 1" class="meta"><Repeat :size="12" :stroke-width="1.6" /> ×{{ f.loopCount }}</span>
+            <span class="meta"><Folder
+              :size="12"
+              :stroke-width="1.6"
+            /> {{ projectLabel(f) }}</span>
+            <span class="meta"><Clock
+              :size="12"
+              :stroke-width="1.6"
+            /> {{ scheduleLabel(f) }}</span>
+            <span
+              v-if="f.deepResearch"
+              class="meta"
+            ><Telescope
+              :size="12"
+              :stroke-width="1.6"
+            /> 深度</span>
+            <span
+              v-if="f.loopCount > 1"
+              class="meta"
+            ><Repeat
+              :size="12"
+              :stroke-width="1.6"
+            /> ×{{ f.loopCount }}</span>
           </div>
           <div class="c-act">
             <!-- 运行中:卡片上直接给停止入口(不依赖右侧面板还开着) -->
-            <button v-if="running(f)" class="run-btn stop" @click="stopFlow(f)">
-              <Square :size="12" :stroke-width="2" /> 停止
+            <button
+              v-if="running(f)"
+              class="run-btn stop"
+              @click="stopFlow(f)"
+            >
+              <Square
+                :size="12"
+                :stroke-width="2"
+              /> 停止
             </button>
-            <button v-else class="run-btn" @click="run(f)">
-              <Play :size="13" :stroke-width="2" /> 运行
+            <button
+              v-else
+              class="run-btn"
+              @click="run(f)"
+            >
+              <Play
+                :size="13"
+                :stroke-width="2"
+              /> 运行
             </button>
-            <button class="mini-btn" title="编辑" @click="edit(f)">
-              <SquarePen :size="14" :stroke-width="1.7" />
+            <button
+              class="mini-btn"
+              title="编辑"
+              @click="edit(f)"
+            >
+              <SquarePen
+                :size="14"
+                :stroke-width="1.7"
+              />
             </button>
-            <button class="mini-btn danger" title="删除" @click="remove(f)">
-              <Trash2 :size="14" :stroke-width="1.7" />
+            <button
+              class="mini-btn danger"
+              title="删除"
+              @click="remove(f)"
+            >
+              <Trash2
+                :size="14"
+                :stroke-width="1.7"
+              />
             </button>
           </div>
         </div>
@@ -301,18 +437,41 @@ function stopFlow(f: AutomationFlow) {
     </div>
 
     <!-- 缩小版对话框：运行进度 -->
-    <aside v-if="auto.activeConvId" class="run-panel">
+    <aside
+      v-if="auto.activeConvId"
+      class="run-panel"
+    >
       <div class="rp-head">
         <span class="rp-title">
-          <component :is="activeRunning ? LoaderCircle : Sparkles" :size="14" :stroke-width="1.9" :class="{ spin: activeRunning }" />
+          <component
+            :is="activeRunning ? LoaderCircle : Sparkles"
+            :size="14"
+            :stroke-width="1.9"
+            :class="{ spin: activeRunning }"
+          />
           运行进度
         </span>
         <div class="rp-act">
-          <button v-if="activeRunning" class="rp-stop" title="停止" @click="stopRun">
-            <CircleStop :size="15" :stroke-width="1.8" />
+          <button
+            v-if="activeRunning"
+            class="rp-stop"
+            title="停止"
+            @click="stopRun"
+          >
+            <CircleStop
+              :size="15"
+              :stroke-width="1.8"
+            />
           </button>
-          <button class="rp-close" title="收起" @click="closePanel">
-            <X :size="16" :stroke-width="1.7" />
+          <button
+            class="rp-close"
+            title="收起"
+            @click="closePanel"
+          >
+            <X
+              :size="16"
+              :stroke-width="1.7"
+            />
           </button>
         </div>
       </div>
@@ -327,16 +486,33 @@ function stopFlow(f: AutomationFlow) {
             <span class="tool-pill">{{ b.text }}</span>
           </template>
           <template v-else>
-            <div class="b-text">{{ b.text }}</div>
-            <div v-if="b.artifacts && b.artifacts.length" class="b-arts">
-              <span v-for="(a, j) in b.artifacts" :key="j" class="art-pill">
-                📄 {{ a.split('/').pop() }}
+            <div class="b-text">
+              {{ b.text }}
+            </div>
+            <div
+              v-if="b.artifacts && b.artifacts.length"
+              class="b-arts"
+            >
+              <span
+                v-for="(a, j) in b.artifacts"
+                :key="j"
+                class="art-pill"
+              >
+                {{ a.split('/').pop() }}
               </span>
             </div>
           </template>
         </div>
-        <div v-if="activeRunning" class="typing"><span></span><span></span><span></span></div>
-        <div v-if="!activeBubbles.length && !activeRunning" class="rp-empty">
+        <div
+          v-if="activeRunning"
+          class="typing"
+        >
+          <span /><span /><span />
+        </div>
+        <div
+          v-if="!activeBubbles.length && !activeRunning"
+          class="rp-empty"
+        >
           运行后这里会实时显示进度。
         </div>
       </div>
@@ -380,9 +556,11 @@ function stopFlow(f: AutomationFlow) {
 
 /* ── 自动做梦 · 每日晨报卡 ── */
 .dream-card {
-  border: 1px solid var(--border-soft);
+  /* 晨报玻璃卡 */
+  border: 1px solid var(--card-border);
   border-radius: 14px;
-  background: var(--panel);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   padding: 16px 18px;
   margin-bottom: 18px;
 }
@@ -434,9 +612,14 @@ function stopFlow(f: AutomationFlow) {
 }
 .dc-label svg { color: var(--muted); }
 .dc-select {
-  border: 1px solid var(--border); border-radius: 7px;
+  border: 1px solid var(--border); border-radius: 10px;
   background: var(--bg); color: var(--ink);
   font-size: 12.5px; padding: 5px 9px; cursor: pointer;
+}
+.dc-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .dc-stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .dc-stat {
@@ -451,8 +634,10 @@ function stopFlow(f: AutomationFlow) {
   background: var(--btn-solid-bg); color: var(--btn-solid-text);
   font-size: 12.5px; letter-spacing: 0.5px;
   padding: 7px 13px; border-radius: 8px;
+  transition: background 0.14s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .dc-btn:hover:not(:disabled) { background: var(--primary, var(--btn-solid-bg)); }
+.dc-btn:not(.ghost):active:not(:disabled) { transform: scale(0.98); }
 .dc-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .dc-btn.ghost {
   background: transparent; color: var(--text-2);
@@ -473,16 +658,17 @@ function stopFlow(f: AutomationFlow) {
   gap: 14px;
 }
 .card {
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  background: var(--panel);
+  /* 工作流玻璃卡 */
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   padding: 16px;
   text-align: left;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 .card.flow:hover {
-  border-color: var(--border);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--card-shadow-hover);
   transform: translateY(-1px);
 }
 
@@ -558,8 +744,10 @@ function stopFlow(f: AutomationFlow) {
   font-size: 12.5px; letter-spacing: 1px;
   padding: 7px 12px; border-radius: 8px;
   cursor: pointer;
+  transition: background 0.14s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .run-btn:hover:not(:disabled) { background: var(--primary); }
+.run-btn:active:not(:disabled) { transform: scale(0.98); }
 .run-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .run-btn.stop { background: var(--vermilion); color: #fff; }
 .run-btn.stop:hover { background: var(--vermilion); opacity: 0.88; }
@@ -578,8 +766,9 @@ function stopFlow(f: AutomationFlow) {
 .run-panel {
   width: 360px;
   flex-shrink: 0;
-  border-left: 1px solid var(--border-soft);
-  background: var(--bg-soft, var(--panel));
+  /* 大面积侧栏表面：玻璃侧栏底 */
+  border-left: 1px solid var(--glass-border);
+  background: var(--glass-side);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -587,7 +776,8 @@ function stopFlow(f: AutomationFlow) {
 .rp-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
 }
 .rp-title {
   display: inline-flex; align-items: center; gap: 7px;

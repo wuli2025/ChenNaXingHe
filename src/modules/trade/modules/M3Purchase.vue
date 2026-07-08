@@ -112,7 +112,7 @@ function sendWriteback() {
       { k: "核准后动作", v: "回写采购单 + 生成报关草稿 → M4" },
     ],
     risk: "normal",
-    payload: { supplier: "Viña Aurora", goods: "有机 Carmenère 红酒 2021", qty: 12000, unit: 4.2, origin: "智利" },
+    payload: { supplier: "Viña Aurora", goods: "有机 Carmenère 红酒 2021", qty: 12000, unit: 4.2, currency: "USD", origin: "智利" },
   });
 }
 </script>
@@ -121,10 +121,31 @@ function sendWriteback() {
   <div class="t-view-anim">
     <!-- 顶部 KPI -->
     <div class="t-grid t-g4">
-      <TKpi :value="String(suppliers.length)" label="公海供应商" :icon="ICONS.purchase" acc="gold" />
-      <TKpi :value="String(coreCount)" label="核心供应商" delta="A 级长约" up acc="green" />
-      <TKpi :value="String(newLinked)" label="待评估（新建联）" :delta="newLinked ? 'M2 转入待打分' : '无'" acc="amber" />
-      <TKpi :value="avgOnTime + '%'" label="在评均准时率" :icon="ICONS.logistics" acc="blue" />
+      <TKpi
+        :value="String(suppliers.length)"
+        label="公海供应商"
+        :icon="ICONS.purchase"
+        acc="gold"
+      />
+      <TKpi
+        :value="String(coreCount)"
+        label="核心供应商"
+        delta="A 级长约"
+        up
+        acc="green"
+      />
+      <TKpi
+        :value="String(newLinked)"
+        label="待评估（新建联）"
+        :delta="newLinked ? 'M2 转入待打分' : '无'"
+        acc="amber"
+      />
+      <TKpi
+        :value="avgOnTime + '%'"
+        label="在评均准时率"
+        :icon="ICONS.logistics"
+        acc="blue"
+      />
     </div>
 
     <div class="t-note info">
@@ -133,30 +154,51 @@ function sendWriteback() {
     </div>
 
     <!-- ① 供应商公海评分卡 -->
-    <TSection title="供应商公海 · 多维评分卡" sub="准时率 / 报价 / 质量 → 综合分 · 等级">
+    <TSection
+      title="供应商公海 · 多维评分卡"
+      sub="准时率 / 报价 / 质量 → 综合分 · 等级"
+    >
       <template #actions>
         <button
           class="t-btn sm gold"
           :disabled="store.busy.value || rfqPending || rfqDone"
-          @click="sendRfq"
           :title="rfqDone ? '已群发（见下方已执行）' : rfqPending ? '已入询价群发核准闸' : '群发比价询价（进人工审核看板）'"
+          @click="sendRfq"
         >
-          <TIcon :path="ICONS.purchase" :size="14" />
+          <TIcon
+            :path="ICONS.purchase"
+            :size="14"
+          />
           {{ rfqLabel }}
         </button>
       </template>
     </TSection>
 
-    <div v-if="suppliers.length" class="t-grid t-g2">
-      <TPanel v-for="s in suppliers" :key="s.name" pad class="sup-card">
+    <div
+      v-if="suppliers.length"
+      class="t-grid t-g2"
+    >
+      <TPanel
+        v-for="s in suppliers"
+        :key="s.name"
+        pad
+        class="sup-card"
+      >
         <div class="sup-head">
           <div class="sup-id">
             <b class="sup-name">{{ s.name }}</b>
             <span class="sup-meta">{{ s.country }} · {{ s.cat }}</span>
           </div>
           <div class="sup-tags">
-            <TBadge v-if="s.tag" :tone="tagTone(s.tag)">{{ s.tag }}</TBadge>
-            <TBadge :tone="gradeTone(s.grade)">{{ s.grade === "—" ? "待评级" : s.grade + " 级" }}</TBadge>
+            <TBadge
+              v-if="s.tag"
+              :tone="tagTone(s.tag)"
+            >
+              {{ s.tag }}
+            </TBadge>
+            <TBadge :tone="gradeTone(s.grade)">
+              {{ s.grade === "—" ? "待评级" : s.grade + " 级" }}
+            </TBadge>
           </div>
         </div>
 
@@ -186,46 +228,82 @@ function sendWriteback() {
         </template>
 
         <!-- 未评分（新建联）空态 -->
-        <div v-else class="sup-empty">
-          <TIcon :path="ICONS.lead" :size="15" />
+        <div
+          v-else
+          class="sup-empty"
+        >
+          <TIcon
+            :path="ICONS.lead"
+            :size="15"
+          />
           <span>由 M2 建联转入，尚无历史交付数据，首单后自动生成评分。</span>
         </div>
       </TPanel>
     </div>
-    <TPanel v-else pad>
-      <div class="empty">暂无公海供应商 · 在 M2 供应商建联把有意向线索转为正式供应商后进入此处。</div>
+    <TPanel
+      v-else
+      pad
+    >
+      <div class="empty">
+        暂无公海供应商 · 在 M2 供应商建联把有意向线索转为正式供应商后进入此处。
+      </div>
     </TPanel>
 
     <!-- ② 采购 / 询价区说明 -->
-    <TSection title="采购 · 询价比价" sub="统一规格群发 · 结构化归集 · 一票一价横向对比" />
+    <TSection
+      title="采购 · 询价比价"
+      sub="统一规格群发 · 结构化归集 · 一票一价横向对比"
+    />
     <div class="t-note warn">
       <b>群发比价询价（人工闸）：</b>对在评的 <b>{{ rated.length }}</b> 家供应商群发同一规格 Shiraz 询价，
       邮件外发前进 <b>人工审核看板</b>（<span class="t-mono">rfq-send</span>）核准，避免误扰与重复触达。
-      <span v-if="rfqPending" class="t-warn-txt"> · 本轮已入列，去审核看板核准。</span>
-      <span v-else-if="rfqDone" class="t-warn-txt"> · 已核准外发，见下方「已执行」。</span>
+      <span
+        v-if="rfqPending"
+        class="t-warn-txt"
+      > · 本轮已入列，去审核看板核准。</span>
+      <span
+        v-else-if="rfqDone"
+        class="t-warn-txt"
+      > · 已核准外发，见下方「已执行」。</span>
     </div>
 
     <!-- 已执行台账（M3）：证明「核准即执行」不是空转 -->
-    <div v-if="m3Actions.length" class="m3-exec">
+    <div
+      v-if="m3Actions.length"
+      class="m3-exec"
+    >
       <div class="m3-exec-h">
-        <TIcon :path="ICONS.review" :size="13" />
+        <TIcon
+          :path="ICONS.review"
+          :size="13"
+        />
         已执行 · 核准即生效（{{ m3Actions.length }}）
       </div>
-      <div v-for="a in m3Actions.slice(0, 4)" :key="a.id" class="m3-exec-row">
+      <div
+        v-for="a in m3Actions.slice(0, 4)"
+        :key="a.id"
+        class="m3-exec-row"
+      >
         <b>{{ a.title }}</b><span>{{ a.detail }}</span>
       </div>
     </div>
 
     <!-- ③ 回信结构化抽取演示 -->
-    <TSection title="回信结构化抽取 · 反幻觉范式" sub="剥签名 → 抽 {报价,币种,交期,MOQ,有效期} + 字段置信度">
+    <TSection
+      title="回信结构化抽取 · 反幻觉范式"
+      sub="剥签名 → 抽 {报价,币种,交期,MOQ,有效期} + 字段置信度"
+    >
       <template #actions>
         <button
           class="t-btn sm primary"
           :disabled="store.busy.value || wbPending || wbDone"
-          @click="sendWriteback"
           :title="wbDone ? '已回写并生成报关草稿' : wbPending ? '已入报价回写闸' : '低置信字段转人工回写采购单'"
+          @click="sendWriteback"
         >
-          <TIcon :path="ICONS.finance" :size="14" />
+          <TIcon
+            :path="ICONS.finance"
+            :size="14"
+          />
           {{ wbLabel }}
         </button>
       </template>
@@ -243,20 +321,38 @@ function sendWriteback() {
         <span class="t-muted ex-src">已剥签名 · 正文命中 5 字段</span>
       </div>
       <div class="ex-fields">
-        <div v-for="f in extractDemo" :key="f.k" class="ex-row" :class="{ low: f.conf < 85 }">
+        <div
+          v-for="f in extractDemo"
+          :key="f.k"
+          class="ex-row"
+          :class="{ low: f.conf < 85 }"
+        >
           <div class="ex-k">
             {{ f.k }}
-            <span v-if="f.conf < 85" class="t-warn-txt ex-flag">转人工</span>
+            <span
+              v-if="f.conf < 85"
+              class="t-warn-txt ex-flag"
+            >转人工</span>
           </div>
-          <div class="ex-v">{{ f.v }}</div>
-          <div class="ex-c"><TConf :value="f.conf" /></div>
+          <div class="ex-v">
+            {{ f.v }}
+          </div>
+          <div class="ex-c">
+            <TConf :value="f.conf" />
+          </div>
         </div>
       </div>
       <div class="ex-foot">
-        <span v-if="lowConfFields.length" class="t-muted">
+        <span
+          v-if="lowConfFields.length"
+          class="t-muted"
+        >
           {{ lowConfFields.length }} 个字段置信 &lt;85%（{{ lowConfNames }}）——按范式拦截，不自动写库，转人工回写采购单。
         </span>
-        <span v-else class="t-muted">全部字段置信 ≥85%，可直接回写采购单。</span>
+        <span
+          v-else
+          class="t-muted"
+        >全部字段置信 ≥85%，可直接回写采购单。</span>
       </div>
     </TPanel>
   </div>

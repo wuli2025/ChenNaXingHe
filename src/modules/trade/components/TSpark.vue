@@ -22,9 +22,24 @@ const color = computed(() => (props.tone === "blue" ? "var(--primary)" : props.t
 </script>
 
 <template>
-  <svg class="t-spark" :viewBox="`0 0 ${path.w} ${path.h}`" preserveAspectRatio="none">
-    <path :d="path.area" :fill="color" opacity="0.1" />
-    <path :d="path.line" :stroke="color" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+  <svg
+    class="t-spark"
+    :viewBox="`0 0 ${path.w} ${path.h}`"
+    preserveAspectRatio="none"
+  >
+    <path
+      :d="path.area"
+      :fill="color"
+      opacity="0.1"
+    />
+    <path
+      :d="path.line"
+      :stroke="color"
+      fill="none"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
   </svg>
 </template>
 

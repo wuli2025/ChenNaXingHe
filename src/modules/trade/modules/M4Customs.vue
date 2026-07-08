@@ -73,10 +73,30 @@ function onSubmit(id: string) {
   <div class="t-view-anim">
     <!-- 顶部 KPI -->
     <div class="t-grid t-g4">
-      <TKpi :value="String(kpi.pending)" label="待报关货柜" acc="amber" :icon="ICONS.customs" />
-      <TKpi :value="String(kpi.reviewing)" label="报关中" acc="blue" :icon="ICONS.workflow" />
-      <TKpi :value="String(kpi.released)" label="已放行" acc="green" :icon="ICONS.compliance" />
-      <TKpi :value="String(kpi.inspected)" label="查验中" acc="red" :icon="ICONS.review" />
+      <TKpi
+        :value="String(kpi.pending)"
+        label="待报关货柜"
+        acc="amber"
+        :icon="ICONS.customs"
+      />
+      <TKpi
+        :value="String(kpi.reviewing)"
+        label="报关中"
+        acc="blue"
+        :icon="ICONS.workflow"
+      />
+      <TKpi
+        :value="String(kpi.released)"
+        label="已放行"
+        acc="green"
+        :icon="ICONS.compliance"
+      />
+      <TKpi
+        :value="String(kpi.inspected)"
+        label="查验中"
+        acc="red"
+        :icon="ICONS.review"
+      />
     </div>
 
     <div class="t-note info">
@@ -85,27 +105,46 @@ function onSubmit(id: string) {
     </div>
 
     <!-- 报关工作流步骤条 -->
-    <TSection title="报关工作流" sub="ETA-5d 触发 · 双人工闸（确认 / 回执）" />
+    <TSection
+      title="报关工作流"
+      sub="ETA-5d 触发 · 双人工闸（确认 / 回执）"
+    />
     <TPanel pad>
       <div class="steps">
-        <div v-for="(s, i) in store.customsFlow.value" :key="s.n" class="step" :class="s.state">
+        <div
+          v-for="(s, i) in store.customsFlow.value"
+          :key="s.n"
+          class="step"
+          :class="s.state"
+        >
           <div class="s-node">
             <span class="s-num">{{ stepMark(s) }}</span>
-            <span v-if="i < store.customsFlow.value.length - 1" class="s-line" />
+            <span
+              v-if="i < store.customsFlow.value.length - 1"
+              class="s-line"
+            />
           </div>
           <div class="s-body">
             <div class="s-title">
               {{ s.title }}
-              <span v-if="s.gate" class="s-gate">★闸</span>
+              <span
+                v-if="s.gate"
+                class="s-gate"
+              >★闸</span>
             </div>
-            <div class="s-desc">{{ s.desc }}</div>
+            <div class="s-desc">
+              {{ s.desc }}
+            </div>
           </div>
         </div>
       </div>
     </TPanel>
 
     <!-- 待报关货柜清单 -->
-    <TSection title="待报关货柜清单" sub="点行展开报关单编辑面板 · 双人工闸">
+    <TSection
+      title="待报关货柜清单"
+      sub="点行展开报关单编辑面板 · 双人工闸"
+    >
       <template #actions>
         <span class="t-pill">共 {{ store.declarations.value.length }} 柜</span>
       </template>
@@ -119,7 +158,9 @@ function onSubmit(id: string) {
             <th>PO / 供应商</th>
             <th>商品</th>
             <th>成交方式</th>
-            <th class="num">完税价格 CIF</th>
+            <th class="num">
+              完税价格 CIF
+            </th>
             <th>HS 完整度</th>
             <th>校验状态</th>
             <th>报关状态</th>
@@ -135,32 +176,53 @@ function onSubmit(id: string) {
           >
             <td><b class="t-mono">{{ d.id }}</b></td>
             <td>
-              <div class="t-mono">{{ d.po }}</div>
-              <div class="t-muted">{{ d.supplier }}</div>
+              <div class="t-mono">
+                {{ d.po }}
+              </div>
+              <div class="t-muted">
+                {{ d.supplier }}
+              </div>
             </td>
             <td>{{ d.goods }}</td>
             <td><span class="t-pill">{{ d.terms }}</span></td>
-            <td class="num"><b>{{ d.currency }} {{ d.cif.toLocaleString() }}</b></td>
+            <td class="num">
+              <b>{{ d.currency }} {{ d.cif.toLocaleString() }}</b>
+            </td>
             <td>
               <div class="hs-cell">
                 <span class="t-bar"><span :style="{ width: d.hsComplete + '%' }" /></span>
                 <span class="hs-pct">{{ d.hsComplete }}%</span>
               </div>
             </td>
-            <td><TBadge :tone="checkTone(d.checkStatus)">{{ checkLabel(d.checkStatus) }}</TBadge></td>
-            <td><TBadge :tone="statusTone(d.status)">{{ statusLabel(d.status) }}</TBadge></td>
+            <td>
+              <TBadge :tone="checkTone(d.checkStatus)">
+                {{ checkLabel(d.checkStatus) }}
+              </TBadge>
+            </td>
+            <td>
+              <TBadge :tone="statusTone(d.status)">
+                {{ statusLabel(d.status) }}
+              </TBadge>
+            </td>
           </tr>
         </tbody>
       </table>
 
       <!-- 空态 -->
-      <div v-if="!store.declarations.value.length" class="t-empty">暂无待报关货柜。</div>
+      <div
+        v-if="!store.declarations.value.length"
+        class="t-empty"
+      >
+        暂无待报关货柜。
+      </div>
     </TPanel>
 
     <!-- 展开：报关单编辑面板 -->
     <template v-if="openDec">
-      <TSection :title="`货柜 ${openDec.id} · ${openDec.goods}`"
-        :sub="`${openDec.po} · ${openDec.supplier} · ${openDec.terms} · 完税价 ${openDec.currency} ${openDec.cif.toLocaleString()}`">
+      <TSection
+        :title="`货柜 ${openDec.id} · ${openDec.goods}`"
+        :sub="`${openDec.po} · ${openDec.supplier} · ${openDec.terms} · 完税价 ${openDec.currency} ${openDec.cif.toLocaleString()}`"
+      >
         <template #actions>
           <button
             v-if="!openDec.lines[0] || !openDec.lines[0].hs || openDec.hsComplete < 100"
@@ -168,7 +230,10 @@ function onSubmit(id: string) {
             :disabled="store.busy.value"
             @click="onHsClassify(openDec.id)"
           >
-            <TIcon :path="ICONS.customs" :size="14" /> AI 做 HS 归类
+            <TIcon
+              :path="ICONS.customs"
+              :size="14"
+            /> AI 做 HS 归类
           </button>
           <button
             class="t-btn sm primary"
@@ -176,13 +241,19 @@ function onSubmit(id: string) {
             :disabled="store.busy.value"
             @click="onSubmit(openDec.id)"
           >
-            <TIcon :path="openHard ? ICONS.review : ICONS.compliance" :size="14" />
+            <TIcon
+              :path="openHard ? ICONS.review : ICONS.compliance"
+              :size="14"
+            />
             {{ openHard ? "提交并进硬闸拦截" : "提交报关草稿确认" }}
           </button>
         </template>
       </TSection>
 
-      <div class="t-note" :class="openHard ? 'warn' : 'info'">
+      <div
+        class="t-note"
+        :class="openHard ? 'warn' : 'info'"
+      >
         <template v-if="openHard">
           <b>存在三单硬差异（金额 / 数量 / 品名）：100% 拦截，不可导出。</b>
           提交后自动进入<b>硬闸</b>看板拦截，须先修正发票 / 报关一致后再导出。
@@ -197,36 +268,78 @@ function onSubmit(id: string) {
       <div class="detail-grid">
         <!-- 申报要素 -->
         <TPanel pad>
-          <div class="p-h">申报要素</div>
-          <div class="fr"><span class="fk">报关类型</span><span class="fv">{{ openDec.type === 'import' ? '进口 N10 Import Declaration' : '出口数据表' }}</span></div>
-          <div class="fr"><span class="fk">成交方式 / 币种</span><span class="fv">{{ openDec.terms }} · {{ openDec.currency }}</span></div>
-          <div class="fr"><span class="fk">FOB 货值</span><span class="fv t-mono">{{ openDec.fob.toLocaleString() }}</span></div>
-          <div class="fr"><span class="fk">运费 / 保费</span><span class="fv t-mono">{{ openDec.freight.toLocaleString() }} / {{ openDec.insurance.toLocaleString() }}</span></div>
-          <div class="fr"><span class="fk">完税价格 CIF</span><span class="fv gold-v t-mono">{{ openDec.cif.toLocaleString() }}</span></div>
-          <div class="fr"><span class="fk">原产国 / 启运国</span><span class="fv">{{ openDec.origin }} / {{ openDec.dispatch }}</span></div>
-          <div class="fr"><span class="fk">目的港</span><span class="fv">{{ openDec.destPort }}</span></div>
-          <div class="fr"><span class="fk">提单号 / 货柜号</span><span class="fv t-mono">{{ openDec.bl }} / {{ openDec.container }}</span></div>
-          <div class="fr"><span class="fk">件数 / 毛重 / 净重</span><span class="fv">{{ openDec.packages }} ctn / {{ openDec.grossWt }} kg / {{ openDec.netWt }} kg</span></div>
-          <div class="fr"><span class="fk">协定 / 原产地证号</span>
+          <div class="p-h">
+            申报要素
+          </div>
+          <div class="fr">
+            <span class="fk">报关类型</span><span class="fv">{{ openDec.type === 'import' ? '进口 N10 Import Declaration' : '出口数据表' }}</span>
+          </div>
+          <div class="fr">
+            <span class="fk">成交方式 / 币种</span><span class="fv">{{ openDec.terms }} · {{ openDec.currency }}</span>
+          </div>
+          <div class="fr">
+            <span class="fk">FOB 货值</span><span class="fv t-mono">{{ openDec.fob.toLocaleString() }}</span>
+          </div>
+          <div class="fr">
+            <span class="fk">运费 / 保费</span><span class="fv t-mono">{{ openDec.freight.toLocaleString() }} / {{ openDec.insurance.toLocaleString() }}</span>
+          </div>
+          <div class="fr">
+            <span class="fk">完税价格 CIF</span><span class="fv gold-v t-mono">{{ openDec.cif.toLocaleString() }}</span>
+          </div>
+          <div class="fr">
+            <span class="fk">原产国 / 启运国</span><span class="fv">{{ openDec.origin }} / {{ openDec.dispatch }}</span>
+          </div>
+          <div class="fr">
+            <span class="fk">目的港</span><span class="fv">{{ openDec.destPort }}</span>
+          </div>
+          <div class="fr">
+            <span class="fk">提单号 / 货柜号</span><span class="fv t-mono">{{ openDec.bl }} / {{ openDec.container }}</span>
+          </div>
+          <div class="fr">
+            <span class="fk">件数 / 毛重 / 净重</span><span class="fv">{{ openDec.packages }} ctn / {{ openDec.grossWt }} kg / {{ openDec.netWt }} kg</span>
+          </div>
+          <div class="fr">
+            <span class="fk">协定 / 原产地证号</span>
             <span class="fv">
               {{ openDec.agreement }} ·
-              <span v-if="openDec.coCertNo" class="t-mono">{{ openDec.coCertNo }}</span>
-              <span v-else class="t-warn-txt">待补缺 ⚠</span>
+              <span
+                v-if="openDec.coCertNo"
+                class="t-mono"
+              >{{ openDec.coCertNo }}</span>
+              <span
+                v-else
+                class="t-warn-txt"
+              >待补缺</span>
             </span>
           </div>
         </TPanel>
 
         <!-- 税费测算 -->
         <TPanel pad>
-          <div class="p-h">税费测算 · WET/GST</div>
+          <div class="p-h">
+            税费测算 · WET/GST
+          </div>
           <template v-if="openTax">
-            <div class="fr"><span class="fk">完税价格（CIF, {{ openDec.currency }}）</span><span class="fv t-mono">{{ fmt(openTax.taxable) }}</span></div>
-            <div class="fr"><span class="fk">进口关税（{{ openDec.agreement }} 0%）</span><span class="fv t-mono ok-v">{{ fmt(openDec.duty) }}</span></div>
-            <div class="fr"><span class="fk">WET 29%（葡萄酒均衡税）</span><span class="fv t-mono amber-v">{{ fmt(openTax.wet) }}</span></div>
-            <div class="fr"><span class="fk">GST 10%（含 WET 价 {{ fmt(openTax.gstBase) }} 上）</span><span class="fv t-mono blue-v">{{ fmt(openTax.gst) }}</span></div>
-            <div class="fr total"><span class="fk">进口环节应缴税费合计</span><span class="fv gold-v t-mono">{{ fmt(openDec.duty + openTax.totalTax) }}</span></div>
+            <div class="fr">
+              <span class="fk">完税价格（CIF, {{ openDec.currency }}）</span><span class="fv t-mono">{{ fmt(openTax.taxable) }}</span>
+            </div>
+            <div class="fr">
+              <span class="fk">进口关税（{{ openDec.agreement }} 0%）</span><span class="fv t-mono ok-v">{{ fmt(openDec.duty) }}</span>
+            </div>
+            <div class="fr">
+              <span class="fk">WET 29%（葡萄酒均衡税）</span><span class="fv t-mono amber-v">{{ fmt(openTax.wet) }}</span>
+            </div>
+            <div class="fr">
+              <span class="fk">GST 10%（含 WET 价 {{ fmt(openTax.gstBase) }} 上）</span><span class="fv t-mono blue-v">{{ fmt(openTax.gst) }}</span>
+            </div>
+            <div class="fr total">
+              <span class="fk">进口环节应缴税费合计</span><span class="fv gold-v t-mono">{{ fmt(openDec.duty + openTax.totalTax) }}</span>
+            </div>
           </template>
-          <div class="t-note info" style="margin-bottom:0">
+          <div
+            class="t-note info"
+            style="margin-bottom:0"
+          >
             <b>单点真相：</b>此处 WET/GST 由 <span class="t-mono">computeWineTax(cif)</span> 产出，
             与合规中心计算器、客户发票口径<b>共用同一函数</b>，逐分位一致。
           </div>
@@ -234,7 +347,10 @@ function onSubmit(id: string) {
       </div>
 
       <!-- HS 归类行 -->
-      <TSection title="HS 归类明细" sub="10 位编码 · 法定计量单位 · 关税优惠（置信度 <85% 转人工）" />
+      <TSection
+        title="HS 归类明细"
+        sub="10 位编码 · 法定计量单位 · 关税优惠（置信度 <85% 转人工）"
+      />
       <TPanel>
         <table class="t-table">
           <thead>
@@ -245,36 +361,78 @@ function onSubmit(id: string) {
               <th>法定单位</th>
               <th>关税优惠</th>
               <th>关税置信</th>
-              <th class="num">数量 × 单价 = 金额</th>
+              <th class="num">
+                数量 × 单价 = 金额
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(l, i) in openDec.lines" :key="i">
+            <tr
+              v-for="(l, i) in openDec.lines"
+              :key="i"
+            >
               <td>
                 <div><b>{{ l.desc }}</b></div>
-                <div class="t-muted t-mono">{{ l.sku }}</div>
+                <div class="t-muted t-mono">
+                  {{ l.sku }}
+                </div>
               </td>
               <td>
-                <code v-if="l.hs" class="t-mono">{{ l.hs }}</code>
-                <span v-else class="t-warn-txt">缺归类 ✕</span>
+                <code
+                  v-if="l.hs"
+                  class="t-mono"
+                >{{ l.hs }}</code>
+                <span
+                  v-else
+                  class="t-warn-txt"
+                >缺归类 ✕</span>
               </td>
-              <td class="conf-col"><TConf v-if="l.hs" :value="l.hsConf" /><span v-else class="t-muted">—</span></td>
+              <td class="conf-col">
+                <TConf
+                  v-if="l.hs"
+                  :value="l.hsConf"
+                /><span
+                  v-else
+                  class="t-muted"
+                >—</span>
+              </td>
               <td>{{ l.uom }}</td>
               <td>{{ l.dutyRate }}</td>
-              <td class="conf-col"><TConf v-if="l.dutyConf" :value="l.dutyConf" /><span v-else class="t-muted">—</span></td>
-              <td class="num t-mono">{{ l.qty.toLocaleString() }} × {{ l.unit }} = {{ l.amount.toLocaleString() }}</td>
+              <td class="conf-col">
+                <TConf
+                  v-if="l.dutyConf"
+                  :value="l.dutyConf"
+                /><span
+                  v-else
+                  class="t-muted"
+                >—</span>
+              </td>
+              <td class="num t-mono">
+                {{ l.qty.toLocaleString() }} × {{ l.unit }} = {{ l.amount.toLocaleString() }}
+              </td>
             </tr>
           </tbody>
         </table>
-        <div v-if="!openDec.lines.length" class="t-empty">该货柜暂无商品明细行。</div>
+        <div
+          v-if="!openDec.lines.length"
+          class="t-empty"
+        >
+          该货柜暂无商品明细行。
+        </div>
       </TPanel>
-      <div v-if="!openDec.lines[0]?.hs" class="t-note warn">
+      <div
+        v-if="!openDec.lines[0]?.hs"
+        class="t-note warn"
+      >
         <b>缺 HS 归类：</b>点右上「AI 做 HS 归类」让 Claude 结合 llmwiki 税则给出 10 位编码 + 依据 + 置信度，
         &lt;85% 自动转人工复核。
       </div>
 
       <!-- 三单一致校验 -->
-      <TSection title="三单一致校验" sub="报关 vs 发票 vs 装箱单 vs 提单 · 硬差异 100% 拦截" />
+      <TSection
+        title="三单一致校验"
+        sub="报关 vs 发票 vs 装箱单 vs 提单 · 硬差异 100% 拦截"
+      />
       <TPanel>
         <table class="t-table">
           <thead>
@@ -289,23 +447,47 @@ function onSubmit(id: string) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(c, i) in openDec.checks" :key="i" :class="{ 'hard-row': c.severity === 'hard' }">
+            <tr
+              v-for="(c, i) in openDec.checks"
+              :key="i"
+              :class="{ 'hard-row': c.severity === 'hard' }"
+            >
               <td><b>{{ c.field }}</b></td>
-              <td><TBadge :tone="checkTone(c.severity)">{{ checkLabel(c.severity) }}</TBadge></td>
-              <td class="t-mono">{{ c.decl }}</td>
-              <td class="t-mono">{{ c.inv }}</td>
-              <td class="t-mono">{{ c.pack }}</td>
-              <td class="t-mono">{{ c.bl }}</td>
+              <td>
+                <TBadge :tone="checkTone(c.severity)">
+                  {{ checkLabel(c.severity) }}
+                </TBadge>
+              </td>
+              <td class="t-mono">
+                {{ c.decl }}
+              </td>
+              <td class="t-mono">
+                {{ c.inv }}
+              </td>
+              <td class="t-mono">
+                {{ c.pack }}
+              </td>
+              <td class="t-mono">
+                {{ c.bl }}
+              </td>
               <td :class="c.severity === 'hard' ? 't-warn-txt' : c.severity === 'soft' ? 'amber-v' : 't-muted'">
                 {{ c.note || (c.severity === 'pass' ? '一致' : '') }}
               </td>
             </tr>
           </tbody>
         </table>
-        <div v-if="!openDec.checks.length" class="t-empty">尚未生成三单一致校验结果。</div>
+        <div
+          v-if="!openDec.checks.length"
+          class="t-empty"
+        >
+          尚未生成三单一致校验结果。
+        </div>
       </TPanel>
 
-      <div class="t-note" :class="openHard ? 'danger' : 'ok'">
+      <div
+        class="t-note"
+        :class="openHard ? 'danger' : 'ok'"
+      >
         <template v-if="openHard">
           <b>三单硬差异 100% 拦截，不可导出。</b>提交后进入硬闸看板，须先修正发票 / 报关金额一致后再导出交报关行。
         </template>

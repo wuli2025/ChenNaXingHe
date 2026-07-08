@@ -99,7 +99,7 @@ async function askExplain(): Promise<void> {
       true
     );
   } catch (e) {
-    store.log("error", `❌ AI 解释失败：${(e as Error).message}`);
+    store.log("error", `AI 解释失败：${(e as Error).message}`);
   }
 }
 
@@ -114,8 +114,17 @@ function landedBadge(v: number): "red" | "amber" | "green" {
   <div class="t-view-anim m6">
     <!-- 顶部 KPI（本地算） -->
     <div class="t-grid t-g4">
-      <TKpi :value="String(skuCount)" label="在库批次" :icon="ICONS.warehouse" acc="gold" />
-      <TKpi :value="totalQty.toLocaleString()" label="在库总瓶数" acc="blue" />
+      <TKpi
+        :value="String(skuCount)"
+        label="在库批次"
+        :icon="ICONS.warehouse"
+        acc="gold"
+      />
+      <TKpi
+        :value="totalQty.toLocaleString()"
+        label="在库总瓶数"
+        acc="blue"
+      />
       <TKpi
         :value="'$' + Math.round(inventoryValue).toLocaleString()"
         label="库存到岸货值"
@@ -148,46 +157,95 @@ function landedBadge(v: number): "red" | "amber" | "green" {
       >
         {{ t.label }}
       </button>
-      <button class="t-btn sm gold m6-ai" :disabled="store.busy.value" @click="askExplain">
+      <button
+        class="t-btn sm gold m6-ai"
+        :disabled="store.busy.value"
+        @click="askExplain"
+      >
         {{ store.busy.value ? "解释中…" : "AI 解释建议" }}
       </button>
     </div>
 
     <!-- ① 库存总览 -->
     <template v-if="view === 'stock'">
-      <TSection title="库存总览" sub="批次 · 数量 · 效期 · FEFO 排位 · 落地成本/瓶" />
+      <TSection
+        title="库存总览"
+        sub="批次 · 数量 · 效期 · FEFO 排位 · 落地成本/瓶"
+      />
       <TPanel>
         <table class="t-table">
           <thead>
             <tr>
               <th>商品 / SKU</th>
               <th>批次</th>
-              <th class="num">在库（瓶）</th>
+              <th class="num">
+                在库（瓶）
+              </th>
               <th>效期</th>
               <th>FEFO</th>
-              <th class="num">落地成本/瓶</th>
+              <th class="num">
+                落地成本/瓶
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="s in store.stock.value" :key="s.sku" class="m6-row" :class="{ 'row-exp': isExpiring(s) }">
+            <tr
+              v-for="s in store.stock.value"
+              :key="s.sku"
+              class="m6-row"
+              :class="{ 'row-exp': isExpiring(s) }"
+            >
               <td>
                 <b>{{ s.name }}</b>
-                <div class="t-muted t-mono" style="font-size: 11px">{{ s.sku }}</div>
+                <div
+                  class="t-muted t-mono"
+                  style="font-size: 11px"
+                >
+                  {{ s.sku }}
+                </div>
               </td>
-              <td class="t-mono">{{ s.batch }}</td>
-              <td class="num"><b>{{ s.qty.toLocaleString() }}</b></td>
+              <td class="t-mono">
+                {{ s.batch }}
+              </td>
+              <td class="num">
+                <b>{{ s.qty.toLocaleString() }}</b>
+              </td>
               <td>
                 <span :class="{ 't-warn-txt': isExpiring(s) }">{{ s.expiry }}</span>
-                <TBadge v-if="isExpiring(s)" tone="red" style="margin-left: 6px">临期</TBadge>
+                <TBadge
+                  v-if="isExpiring(s)"
+                  tone="red"
+                  style="margin-left: 6px"
+                >
+                  临期
+                </TBadge>
               </td>
               <td>
-                <TBadge v-if="s.fefo === 0" tone="red">优先出库</TBadge>
-                <TBadge v-else tone="blue">#{{ s.fefo }}</TBadge>
+                <TBadge
+                  v-if="s.fefo === 0"
+                  tone="red"
+                >
+                  优先出库
+                </TBadge>
+                <TBadge
+                  v-else
+                  tone="blue"
+                >
+                  #{{ s.fefo }}
+                </TBadge>
               </td>
-              <td class="num t-mono">${{ s.landed.toFixed(2) }}</td>
+              <td class="num t-mono">
+                ${{ s.landed.toFixed(2) }}
+              </td>
             </tr>
             <tr v-if="!store.stock.value.length">
-              <td colspan="6" class="t-muted" style="text-align: center; padding: 26px">暂无库存批次</td>
+              <td
+                colspan="6"
+                class="t-muted"
+                style="text-align: center; padding: 26px"
+              >
+                暂无库存批次
+              </td>
             </tr>
           </tbody>
         </table>
@@ -196,7 +254,10 @@ function landedBadge(v: number): "red" | "amber" | "green" {
 
     <!-- ② FEFO 效期 -->
     <template v-else-if="view === 'fefo'">
-      <TSection title="FEFO 效期" sub="先到期先出（First-Expired-First-Out）· 临期批次红色高亮" />
+      <TSection
+        title="FEFO 效期"
+        sub="先到期先出（First-Expired-First-Out）· 临期批次红色高亮"
+      />
       <TPanel>
         <table class="t-table">
           <thead>
@@ -204,7 +265,9 @@ function landedBadge(v: number): "red" | "amber" | "green" {
               <th>出库序</th>
               <th>商品 / 批次</th>
               <th>效期</th>
-              <th class="num">在库（瓶）</th>
+              <th class="num">
+                在库（瓶）
+              </th>
               <th>状态</th>
             </tr>
           </thead>
@@ -216,38 +279,80 @@ function landedBadge(v: number): "red" | "amber" | "green" {
               :class="{ 'row-exp': isExpiring(s) }"
             >
               <td>
-                <span class="fefo-rank" :class="{ hot: isExpiring(s) }">{{ i + 1 }}</span>
+                <span
+                  class="fefo-rank"
+                  :class="{ hot: isExpiring(s) }"
+                >{{ i + 1 }}</span>
               </td>
               <td>
                 <b>{{ s.name }}</b>
-                <div class="t-muted t-mono" style="font-size: 11px">{{ s.batch }} · {{ s.sku }}</div>
+                <div
+                  class="t-muted t-mono"
+                  style="font-size: 11px"
+                >
+                  {{ s.batch }} · {{ s.sku }}
+                </div>
               </td>
               <td>
                 <span :class="{ 't-warn-txt': isExpiring(s) }">{{ s.expiry }}</span>
               </td>
-              <td class="num">{{ s.qty.toLocaleString() }}</td>
+              <td class="num">
+                {{ s.qty.toLocaleString() }}
+              </td>
               <td>
-                <TBadge v-if="s.fefo === 0" tone="red">优先出库</TBadge>
-                <TBadge v-else-if="isExpiring(s)" tone="amber">临期关注</TBadge>
-                <TBadge v-else tone="green">正常</TBadge>
+                <TBadge
+                  v-if="s.fefo === 0"
+                  tone="red"
+                >
+                  优先出库
+                </TBadge>
+                <TBadge
+                  v-else-if="isExpiring(s)"
+                  tone="amber"
+                >
+                  临期关注
+                </TBadge>
+                <TBadge
+                  v-else
+                  tone="green"
+                >
+                  正常
+                </TBadge>
               </td>
             </tr>
             <tr v-if="!fefoSorted.length">
-              <td colspan="5" class="t-muted" style="text-align: center; padding: 26px">暂无在库批次</td>
+              <td
+                colspan="5"
+                class="t-muted"
+                style="text-align: center; padding: 26px"
+              >
+                暂无在库批次
+              </td>
             </tr>
           </tbody>
         </table>
       </TPanel>
-      <div class="t-note warn" v-if="expiringCount">
+      <div
+        v-if="expiringCount"
+        class="t-note warn"
+      >
         <b>{{ expiringCount }} 个批次触发临期规则</b>：效期早于 2026 或 FEFO 排位为「优先出库」。
         建议优先分销并结合 M7 客户订单以销定采，避免呆滞报废。
       </div>
-      <div class="t-note ok" v-else>当前无临期批次，FEFO 序列健康。</div>
+      <div
+        v-else
+        class="t-note ok"
+      >
+        当前无临期批次，FEFO 序列健康。
+      </div>
     </template>
 
     <!-- ③ 落地成本 -->
     <template v-else-if="view === 'landed'">
-      <TSection title="落地成本" sub="到岸成本/瓶（FOB + 运保 + 税费 + 内陆分摊）· 本地分摊结果" />
+      <TSection
+        title="落地成本"
+        sub="到岸成本/瓶（FOB + 运保 + 税费 + 内陆分摊）· 本地分摊结果"
+      />
       <div class="t-note info">
         全库加权平均到岸成本 <b>${{ avgLanded.toFixed(2) }}/瓶</b>，
         库存到岸货值 <b>${{ Math.round(inventoryValue).toLocaleString() }}</b>。落地成本是 M7 对客定价与毛利核算的基准。
@@ -257,24 +362,48 @@ function landedBadge(v: number): "red" | "amber" | "green" {
           <thead>
             <tr>
               <th>商品 / SKU</th>
-              <th class="num">在库（瓶）</th>
-              <th class="num">落地成本/瓶</th>
-              <th class="num">批次货值</th>
+              <th class="num">
+                在库（瓶）
+              </th>
+              <th class="num">
+                落地成本/瓶
+              </th>
+              <th class="num">
+                批次货值
+              </th>
               <th>成本位</th>
               <th>相对均价</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="s in landedSorted" :key="s.sku" class="m6-row">
+            <tr
+              v-for="s in landedSorted"
+              :key="s.sku"
+              class="m6-row"
+            >
               <td>
                 <b>{{ s.name }}</b>
-                <div class="t-muted t-mono" style="font-size: 11px">{{ s.sku }}</div>
+                <div
+                  class="t-muted t-mono"
+                  style="font-size: 11px"
+                >
+                  {{ s.sku }}
+                </div>
               </td>
-              <td class="num">{{ s.qty.toLocaleString() }}</td>
-              <td class="num t-mono"><b>${{ s.landed.toFixed(2) }}</b></td>
-              <td class="num t-mono">${{ Math.round(s.qty * s.landed).toLocaleString() }}</td>
+              <td class="num">
+                {{ s.qty.toLocaleString() }}
+              </td>
+              <td class="num t-mono">
+                <b>${{ s.landed.toFixed(2) }}</b>
+              </td>
+              <td class="num t-mono">
+                ${{ Math.round(s.qty * s.landed).toLocaleString() }}
+              </td>
               <td>
-                <div class="landed-bar" :title="'占最高成本位 ' + (maxLanded ? Math.round((s.landed / maxLanded) * 100) : 0) + '%'">
+                <div
+                  class="landed-bar"
+                  :title="'占最高成本位 ' + (maxLanded ? Math.round((s.landed / maxLanded) * 100) : 0) + '%'"
+                >
                   <span
                     class="landed-fill"
                     :class="landedBadge(s.landed)"
@@ -289,7 +418,13 @@ function landedBadge(v: number): "red" | "amber" | "green" {
               </td>
             </tr>
             <tr v-if="!landedSorted.length">
-              <td colspan="6" class="t-muted" style="text-align: center; padding: 26px">暂无落地成本数据</td>
+              <td
+                colspan="6"
+                class="t-muted"
+                style="text-align: center; padding: 26px"
+              >
+                暂无落地成本数据
+              </td>
             </tr>
           </tbody>
         </table>
@@ -298,7 +433,10 @@ function landedBadge(v: number): "red" | "amber" | "green" {
 
     <!-- ④ 智能补货 -->
     <template v-else>
-      <TSection title="智能补货" sub="以销定采 · 数值本地算 · 每条确认进人工审核看板">
+      <TSection
+        title="智能补货"
+        sub="以销定采 · 数值本地算 · 每条确认进人工审核看板"
+      >
         <template #actions>
           <span class="t-pill">{{ store.replenish.value.length }} 条建议</span>
         </template>
@@ -309,11 +447,19 @@ function landedBadge(v: number): "red" | "amber" | "green" {
       </div>
 
       <div class="rep-list">
-        <TPanel v-for="r in store.replenish.value" :key="r.sku" pad class="rep-card">
+        <TPanel
+          v-for="r in store.replenish.value"
+          :key="r.sku"
+          pad
+          class="rep-card"
+        >
           <div class="rep-head">
             <div>
               <b class="rep-name">{{ r.name }}</b>
-              <span class="t-muted t-mono" style="font-size: 11px; margin-left: 8px">{{ r.sku }}</span>
+              <span
+                class="t-muted t-mono"
+                style="font-size: 11px; margin-left: 8px"
+              >{{ r.sku }}</span>
             </div>
             <TBadge :tone="r.ordered ? 'green' : pendingReplenish(r.sku) ? 'amber' : 'gold'">
               {{ r.ordered ? "已下单 · 回流 M3" : pendingReplenish(r.sku) ? "审核中" : "待确认" }}
@@ -323,7 +469,9 @@ function landedBadge(v: number): "red" | "amber" | "green" {
             <span class="rep-qty">建议 <b>{{ r.qty.toLocaleString() }}</b> 瓶</span>
             <span class="rep-by">时点：{{ r.by }}</span>
           </div>
-          <div class="rep-reason">{{ r.reason }}</div>
+          <div class="rep-reason">
+            {{ r.reason }}
+          </div>
           <div class="rep-foot">
             <button
               class="t-btn sm primary"
@@ -335,8 +483,16 @@ function landedBadge(v: number): "red" | "amber" | "green" {
           </div>
         </TPanel>
 
-        <TPanel v-if="!store.replenish.value.length" pad>
-          <div class="t-muted" style="text-align: center; padding: 22px">当前无补货建议</div>
+        <TPanel
+          v-if="!store.replenish.value.length"
+          pad
+        >
+          <div
+            class="t-muted"
+            style="text-align: center; padding: 22px"
+          >
+            当前无补货建议
+          </div>
         </TPanel>
       </div>
     </template>

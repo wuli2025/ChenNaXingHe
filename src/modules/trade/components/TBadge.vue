@@ -4,7 +4,10 @@ defineProps<{ tone?: "gold" | "blue" | "green" | "amber" | "red" | "purple" | "g
 </script>
 
 <template>
-  <span class="t-badge" :class="`t-${tone || 'gray'}`"><slot /></span>
+  <span
+    class="t-badge"
+    :class="`t-${tone || 'gray'}`"
+  ><slot /></span>
 </template>
 
 <style scoped>
@@ -26,6 +29,7 @@ defineProps<{ tone?: "gold" | "blue" | "green" | "amber" | "red" | "purple" | "g
 .t-red { background: var(--vermilion-soft); color: var(--vermilion); }
 .t-purple { background: rgba(130, 90, 200, 0.13); color: #7c3aed; }
 .t-gray { background: var(--bg-soft); color: var(--muted); }
-:global(.dark) .t-amber { color: #e0b45a; }
-:global(.dark) .t-purple { color: #b094f5; }
+/* 主题按 <html data-theme> 切换（原 .dark 类选择器从不命中，深色下暗琥珀/暗紫不可读） */
+:global([data-theme="dark"]) .t-amber, :global([data-theme="aurora-dark"]) .t-amber { color: #e0b45a; }
+:global([data-theme="dark"]) .t-purple, :global([data-theme="aurora-dark"]) .t-purple { color: #b094f5; }
 </style>

@@ -40,10 +40,10 @@ export type ViewKey =
   | "web_studio";
 
 /**
- * 顶部模块切换（新外壳）：外贸 OS / 知识库 / 技能中心。
+ * 顶部模块切换（新外壳）：外贸 OS / 星河ERP / 知识库 / 技能中心。
  * 对话系统不再是主区 tab，改为右侧可收纳抽屉（chatOpen）。
  */
-export type ModuleTab = "trade" | "kb" | "skill";
+export type ModuleTab = "trade" | "erp" | "kb" | "skill";
 
 export const useAppStore = defineStore("app", () => {
   const view = ref<ViewKey>("chat");
@@ -54,6 +54,9 @@ export const useAppStore = defineStore("app", () => {
   function setModuleTab(m: ModuleTab) {
     moduleTab.value = m;
   }
+  // 原生桌面模块 tab（自带右侧 AI 坞）：对话抽屉/侧栏对话按钮/文件落区都要避让。
+  // 单点真相，App.vue / SideNav / ChatPanel 共用，避免三处各写一份 !== 列表漏改。
+  const isNativeTab = computed(() => moduleTab.value === "trade" || moduleTab.value === "erp");
   // 设置/更多：把保留的非主干能力（供应商/环境/知识库/经验/技能/自动化/语音/主题/更新）收进来
   const settingsOpen = ref(false);
   const settingsSection = ref<string>("provider");
@@ -412,6 +415,7 @@ export const useAppStore = defineStore("app", () => {
     // 新外壳
     moduleTab,
     setModuleTab,
+    isNativeTab,
     settingsOpen,
     settingsSection,
     openSettings,

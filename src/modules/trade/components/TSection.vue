@@ -7,9 +7,14 @@ defineProps<{ title: string; sub?: string }>();
   <div class="t-sec">
     <div class="t-sec-l">
       <h3>{{ title }}</h3>
-      <span v-if="sub" class="sub">{{ sub }}</span>
+      <span
+        v-if="sub"
+        class="sub"
+      >{{ sub }}</span>
     </div>
-    <div class="t-sec-r"><slot name="actions" /></div>
+    <div class="t-sec-r">
+      <slot name="actions" />
+    </div>
   </div>
 </template>
 

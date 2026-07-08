@@ -101,10 +101,27 @@ function askEntry(e: KbEntry) {
   <div class="t-view-anim">
     <!-- KPI 概览：知识库规模 / 护城河 -->
     <div class="t-grid t-g4">
-      <TKpi :value="String(entries.length)" label="知识条目" acc="blue" :icon="ICONS.kb" />
-      <TKpi :value="String(allTags.length)" label="知识分类" acc="gold" />
-      <TKpi :value="String(totalLinks)" label="双链引用数" acc="purple" />
-      <TKpi value="20" label="混合检索规模（TB）" acc="green" />
+      <TKpi
+        :value="String(entries.length)"
+        label="知识条目"
+        acc="blue"
+        :icon="ICONS.kb"
+      />
+      <TKpi
+        :value="String(allTags.length)"
+        label="知识分类"
+        acc="gold"
+      />
+      <TKpi
+        :value="String(totalLinks)"
+        label="双链引用数"
+        acc="purple"
+      />
+      <TKpi
+        value="20"
+        label="混合检索规模（TB）"
+        acc="green"
+      />
     </div>
 
     <!-- 护城河说明 -->
@@ -117,9 +134,14 @@ function askEntry(e: KbEntry) {
     </div>
 
     <!-- ② 知识检索问答 -->
-    <TSection title="知识检索问答" sub="混合检索（向量 + 关键词 + 双链）· 调官方 Claude · 过程见右侧 Console">
+    <TSection
+      title="知识检索问答"
+      sub="混合检索（向量 + 关键词 + 双链）· 调官方 Claude · 过程见右侧 Console"
+    >
       <template #actions>
-        <TBadge tone="blue">llmwiki 接地</TBadge>
+        <TBadge tone="blue">
+          llmwiki 接地
+        </TBadge>
       </template>
     </TSection>
 
@@ -132,8 +154,15 @@ function askEntry(e: KbEntry) {
           placeholder="向知识库提问，例如：HS 2204.21 葡萄酒归类规则与 ChAFTA 优惠条件…"
           @keydown.enter.exact.prevent="ask"
         />
-        <button class="t-btn primary" :disabled="askDisabled" @click="ask">
-          <TIcon :path="ICONS.sourcing" :size="14" />
+        <button
+          class="t-btn primary"
+          :disabled="askDisabled"
+          @click="ask"
+        >
+          <TIcon
+            :path="ICONS.sourcing"
+            :size="14"
+          />
           {{ asking ? "检索中…" : "检索问答" }}
         </button>
       </div>
@@ -153,39 +182,69 @@ function askEntry(e: KbEntry) {
       </div>
 
       <!-- 答案区：pre-wrap 渲染 Claude 结构化结论 -->
-      <div v-if="asking" class="ans-loading">
+      <div
+        v-if="asking"
+        class="ans-loading"
+      >
         <span class="dot" /><span class="dot" /><span class="dot" />
         正在混合检索并生成结构化结论…
       </div>
-      <div v-else-if="answer" class="answer" :class="{ failed: askFailed }">
+      <div
+        v-else-if="answer"
+        class="answer"
+        :class="{ failed: askFailed }"
+      >
         <div class="ans-head">
-          <TIcon :path="ICONS.kb" :size="14" />
+          <TIcon
+            :path="ICONS.kb"
+            :size="14"
+          />
           <b>{{ askFailed ? "检索未完成" : "检索结论" }}</b>
           <TBadge :tone="askFailed ? 'red' : 'green'">
             {{ askFailed ? "接地失败" : "已接地 llmwiki" }}
           </TBadge>
-          <span v-if="!askFailed" class="ans-recall">
+          <span
+            v-if="!askFailed"
+            class="ans-recall"
+          >
             混合检索命中 <b>{{ hitCount }}</b> 条知识条目
           </span>
         </div>
-        <div class="ans-body">{{ answer }}</div>
+        <div class="ans-body">
+          {{ answer }}
+        </div>
       </div>
-      <div v-else class="ans-empty">
-        <TIcon :path="ICONS.kb" :size="20" />
+      <div
+        v-else
+        class="ans-empty"
+      >
+        <TIcon
+          :path="ICONS.kb"
+          :size="20"
+        />
         <span>输入问题后点「检索问答」，Claude 将结合税则 / HS / 协定 / 话术知识给出带依据的结论。</span>
       </div>
     </TPanel>
 
     <!-- ① 知识条目 + 按 tag 筛选 -->
-    <TSection title="知识条目" sub="合规要件 / HS 规则 / 税则 / 产区名录 / 话术 · 双链沉淀">
+    <TSection
+      title="知识条目"
+      sub="合规要件 / HS 规则 / 税则 / 产区名录 / 话术 · 双链沉淀"
+    >
       <template #actions>
-        <TBadge tone="gray">{{ filtered.length }} / {{ entries.length }} 条</TBadge>
+        <TBadge tone="gray">
+          {{ filtered.length }} / {{ entries.length }} 条
+        </TBadge>
       </template>
     </TSection>
 
     <!-- tag 分组筛选条 -->
     <div class="tag-filter">
-      <button class="t-pill f-pill" :class="{ on: !activeTag }" @click="activeTag = ''">
+      <button
+        class="t-pill f-pill"
+        :class="{ on: !activeTag }"
+        @click="activeTag = ''"
+      >
         全部 <span class="cnt">{{ entries.length }}</span>
       </button>
       <button
@@ -205,25 +264,52 @@ function askEntry(e: KbEntry) {
           <tr>
             <th>标题</th>
             <th>分类</th>
-            <th style="text-align: right">双链数</th>
-            <th style="text-align: right">操作</th>
+            <th style="text-align: right">
+              双链数
+            </th>
+            <th style="text-align: right">
+              操作
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="e in filtered" :key="e.title" class="clk">
+          <tr
+            v-for="e in filtered"
+            :key="e.title"
+            class="clk"
+          >
             <td>
-              <div class="t-row" style="gap: 8px">
-                <TIcon :path="ICONS.kb" :size="14" />
+              <div
+                class="t-row"
+                style="gap: 8px"
+              >
+                <TIcon
+                  :path="ICONS.kb"
+                  :size="14"
+                />
                 <b>{{ e.title }}</b>
               </div>
             </td>
-            <td><TBadge :tone="tagTone(e.tag)">{{ e.tag }}</TBadge></td>
+            <td>
+              <TBadge :tone="tagTone(e.tag)">
+                {{ e.tag }}
+              </TBadge>
+            </td>
             <td class="num">
-              <span class="links-cell" :title="`被 ${e.links} 处双链引用`">
-                <span class="link-strength" aria-hidden="true">
+              <span
+                class="links-cell"
+                :title="`被 ${e.links} 处双链引用`"
+              >
+                <span
+                  class="link-strength"
+                  aria-hidden="true"
+                >
                   <i :style="{ width: linkPct(e.links) + '%' }" />
                 </span>
-                <span class="links-val"><TIcon :path="ICONS.workflow" :size="12" /> {{ e.links }}</span>
+                <span class="links-val"><TIcon
+                  :path="ICONS.workflow"
+                  :size="12"
+                /> {{ e.links }}</span>
               </span>
             </td>
             <td style="text-align: right">
@@ -238,9 +324,17 @@ function askEntry(e: KbEntry) {
             </td>
           </tr>
           <tr v-if="!filtered.length">
-            <td colspan="4" class="t-muted" style="text-align: center; padding: 22px">
-              <template v-if="entries.length">该分类下暂无条目，点「全部」查看所有知识。</template>
-              <template v-else>知识库为空 —— 拖拽 PDF / 邮件 / 税则条文入库即可开始沉淀。</template>
+            <td
+              colspan="4"
+              class="t-muted"
+              style="text-align: center; padding: 22px"
+            >
+              <template v-if="entries.length">
+                该分类下暂无条目，点「全部」查看所有知识。
+              </template>
+              <template v-else>
+                知识库为空 —— 拖拽 PDF / 邮件 / 税则条文入库即可开始沉淀。
+              </template>
             </td>
           </tr>
         </tbody>

@@ -465,6 +465,13 @@ export const TAX = {
   GST_RATE: 0.1,
 } as const;
 
+/** 报关折算汇率（外币 → AUD）：报关完税价须以 AUD 计，供应商外币报价须先折算。 */
+export const FX_TO_AUD: Record<string, number> = { AUD: 1, USD: 1.52, EUR: 1.63, CNY: 0.21 };
+export function toAud(amount: number, currency: string): number {
+  const rate = FX_TO_AUD[currency] ?? 1;
+  return round2(amount * rate);
+}
+
 /**
  * 单点真相税费函数：给定完税价值（AUD），返回 WET / GST / 税费合计。
  * M4 报关税费测算、M7 报价含税价、M9 合规计算器全部调用此函数，逐分位一致。
@@ -481,7 +488,8 @@ export interface TaxBreakdown {
 }
 
 export function computeWineTax(taxableValue: number): TaxBreakdown {
-  const taxable = Math.max(0, taxableValue);
+  // 非有限输入（NaN/Infinity，来自污染数据或除零）夹为 0，避免 Infinity 税额穿透报关/报价/发票。
+  const taxable = Number.isFinite(taxableValue) ? Math.max(0, taxableValue) : 0;
   const wet = taxable * TAX.WET_RATE;
   const gstBase = taxable + wet;
   const gst = gstBase * TAX.GST_RATE;
@@ -497,7 +505,11 @@ export function computeWineTax(taxableValue: number): TaxBreakdown {
 }
 
 export function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+  // 纯 Math.round(n*100)/100 有 IEEE 分位误差（如 computeWineTax(105).inclTotal 应为 149.00 却算成 148.99）。
+  // 修正量取「按量级放大的几个 ulp」但封顶 1e-4，既能拉回差一个 ulp 到 .5 的值，又不会在超大金额上错误进位。
+  const scaled = n * 100;
+  const corr = Math.min(Math.abs(scaled) * Number.EPSILON * 8, 1e-4);
+  return Math.round(scaled + Math.sign(scaled) * corr) / 100;
 }
 
 /* ══════════════════ 模块清单 + 图标 ══════════════════ */

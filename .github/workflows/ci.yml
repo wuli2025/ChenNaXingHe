@@ -38,10 +38,9 @@ jobs:
       # polaris-cli 的编译守护放 forge-matrix(server feature 同侧, cache 共享, 见下)。
       - name: Test
         run: cargo test --workspace --exclude polaris-cli
-      # 建议性: 先不 -D warnings, 等存量 lint 清干净再收紧成硬门槛
+      # 硬门槛: fmt 无成本可满足 (cargo fmt --all), 直接作为门禁
       - name: Format check
         run: cargo fmt --all --check
-        continue-on-error: true
       - name: Clippy
         run: cargo clippy --workspace --exclude polaris-cli --all-targets
         continue-on-error: true
@@ -111,5 +110,10 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # 硬门槛: 前端单测 (erp mount/interaction 等) 必须过
+      - run: npm run test
       # npm run build = vue-tsc --noEmit && vite build (类型检查 + 打包)
       - run: npm run build
+      # 建议性: 存量 lint 清干净前先不阻断
+      - run: npm run lint
+        continue-on-error: true

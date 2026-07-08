@@ -1,0 +1,38 @@
+# Polaris · Docker 版编排（用法见 DOCKER.md）
+# 上服务器三步：cp .env.example .env → 填 key + POLARIS_AUTH_TOKEN → docker compose up -d --build
+services:
+  polaris:
+    build: .
+    image: polaris-web:latest
+    container_name: polaris-web
+    ports:
+      - "8080:8080"
+    env_file: .env
+    # init 进程负责收割 claude CLI 留下的僵尸子进程——长期稳定运行的关键。
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    volumes:
+      - polaris-data:/root/ChenNaXingHe   # 数据根：KB / 对话 / 项目 / 产物 / 技能
+      - polaris-claude:/root/.claude      # claude 凭证与 settings.json（供应商/登录态）
+      - polaris-config:/root/.config      # XDG 配置
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # 内存封顶（防单容器拖垮宿主）；小内存服务器可下调，跑视频/媒体任务再上调。
+    mem_limit: 4g
+    # 视频/截图等重媒体任务需要更大共享内存时再打开：
+    # shm_size: 1gb
+
+volumes:
+  polaris-data:
+  polaris-claude:
+  polaris-config:

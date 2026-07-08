@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, onActivated, onDeactivated, nextTick } from "vue";
 import cytoscape, { type Core } from "cytoscape";
-// @ts-ignore — cytoscape-fcose 无类型声明
+// @ts-expect-error — cytoscape-fcose 无类型声明
 import fcose from "cytoscape-fcose";
 import { kb, files as filesApi, type KbGraph, type KbNode } from "../tauri";
 
@@ -512,50 +512,78 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="graph" :class="{ 'bg-paused': bgPaused }">
-    <div v-if="!embedded" class="head">
-      <div class="title">知识图谱</div>
-      <div class="tools" v-if="!empty">
+  <div
+    class="graph"
+    :class="{ 'bg-paused': bgPaused }"
+  >
+    <div
+      v-if="!embedded"
+      class="head"
+    >
+      <div class="title">
+        知识图谱
+      </div>
+      <div
+        v-if="!empty"
+        class="tools"
+      >
         <input
-          class="search"
           v-model="query"
-          @input="runSearch"
+          class="search"
           placeholder="搜索节点…"
           spellcheck="false"
-        />
-        <button class="btn" @click="relayout" title="重新布局">重新布局</button>
-        <button class="btn" @click="fit" title="适应窗口">适应</button>
+          @input="runSearch"
+        >
+        <button
+          class="btn"
+          title="重新布局"
+          @click="relayout"
+        >
+          重新布局
+        </button>
+        <button
+          class="btn"
+          title="适应窗口"
+          @click="fit"
+        >
+          适应
+        </button>
         <button
           class="btn"
           :class="{ on: spinning }"
-          @click="toggleSpin"
           title="缓慢自转"
+          @click="toggleSpin"
         >
           {{ spinning ? "停止" : "旋转" }}
         </button>
         <button
           class="btn"
           :class="{ on: showFolders }"
-          @click="toggleFolders"
           title="按文件夹层级显示中枢结构"
+          @click="toggleFolders"
         >
           目录结构
         </button>
         <div class="stats">
           文档 <strong>{{ stats.docs }}</strong>
-          <template v-if="stats.memories"
-            >· <span class="echo-stat">记忆 {{ stats.memories }}</span></template
-          >
-          <template v-if="showFolders"
-            >· 目录 <strong>{{ stats.folders }}</strong></template
-          >
+          <template v-if="stats.memories">
+            · <span class="echo-stat">记忆 {{ stats.memories }}</span>
+          </template>
+          <template v-if="showFolders">
+            · 目录 <strong>{{ stats.folders }}</strong>
+          </template>
           · 关系 <strong>{{ stats.edges }}</strong>
         </div>
       </div>
     </div>
 
-    <div v-if="empty" class="empty">
-      <div class="empty-glyph">◈</div>
+    <div
+      v-if="empty"
+      class="empty"
+    >
+      <div class="empty-glyph">
+        ◈
+      </div>
       <div>当前 KB 没有可视化节点</div>
       <div class="empty-hint">
         把 Markdown 文件放进知识库的 <code>raw/</code> 任意子目录,刷新本页即可。
@@ -564,29 +592,48 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div v-else class="stage">
+    <div
+      v-else
+      class="stage"
+    >
       <!-- 深空背景层 (全部 pointer-events:none, 不挡交互) -->
-      <div class="galaxy-bg"></div>
-      <div class="nebula"></div>
-      <div class="stars s1"></div>
-      <div class="stars s2"></div>
-      <div class="stars s3"></div>
+      <div class="galaxy-bg" />
+      <div class="nebula" />
+      <div class="stars s1" />
+      <div class="stars s2" />
+      <div class="stars s3" />
 
-      <div ref="container" class="cy"></div>
+      <div
+        ref="container"
+        class="cy"
+      />
 
-      <div class="vignette"></div>
+      <div class="vignette" />
 
       <div class="legend">
-        <span><i class="dot" style="--c: #f0b24a"></i>{{ isFiles ? "我的资料" : "知识库" }}</span>
-        <span><i class="dot sq" style="--c: #5fa8e6"></i>{{ isFiles ? "主题" : "目录" }}</span>
-        <span><i class="dot" style="--c: #4f7fd0"></i>{{ isFiles ? "文件" : "文档" }}</span>
-        <span v-if="stats.memories"
-          ><i class="dot" style="--c: #f0567f"></i>记忆</span
-        >
+        <span><i
+          class="dot"
+          style="--c: #f0b24a"
+        />{{ isFiles ? "我的资料" : "知识库" }}</span>
+        <span><i
+          class="dot sq"
+          style="--c: #5fa8e6"
+        />{{ isFiles ? "主题" : "目录" }}</span>
+        <span><i
+          class="dot"
+          style="--c: #4f7fd0"
+        />{{ isFiles ? "文件" : "文档" }}</span>
+        <span v-if="stats.memories"><i
+          class="dot"
+          style="--c: #f0567f"
+        />记忆</span>
       </div>
 
       <transition name="fade">
-        <div v-if="selected" class="card">
+        <div
+          v-if="selected"
+          class="card"
+        >
           <div class="card-kind">
             {{
               selected.kind === "root"
@@ -594,20 +641,34 @@ onUnmounted(() => {
                   ? "星系核心 · 我的资料"
                   : "星系核心 · 知识库"
                 : selected.kind === "folder"
-                ? isFiles
-                  ? "主题 · 一类资料"
-                  : "目录中枢"
-                : selected.kind === "feedback"
-                ? "回声 · 记忆"
-                : isFiles
-                ? "文件"
-                : "文档"
+                  ? isFiles
+                    ? "主题 · 一类资料"
+                    : "目录中枢"
+                  : selected.kind === "feedback"
+                    ? "回声 · 记忆"
+                    : isFiles
+                      ? "文件"
+                      : "文档"
             }}
           </div>
-          <div class="card-title">{{ selected.title }}</div>
-          <div v-if="selected.summary" class="card-summary">{{ selected.summary }}</div>
-          <div v-if="selected.path" class="card-path">{{ selected.path }}</div>
-          <div class="card-meta">连接数 {{ selected.deg }}</div>
+          <div class="card-title">
+            {{ selected.title }}
+          </div>
+          <div
+            v-if="selected.summary"
+            class="card-summary"
+          >
+            {{ selected.summary }}
+          </div>
+          <div
+            v-if="selected.path"
+            class="card-path"
+          >
+            {{ selected.path }}
+          </div>
+          <div class="card-meta">
+            连接数 {{ selected.deg }}
+          </div>
         </div>
       </transition>
     </div>
@@ -624,7 +685,8 @@ onUnmounted(() => {
 }
 .head {
   padding: 14px 24px;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -652,31 +714,35 @@ onUnmounted(() => {
   color: var(--ink);
   background: var(--bg-soft);
   border: 1px solid var(--hairline);
-  border-radius: 4px;
+  border-radius: 10px;
   outline: none;
 }
 .search:focus {
-  border-color: var(--border-strong);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .btn {
+  /* 次级玻璃按钮 */
   padding: 5px 11px;
   font-size: 12px;
   font-family: var(--sans);
   color: var(--muted);
-  background: var(--bg-soft);
-  border: 1px solid var(--hairline);
-  border-radius: 4px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, transform 0.15s, box-shadow 0.15s, border-color 0.15s;
 }
 .btn:hover {
   color: var(--ink);
-  border-color: var(--border-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 .btn.on {
-  color: #2a4a6e;
-  border-color: #9bbce0;
-  background: #eef4fb;
+  /* 用 token 替换旧硬编码蓝，四主题下都成立 */
+  color: var(--primary-deep);
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 .stats {
   font-size: 12px;
@@ -857,6 +923,21 @@ onUnmounted(() => {
   padding: 12px 14px;
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
+}
+/* v9：节点详情浮卡的棱边折射环（深色星场上恒暗，用暗版折射渐变强度即可） */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .card-kind {
   font-size: 10px;

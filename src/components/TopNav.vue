@@ -33,7 +33,12 @@ const tabIcon: Partial<Record<ModuleTab, typeof BookOpen>> = {
         :title="t.hint"
         @click="app.setModuleTab(t.key)"
       >
-        <component v-if="tabIcon[t.key]" :is="tabIcon[t.key]" :size="15" :stroke-width="1.8" />
+        <component
+          :is="tabIcon[t.key]"
+          v-if="tabIcon[t.key]"
+          :size="15"
+          :stroke-width="1.8"
+        />
         {{ t.label }}
       </button>
     </nav>
@@ -45,10 +50,17 @@ const tabIcon: Partial<Record<ModuleTab, typeof BookOpen>> = {
         title="对话系统：右侧抽屉，可拖宽 / 收起"
         @click="app.toggleChat()"
       >
-        <MessageSquare :size="16" :stroke-width="1.8" />
+        <MessageSquare
+          :size="16"
+          :stroke-width="1.8"
+        />
         <span>对话</span>
       </button>
-      <button class="more" title="设置 / 更多（含环境配置）" @click="app.openSettings()">
+      <button
+        class="more"
+        title="设置 / 更多（含环境配置）"
+        @click="app.openSettings()"
+      >
         <Settings2 :size="17" />
         <span>更多</span>
       </button>

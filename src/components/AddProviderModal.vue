@@ -295,26 +295,53 @@ function dotColor(p: ProviderView) {
 
 <template>
   <Teleport to="body">
-    <div class="modal-overlay" @click="store.closeAdd()">
-      <div class="modal" @click.stop>
+    <div
+      class="modal-overlay"
+      @click="store.closeAdd()"
+    >
+      <div
+        class="modal"
+        @click.stop
+      >
         <div class="m-accent" />
         <header class="m-head">
-          <div class="m-title">{{ form.id && !selectedId ? "编辑供应商" : "添加新供应商" }}</div>
-          <button class="icon-btn" @click="store.closeAdd()"><X :size="17" :stroke-width="1.8" /></button>
+          <div class="m-title">
+            {{ form.id && !selectedId ? "编辑供应商" : "添加新供应商" }}
+          </div>
+          <button
+            class="icon-btn"
+            @click="store.closeAdd()"
+          >
+            <X
+              :size="17"
+              :stroke-width="1.8"
+            />
+          </button>
         </header>
 
         <!-- tabs -->
         <div class="m-tabs">
-          <button class="m-tab" :class="{ on: tab === 'claude' }" @click="tab = 'claude'">
+          <button
+            class="m-tab"
+            :class="{ on: tab === 'claude' }"
+            @click="tab = 'claude'"
+          >
             Claude 供应商
           </button>
-          <button class="m-tab" :class="{ on: tab === 'universal' }" @click="tab = 'universal'">
+          <button
+            class="m-tab"
+            :class="{ on: tab === 'universal' }"
+            @click="tab = 'universal'"
+          >
             统一供应商
           </button>
         </div>
 
         <div class="m-body">
-          <p v-if="tab === 'universal'" class="universal-note">
+          <p
+            v-if="tab === 'universal'"
+            class="universal-note"
+          >
             统一供应商会同步到 Claude / Codex / Gemini —— Polaris 当前对 <b>Claude Code</b> 生效，配置方式一致。
           </p>
 
@@ -322,8 +349,14 @@ function dotColor(p: ProviderView) {
           <div class="grid-head">
             <span class="sec-title">预设供应商</span>
             <div class="grid-search">
-              <SearchGlass :size="12" :stroke-width="1.8" />
-              <input v-model="filter" placeholder="搜索…" />
+              <SearchGlass
+                :size="12"
+                :stroke-width="1.8"
+              />
+              <input
+                v-model="filter"
+                placeholder="搜索…"
+              >
             </div>
           </div>
           <div class="preset-grid">
@@ -341,13 +374,19 @@ function dotColor(p: ProviderView) {
               :class="{ on: selectedId === p.id }"
               @click="pickPreset(p)"
             >
-              <span class="chip-dot" :style="{ background: dotColor(p) }" />
+              <span
+                class="chip-dot"
+                :style="{ background: dotColor(p) }"
+              />
               {{ p.name }}
             </button>
           </div>
 
           <!-- OAuth 提示 -->
-          <div v-if="isOauth" class="oauth-note">
+          <div
+            v-if="isOauth"
+            class="oauth-note"
+          >
             <b>{{ form.name }}</b> 说 OpenAI 协议，需 OAuth 授权 + 翻译代理才能直连 Claude Code（轻量版未内置路由）。Codex 可在左下角「供应商坞」用官方 CLI 授权。
           </div>
 
@@ -356,17 +395,26 @@ function dotColor(p: ProviderView) {
             <div class="f-grid">
               <label class="field">
                 <span class="f-lab">供应商名称</span>
-                <input v-model="form.name" placeholder="例如：Claude 官方" />
+                <input
+                  v-model="form.name"
+                  placeholder="例如：Claude 官方"
+                >
               </label>
               <label class="field">
                 <span class="f-lab">备注</span>
-                <input v-model="form.note" placeholder="例如：公司专用账号" />
+                <input
+                  v-model="form.note"
+                  placeholder="例如：公司专用账号"
+                >
               </label>
             </div>
 
             <label class="field">
               <span class="f-lab">官网链接</span>
-              <input v-model="form.websiteUrl" placeholder="https://example.com（可选）" />
+              <input
+                v-model="form.websiteUrl"
+                placeholder="https://example.com（可选）"
+              >
             </label>
 
             <label class="field">
@@ -378,27 +426,51 @@ function dotColor(p: ProviderView) {
                   :placeholder="keyMasked ? '已配置密钥（已隐藏）· 如需更换在此输入新密钥' : '只需要填这里，下方配置会自动填充'"
                   autocomplete="off"
                   @input="onApiKey"
-                />
-                <button class="icon-btn sm" @click="revealKey = !revealKey">
-                  <component :is="revealKey ? EyeOff : Eye" :size="15" :stroke-width="1.8" />
+                >
+                <button
+                  class="icon-btn sm"
+                  @click="revealKey = !revealKey"
+                >
+                  <component
+                    :is="revealKey ? EyeOff : Eye"
+                    :size="15"
+                    :stroke-width="1.8"
+                  />
                 </button>
               </div>
               <div class="field-toggle">
-                <button :class="{ sel: form.tokenField === 'ANTHROPIC_AUTH_TOKEN' }" @click="onTokenFieldSwitch('ANTHROPIC_AUTH_TOKEN')">AUTH_TOKEN</button>
-                <button :class="{ sel: form.tokenField === 'ANTHROPIC_API_KEY' }" @click="onTokenFieldSwitch('ANTHROPIC_API_KEY')">API_KEY</button>
+                <button
+                  :class="{ sel: form.tokenField === 'ANTHROPIC_AUTH_TOKEN' }"
+                  @click="onTokenFieldSwitch('ANTHROPIC_AUTH_TOKEN')"
+                >AUTH_TOKEN</button>
+                <button
+                  :class="{ sel: form.tokenField === 'ANTHROPIC_API_KEY' }"
+                  @click="onTokenFieldSwitch('ANTHROPIC_API_KEY')"
+                >API_KEY</button>
               </div>
             </label>
 
             <label class="field">
               <span class="f-lab row">
                 请求地址
-                <span class="url-toggle" :class="{ on: form.fullUrl }" @click="form.fullUrl = !form.fullUrl">
-                  <Link2 :size="11" :stroke-width="2" /> 完整 URL
+                <span
+                  class="url-toggle"
+                  :class="{ on: form.fullUrl }"
+                  @click="form.fullUrl = !form.fullUrl"
+                >
+                  <Link2
+                    :size="11"
+                    :stroke-width="2"
+                  /> 完整 URL
                   <span class="sw"><span class="knob" /></span>
                 </span>
               </span>
-              <input v-model="form.baseUrl" placeholder="https://your-api-endpoint.com" @input="onBaseUrl" />
-              <p class="hint">💡 填写兼容 Claude API 的服务端点地址，不要以斜杠结尾</p>
+              <input
+                v-model="form.baseUrl"
+                placeholder="https://your-api-endpoint.com"
+                @input="onBaseUrl"
+              >
+              <p class="hint">填写兼容 Claude API 的服务端点地址，不要以斜杠结尾</p>
             </label>
 
             <label class="field">
@@ -407,9 +479,9 @@ function dotColor(p: ProviderView) {
                 v-model="form.model"
                 placeholder="例如：MiniMax-M3（留空则用 Claude 默认模型名）"
                 @input="onModel"
-              />
+              >
               <p class="hint">
-                💡 第三方供应商通常需指定自家模型名。填一个值会同时钉主模型与 Opus/Sonnet/Haiku
+                第三方供应商通常需指定自家模型名。填一个值会同时钉主模型与 Opus/Sonnet/Haiku
                 三档默认，连后台小任务也走它，避免回落到最低档。
               </p>
             </label>
@@ -417,28 +489,63 @@ function dotColor(p: ProviderView) {
             <!-- 配置 JSON + 开关 -->
             <div class="cfg-head">
               <span class="f-lab">配置 JSON</span>
-              <button class="fmt-btn" @click="formatJson"><Sparkles :size="12" :stroke-width="1.8" /> 格式化</button>
+              <button
+                class="fmt-btn"
+                @click="formatJson"
+              >
+                <Sparkles
+                  :size="12"
+                  :stroke-width="1.8"
+                /> 格式化
+              </button>
             </div>
             <div class="toggles">
-              <label v-for="t in toggleDefs" :key="t.key" class="tg">
+              <label
+                v-for="t in toggleDefs"
+                :key="t.key"
+                class="tg"
+              >
                 <input
                   type="checkbox"
                   :checked="(toggles as any)[t.key]"
                   @change="toggle(t.key, ($event.target as HTMLInputElement).checked)"
-                />
+                >
                 <span>{{ t.label }}</span>
               </label>
             </div>
-            <textarea v-model="form.configJson" class="json-editor" spellcheck="false" rows="6" @input="onConfigEdit" />
+            <textarea
+              v-model="form.configJson"
+              class="json-editor"
+              spellcheck="false"
+              rows="6"
+              @input="onConfigEdit"
+            />
           </template>
 
-          <div v-if="localErr" class="err">{{ localErr }}</div>
+          <div
+            v-if="localErr"
+            class="err"
+          >
+            {{ localErr }}
+          </div>
         </div>
 
         <footer class="m-foot">
-          <button class="btn-cancel" @click="store.closeAdd()">取消</button>
-          <button class="btn-add" :disabled="saving || isOauth" @click="submit">
-            <Check :size="14" :stroke-width="2.4" /> {{ saving ? "保存中…" : "添加" }}
+          <button
+            class="btn-cancel"
+            @click="store.closeAdd()"
+          >
+            取消
+          </button>
+          <button
+            class="btn-add"
+            :disabled="saving || isOauth"
+            @click="submit"
+          >
+            <Check
+              :size="14"
+              :stroke-width="2.4"
+            /> {{ saving ? "保存中…" : "添加" }}
           </button>
         </footer>
       </div>
@@ -451,8 +558,10 @@ function dotColor(p: ProviderView) {
   position: fixed;
   inset: 0;
   z-index: 9600;
-  background: rgba(20, 20, 25, 0.28);
-  backdrop-filter: blur(2px);
+  /* 液态玻璃遮罩：统一 scrim 配方 */
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -463,16 +572,35 @@ function dotColor(p: ProviderView) {
   from { opacity: 0; }
 }
 .modal {
+  position: relative;
   width: min(740px, 96vw);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--hairline);
+  /* 液态玻璃：弹窗走 chrome 真磨砂配方 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   overflow: hidden;
   animation: pop 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* v9：弹窗主容器一圈棱边折射环 */
+.modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 @keyframes pop {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
@@ -655,7 +783,7 @@ function dotColor(p: ProviderView) {
   width: 100%;
   padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 10px;
   font-size: 13px;
   background: var(--bg-soft);
   color: var(--text);
@@ -664,6 +792,7 @@ function dotColor(p: ProviderView) {
 .json-editor:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
   background: var(--panel);
 }
 .key-wrap {
@@ -742,12 +871,13 @@ function dotColor(p: ProviderView) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  /* 液态玻璃：次级按钮走 card 配方 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text-2);
   font-size: 11.5px;
   padding: 4px 10px;
-  border-radius: 7px;
+  border-radius: 10px;
 }
 .fmt-btn:hover { border-color: var(--primary); color: var(--primary); }
 .toggles {
@@ -786,27 +916,37 @@ function dotColor(p: ProviderView) {
   justify-content: flex-end;
   gap: 9px;
   padding: 12px 18px;
-  border-top: 1px solid var(--border-soft);
-  background: var(--bg-soft);
+  /* v9：脚部渐隐发丝线 */
+  border-top: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
+  /* 液态玻璃：脚部透出 chrome 磨砂，不再压实底 */
+  background: transparent;
 }
 .btn-cancel,
 .btn-add {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  /* 液态玻璃：次级按钮走 card 配方 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text-2);
   font-size: 13px;
   padding: 8px 18px;
-  border-radius: 9px;
+  border-radius: 10px;
 }
-.btn-cancel:hover { background: var(--selection-bg); }
+.btn-cancel:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .btn-add {
   background: var(--btn-solid-bg);
   color: var(--btn-solid-text);
-  border-color: var(--btn-solid-bg);
+  /* 液态玻璃：主按钮玻璃三件套高光 */
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
 }
-.btn-add:hover { background: var(--primary); border-color: var(--primary); }
+.btn-add:hover { background: var(--primary); }
+/* v9：主 CTA 按压反馈 */
+.btn-add { transition: background 120ms var(--ease, ease), transform 0.12s var(--ease, ease); }
+.btn-add:active:not(:disabled) { transform: scale(0.98); }
 .btn-add:disabled { opacity: 0.5; }
 </style>

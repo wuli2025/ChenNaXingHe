@@ -63,14 +63,14 @@ function claimNextGate() {
 function explainSuspended() {
   if (store.busy.value) return;
   store.runChat("工作流自动化", "编排心脏 · 挂起 / 恢复", "有哪些工作流正在挂起等待，分别在等什么？请逐条说明触发条件与恢复条件。", false)
-    .catch((e) => store.log("error", `❌ 工作流说明生成失败：${(e as Error).message || String(e)}`));
+    .catch((e) => store.log("error", `工作流说明生成失败：${(e as Error).message || String(e)}`));
 }
 
 /** 让 Claude 讲清「报关草稿 ETA-5d 触发」的编排链路。 */
 function explainCustomsTrigger() {
   if (store.busy.value) return;
   store.runChat("工作流自动化", "编排心脏 · 挂起 / 恢复", "报关草稿 ETA-5d 触发是怎么编排的？触发 → 动作 → 等待 → 分支逐节点说明。", false)
-    .catch((e) => store.log("error", `❌ 报关触发说明生成失败：${(e as Error).message || String(e)}`));
+    .catch((e) => store.log("error", `报关触发说明生成失败：${(e as Error).message || String(e)}`));
 }
 
 /** 示意流程图节点（触发 → 聚合 → 归类 → 校验 → 人工闸 → 分支）。 */
@@ -106,67 +106,128 @@ function nodeTone(kind: FlowNode["kind"]): "blue" | "gold" | "amber" | "green" |
 
     <!-- KPI 概览 -->
     <div class="t-grid t-g4">
-      <TKpi :value="String(store.workflows.value.length)" label="活跃流程" acc="blue" :icon="ICONS.workflow" />
-      <TKpi :value="String(runningCount)" label="运行中" acc="green" />
-      <TKpi :value="String(suspendedCount)" label="挂起等待" acc="amber" />
-      <TKpi :value="String(store.pendingCount.value)" label="待办人工闸" acc="gold" :icon="ICONS.review" />
+      <TKpi
+        :value="String(store.workflows.value.length)"
+        label="活跃流程"
+        acc="blue"
+        :icon="ICONS.workflow"
+      />
+      <TKpi
+        :value="String(runningCount)"
+        label="运行中"
+        acc="green"
+      />
+      <TKpi
+        :value="String(suspendedCount)"
+        label="挂起等待"
+        acc="amber"
+      />
+      <TKpi
+        :value="String(store.pendingCount.value)"
+        label="待办人工闸"
+        acc="gold"
+        :icon="ICONS.review"
+      />
     </div>
 
     <!-- 示意流程图 -->
-    <TSection title="编排示意" sub="触发 → 动作 → 等待 → 分支 · 每节点可挂起落盘并恢复" />
+    <TSection
+      title="编排示意"
+      sub="触发 → 动作 → 等待 → 分支 · 每节点可挂起落盘并恢复"
+    />
     <TPanel pad>
       <div class="flow-diagram">
-        <template v-for="(n, i) in diagram" :key="i">
-          <div class="flow-node" :class="'fn-' + n.kind">
-            <TBadge :tone="nodeTone(n.kind)">{{ n.label }}</TBadge>
-            <div class="fn-desc">{{ n.desc }}</div>
+        <template
+          v-for="(n, i) in diagram"
+          :key="i"
+        >
+          <div
+            class="flow-node"
+            :class="'fn-' + n.kind"
+          >
+            <TBadge :tone="nodeTone(n.kind)">
+              {{ n.label }}
+            </TBadge>
+            <div class="fn-desc">
+              {{ n.desc }}
+            </div>
           </div>
-          <div v-if="i < diagram.length - 1" class="flow-link">
-            <span class="fl-line"></span>
+          <div
+            v-if="i < diagram.length - 1"
+            class="flow-link"
+          >
+            <span class="fl-line" />
             <span class="fl-arrow">▸</span>
           </div>
         </template>
       </div>
-      <div class="t-note ok" style="margin-bottom: 0">
+      <div
+        class="t-note ok"
+        style="margin-bottom: 0"
+      >
         <b>幂等 + 可恢复：</b>「等待」节点把状态落盘，进程重启或供应商延迟回信都不丢上下文；
         「人工闸」阻断自动流转，直至审核看板给出放行 / 驳回。
       </div>
     </TPanel>
 
     <!-- 流程运行清单 -->
-    <TSection title="流程运行清单" sub="跨模块长流程 · 定时采集 / 报关触发 / 建联挂起 / 临期预警">
+    <TSection
+      title="流程运行清单"
+      sub="跨模块长流程 · 定时采集 / 报关触发 / 建联挂起 / 临期预警"
+    >
       <template #actions>
-        <button class="t-btn sm" :disabled="store.busy.value" @click="explainCustomsTrigger">
+        <button
+          class="t-btn sm"
+          :disabled="store.busy.value"
+          @click="explainCustomsTrigger"
+        >
           {{ store.busy.value ? "运行中…" : "报关触发说明" }}
         </button>
-        <button class="t-btn sm primary" :disabled="store.busy.value" @click="explainSuspended">
+        <button
+          class="t-btn sm primary"
+          :disabled="store.busy.value"
+          @click="explainSuspended"
+        >
           {{ store.busy.value ? "运行中…" : "查看挂起流程" }}
         </button>
       </template>
     </TSection>
 
-    <div v-if="orderedFlows.length" class="flow-list">
+    <div
+      v-if="orderedFlows.length"
+      class="flow-list"
+    >
       <TPanel
         v-for="w in orderedFlows"
         :key="w.name"
         pad
       >
-        <div class="wf-card" :class="{ suspended: w.state === '挂起' }">
+        <div
+          class="wf-card"
+          :class="{ suspended: w.state === '挂起' }"
+        >
           <div class="wf-head">
             <b class="wf-name">{{ w.name }}</b>
-            <TBadge :tone="stateTone(w.state)">{{ w.state }}</TBadge>
+            <TBadge :tone="stateTone(w.state)">
+              {{ w.state }}
+            </TBadge>
             <span class="t-muted t-mono wf-time">{{ w.updated }}</span>
           </div>
-          <div class="wf-step">当前步骤：<b>{{ w.step }}</b></div>
+          <div class="wf-step">
+            当前步骤：<b>{{ w.step }}</b>
+          </div>
           <div class="wf-bar-row">
             <div class="t-bar wf-bar">
-              <span :style="{ width: Math.max(w.pct, 2) + '%', background: barColor(w.state) }"></span>
+              <span :style="{ width: Math.max(w.pct, 2) + '%', background: barColor(w.state) }" />
             </div>
             <span class="wf-pct t-mono">{{ w.pct }}%</span>
           </div>
 
           <!-- 挂起流程：高亮提示 + 查看人工闸 -->
-          <div v-if="w.state === '挂起'" class="wf-suspend">
+          <div
+            v-if="w.state === '挂起'"
+            class="wf-suspend"
+          >
             <div class="t-note warn wf-note">
               <b>已挂起落盘：</b>此流程停在人工闸，等待审核看板放行；上下文已持久化，恢复后从本步继续。
             </div>
@@ -176,18 +237,29 @@ function nodeTone(kind: FlowNode["kind"]): "blue" | "gold" | "amber" | "green" |
               :title="claimableCount ? '认领一条待办人工闸并推进到审核中' : '当前没有待认领的人工闸'"
               @click="claimNextGate"
             >
-              查看人工闸<span v-if="claimableCount" class="wf-gate-pip">{{ claimableCount }}</span>
+              查看人工闸<span
+                v-if="claimableCount"
+                class="wf-gate-pip"
+              >{{ claimableCount }}</span>
             </button>
           </div>
         </div>
       </TPanel>
     </div>
-    <TPanel v-else pad>
-      <div class="wf-empty">暂无运行中的工作流。触发条件命中后（ETA-5d / 定时 / 事件），流程将自动入列并在此显示。</div>
+    <TPanel
+      v-else
+      pad
+    >
+      <div class="wf-empty">
+        暂无运行中的工作流。触发条件命中后（ETA-5d / 定时 / 事件），流程将自动入列并在此显示。
+      </div>
     </TPanel>
 
     <!-- 人工审核汇总 -->
-    <TSection title="人工审核汇总" sub="所有人工闸的统一入口 · 在审核看板逐条处置" />
+    <TSection
+      title="人工审核汇总"
+      sub="所有人工闸的统一入口 · 在审核看板逐条处置"
+    />
     <div class="t-note warn">
       当前有 <b>{{ store.pendingCount.value }}</b> 个待办人工闸（待审核 + 审核中）。
       工作流的每一个「★人工闸」都不在流程内直接决策，而是<b>统一进审核看板</b>处理（放行 / 驳回 / 认领 / 重开）。
@@ -201,16 +273,24 @@ function nodeTone(kind: FlowNode["kind"]): "blue" | "gold" | "amber" | "green" |
             <th>来源模块</th>
             <th>风险</th>
             <th>状态</th>
-            <th></th>
+            <th />
           </tr>
         </thead>
         <tbody>
-          <tr v-for="t in pendingReviews" :key="t.id" class="rv-row">
+          <tr
+            v-for="t in pendingReviews"
+            :key="t.id"
+            class="rv-row"
+          >
             <td>
               <b>{{ t.title }}</b>
-              <div class="t-muted rv-sum">{{ t.summary }}</div>
+              <div class="t-muted rv-sum">
+                {{ t.summary }}
+              </div>
             </td>
-            <td class="t-mono">{{ t.mod.toUpperCase() }}</td>
+            <td class="t-mono">
+              {{ t.mod.toUpperCase() }}
+            </td>
             <td>
               <TBadge :tone="t.risk === 'hard' ? 'red' : t.risk === 'high' ? 'amber' : 'gray'">
                 {{ t.risk === 'hard' ? '硬闸' : t.risk === 'high' ? '高' : t.risk === 'low' ? '低' : '普通' }}
@@ -229,14 +309,22 @@ function nodeTone(kind: FlowNode["kind"]): "blue" | "gold" | "amber" | "green" |
               >
                 认领
               </button>
-              <span v-else class="t-muted rv-claimed">已认领</span>
+              <span
+                v-else
+                class="t-muted rv-claimed"
+              >已认领</span>
             </td>
           </tr>
         </tbody>
       </table>
     </TPanel>
-    <TPanel v-else pad>
-      <div class="wf-empty">当前没有待办人工闸，所有流程均可自动流转。</div>
+    <TPanel
+      v-else
+      pad
+    >
+      <div class="wf-empty">
+        当前没有待办人工闸，所有流程均可自动流转。
+      </div>
     </TPanel>
   </div>
 </template>

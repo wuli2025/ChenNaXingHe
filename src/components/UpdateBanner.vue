@@ -16,8 +16,14 @@ import {
 
 <template>
   <Transition name="upd-fade">
-    <div v-if="updateVersion && !dialogDismissed" class="upd-mask">
-      <Transition name="upd-pop" appear>
+    <div
+      v-if="updateVersion && !dialogDismissed"
+      class="upd-mask"
+    >
+      <Transition
+        name="upd-pop"
+        appear
+      >
         <div class="upd-card">
           <button
             v-if="!updating"
@@ -25,28 +31,64 @@ import {
             title="以后再说"
             @click="dismissUpdate"
           >
-            <X :size="16" :stroke-width="2" />
+            <X
+              :size="16"
+              :stroke-width="2"
+            />
           </button>
 
-          <div class="upd-badge"><Sparkles :size="22" :stroke-width="1.6" /></div>
+          <div class="upd-badge">
+            <Sparkles
+              :size="22"
+              :stroke-width="1.6"
+            />
+          </div>
 
           <div class="upd-title">
             发现新版本 <span class="upd-ver">v{{ updateVersion }}</span>
           </div>
 
-          <p v-if="updateError" class="upd-desc err">{{ updateError }}</p>
-          <p v-else-if="updating" class="upd-desc">
+          <p
+            v-if="updateError"
+            class="upd-desc err"
+          >
+            {{ updateError }}
+          </p>
+          <p
+            v-else-if="updating"
+            class="upd-desc"
+          >
             正在下载更新… 完成后自动重启生效
           </p>
-          <p v-else class="upd-desc">有新内容更新，点击即可立即更新 ✨</p>
+          <p
+            v-else
+            class="upd-desc"
+          >
+            有新内容更新，点击即可立即更新
+          </p>
 
-          <div v-if="updateNotes && !updating" class="upd-notes">{{ updateNotes }}</div>
-
-          <div v-if="updating" class="upd-bar">
-            <div class="upd-bar-fill" :style="{ width: updateProgress + '%' }"></div>
+          <div
+            v-if="updateNotes && !updating"
+            class="upd-notes"
+          >
+            {{ updateNotes }}
           </div>
 
-          <button class="upd-go" :disabled="updating" @click="applyUpdate">
+          <div
+            v-if="updating"
+            class="upd-bar"
+          >
+            <div
+              class="upd-bar-fill"
+              :style="{ width: updateProgress + '%' }"
+            />
+          </div>
+
+          <button
+            class="upd-go"
+            :disabled="updating"
+            @click="applyUpdate"
+          >
             <LoaderCircle
               v-if="updating"
               :size="15"
@@ -77,19 +119,39 @@ import {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(20, 18, 14, 0.18);
-  backdrop-filter: blur(2px);
+  /* 液态玻璃遮罩:压暗 + 磨砂 */
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
 }
 .upd-card {
   position: relative;
   width: 332px;
   max-width: calc(100vw - 40px);
   padding: 26px 24px 18px;
-  background: var(--panel);
-  border: 1px solid var(--border-soft);
+  /* 悬浮 chrome:真磨砂玻璃对话框 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
   border-radius: 18px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--chrome-shadow);
   text-align: center;
+}
+/* 棱边折射环:跟随圆角的 1px 玻璃棱光 */
+.upd-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .upd-x {
   position: absolute;
@@ -181,13 +243,16 @@ import {
   justify-content: center;
   gap: 7px;
   letter-spacing: 1px;
-  transition: background 0.15s, transform 0.1s;
+  /* 玻璃三件套:顶部镜面高光 + 底部收边 + 柔和投影 */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
+  transition: background 0.15s var(--ease, ease), transform 0.12s var(--ease, ease);
 }
 .upd-go:hover:not(:disabled) {
   background: var(--primary);
 }
 .upd-go:active:not(:disabled) {
-  transform: scale(0.99);
+  transform: scale(0.98);
 }
 .upd-go:disabled {
   opacity: 0.85;
@@ -224,7 +289,7 @@ import {
   opacity: 0;
 }
 .upd-pop-enter-active {
-  transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 0.26s var(--ease, ease), transform 0.26s var(--ease-spring, ease);
 }
 .upd-pop-enter-from {
   opacity: 0;

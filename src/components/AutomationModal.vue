@@ -131,45 +131,101 @@ async function submit() {
 </script>
 
 <template>
-  <div ref="overlayEl" class="overlay" tabindex="-1" @click.self="auto.closeEditor()" @keydown="onEsc">
-    <div class="modal" @click="closeMenu">
+  <div
+    ref="overlayEl"
+    class="overlay"
+    tabindex="-1"
+    @click.self="auto.closeEditor()"
+    @keydown="onEsc"
+  >
+    <div
+      class="modal"
+      @click="closeMenu"
+    >
       <!-- 头部 -->
       <header class="m-head">
-        <span class="m-badge" :style="{ background: form.color }">
-          <Sparkles :size="13" :stroke-width="1.9" color="#fff" />
+        <span
+          class="m-badge"
+          :style="{ background: form.color }"
+        >
+          <Sparkles
+            :size="13"
+            :stroke-width="1.9"
+            color="#fff"
+          />
         </span>
         <input
           v-model="form.name"
           class="m-title"
           placeholder="给这个自动化起个名字"
-        />
+        >
         <div class="m-head-act">
-          <button class="ghost-btn" title="清空提示词" @click.stop="clearPrompt">
-            <Eraser :size="14" :stroke-width="1.7" /> 清除
+          <button
+            class="ghost-btn"
+            title="清空提示词"
+            @click.stop="clearPrompt"
+          >
+            <Eraser
+              :size="14"
+              :stroke-width="1.7"
+            /> 清除
           </button>
-          <span class="info-dot" title="提示词里 __________ 处填你的方向/主题；运行会在所选项目下新建一条对话，成品落到草稿箱，不会自动发布。">
-            <Info :size="15" :stroke-width="1.7" />
+          <span
+            class="info-dot"
+            title="提示词里 __________ 处填你的方向/主题；运行会在所选项目下新建一条对话，成品落到草稿箱，不会自动发布。"
+          >
+            <Info
+              :size="15"
+              :stroke-width="1.7"
+            />
           </span>
           <div class="menu-anchor">
-            <button class="line-btn" @click.stop="toggle('template')">
-              <FileText :size="13" :stroke-width="1.7" /> 使用模板
+            <button
+              class="line-btn"
+              @click.stop="toggle('template')"
+            >
+              <FileText
+                :size="13"
+                :stroke-width="1.7"
+              /> 使用模板
             </button>
-            <div v-if="openMenu === 'template'" class="dropdown wide" @click.stop>
-              <div class="dd-head">从工作流包载入</div>
+            <div
+              v-if="openMenu === 'template'"
+              class="dropdown wide"
+              @click.stop
+            >
+              <div class="dd-head">
+                从工作流包载入
+              </div>
               <button
                 v-for="p in workflows.packs"
                 :key="p.id"
                 class="dd-item"
                 @click="applyTemplate(p.id)"
               >
-                <span class="dd-dot" :style="{ background: p.color }"></span>
+                <span
+                  class="dd-dot"
+                  :style="{ background: p.color }"
+                />
                 <span class="dd-name">{{ p.name }}</span>
               </button>
-              <div v-if="!workflows.packs.length" class="dd-empty">暂无工作流包</div>
+              <div
+                v-if="!workflows.packs.length"
+                class="dd-empty"
+              >
+                暂无工作流包
+              </div>
             </div>
           </div>
-          <button class="icon-x" title="关闭" @click="auto.closeEditor()">
-            <X :size="17" :stroke-width="1.7" />
+          <button
+            class="icon-x"
+            title="关闭"
+            @click="auto.closeEditor()"
+          >
+            <X
+              :size="17"
+              :stroke-width="1.7"
+            />
           </button>
         </div>
       </header>
@@ -180,45 +236,95 @@ async function submit() {
         class="m-prompt"
         placeholder="在这里编排这个自动化要执行的任务（提示词）。例如：选一个方向 → 深度搜最近资讯 → 仿知识库风格成文 → 多维评审 → 存草稿箱。"
         spellcheck="false"
-      ></textarea>
+      />
 
       <input
         v-model="form.description"
         class="m-desc"
         placeholder="一句话描述（选填，显示在卡片上）"
-      />
+      >
 
       <!-- 底部配置条 -->
       <footer class="m-foot">
         <div class="foot-controls">
           <!-- 执行环境 -->
           <div class="menu-anchor">
-            <button class="chip" :class="{ on: openMenu === 'env' }" @click.stop="toggle('env')">
-              <Monitor :size="14" :stroke-width="1.7" />
+            <button
+              class="chip"
+              :class="{ on: openMenu === 'env' }"
+              @click.stop="toggle('env')"
+            >
+              <Monitor
+                :size="14"
+                :stroke-width="1.7"
+              />
               {{ form.execEnv === "local" ? "本地" : "沙箱" }}
-              <ChevronDown :size="13" :stroke-width="1.7" class="chev" />
+              <ChevronDown
+                :size="13"
+                :stroke-width="1.7"
+                class="chev"
+              />
             </button>
-            <div v-if="openMenu === 'env'" class="dropdown" @click.stop>
-              <button class="dd-item" @click="pickEnv('local')">
-                <Check :size="13" :class="{ hide: form.execEnv !== 'local' }" /> 本地执行
+            <div
+              v-if="openMenu === 'env'"
+              class="dropdown"
+              @click.stop
+            >
+              <button
+                class="dd-item"
+                @click="pickEnv('local')"
+              >
+                <Check
+                  :size="13"
+                  :class="{ hide: form.execEnv !== 'local' }"
+                /> 本地执行
               </button>
-              <button class="dd-item" @click="pickEnv('sandbox')">
-                <Check :size="13" :class="{ hide: form.execEnv !== 'sandbox' }" /> 沙箱执行
+              <button
+                class="dd-item"
+                @click="pickEnv('sandbox')"
+              >
+                <Check
+                  :size="13"
+                  :class="{ hide: form.execEnv !== 'sandbox' }"
+                /> 沙箱执行
               </button>
             </div>
           </div>
 
           <!-- 项目 -->
           <div class="menu-anchor">
-            <button class="chip" :class="{ on: openMenu === 'project' }" @click.stop="toggle('project')">
-              <Folder :size="14" :stroke-width="1.7" />
+            <button
+              class="chip"
+              :class="{ on: openMenu === 'project' }"
+              @click.stop="toggle('project')"
+            >
+              <Folder
+                :size="14"
+                :stroke-width="1.7"
+              />
               {{ projectName }}
-              <ChevronDown :size="13" :stroke-width="1.7" class="chev" />
+              <ChevronDown
+                :size="13"
+                :stroke-width="1.7"
+                class="chev"
+              />
             </button>
-            <div v-if="openMenu === 'project'" class="dropdown" @click.stop>
-              <div class="dd-head">项目</div>
-              <button class="dd-item" @click="pickProject(null)">
-                <Check :size="13" :class="{ hide: form.projectId !== null }" /> 当前项目（运行时决定）
+            <div
+              v-if="openMenu === 'project'"
+              class="dropdown"
+              @click.stop
+            >
+              <div class="dd-head">
+                项目
+              </div>
+              <button
+                class="dd-item"
+                @click="pickProject(null)"
+              >
+                <Check
+                  :size="13"
+                  :class="{ hide: form.projectId !== null }"
+                /> 当前项目（运行时决定）
               </button>
               <button
                 v-for="p in app.projects"
@@ -226,7 +332,10 @@ async function submit() {
                 class="dd-item"
                 @click="pickProject(p.id)"
               >
-                <Folder :size="13" :stroke-width="1.6" />
+                <Folder
+                  :size="13"
+                  :stroke-width="1.6"
+                />
                 <span class="dd-name">{{ p.name }}</span>
               </button>
             </div>
@@ -234,36 +343,65 @@ async function submit() {
 
           <!-- 运行时机 -->
           <div class="menu-anchor">
-            <button class="chip" :class="{ on: openMenu === 'schedule' }" @click.stop="toggle('schedule')">
-              <Clock :size="14" :stroke-width="1.7" />
+            <button
+              class="chip"
+              :class="{ on: openMenu === 'schedule' }"
+              @click.stop="toggle('schedule')"
+            >
+              <Clock
+                :size="14"
+                :stroke-width="1.7"
+              />
               {{ scheduleLabel }}
-              <ChevronDown :size="13" :stroke-width="1.7" class="chev" />
+              <ChevronDown
+                :size="13"
+                :stroke-width="1.7"
+                class="chev"
+              />
             </button>
-            <div v-if="openMenu === 'schedule'" class="dropdown sched" @click.stop>
+            <div
+              v-if="openMenu === 'schedule'"
+              class="dropdown sched"
+              @click.stop
+            >
               <label class="rad">
-                <input type="radio" value="manual" v-model="form.schedule.kind" /> 手动触发
+                <input
+                  v-model="form.schedule.kind"
+                  type="radio"
+                  value="manual"
+                > 手动触发
               </label>
               <label class="rad">
-                <input type="radio" value="daily" v-model="form.schedule.kind" /> 每天
                 <input
-                  type="time"
+                  v-model="form.schedule.kind"
+                  type="radio"
+                  value="daily"
+                > 每天
+                <input
                   v-model="form.schedule.time"
+                  type="time"
                   class="mini-time"
                   :disabled="form.schedule.kind !== 'daily'"
-                />
+                >
               </label>
               <label class="rad">
-                <input type="radio" value="interval" v-model="form.schedule.kind" /> 每
                 <input
+                  v-model="form.schedule.kind"
+                  type="radio"
+                  value="interval"
+                > 每
+                <input
+                  v-model.number="form.schedule.everyHours"
                   type="number"
                   min="1"
                   max="168"
-                  v-model.number="form.schedule.everyHours"
                   class="mini-num"
                   :disabled="form.schedule.kind !== 'interval'"
-                /> 小时
+                > 小时
               </label>
-              <div class="dd-note">定时仅在应用开启时生效（本地轻量调度）。</div>
+              <div class="dd-note">
+                定时仅在应用开启时生效（本地轻量调度）。
+              </div>
             </div>
           </div>
 
@@ -274,25 +412,56 @@ async function submit() {
             title="开启后联网深度搜索、多源交叉验证"
             @click.stop="form.deepResearch = !form.deepResearch"
           >
-            <Telescope :size="14" :stroke-width="1.7" /> 深度检测
+            <Telescope
+              :size="14"
+              :stroke-width="1.7"
+            /> 深度检测
           </button>
 
           <!-- 循环次数 -->
-          <div class="chip stepper" title="流程自我迭代轮数">
-            <Repeat :size="14" :stroke-width="1.7" />
+          <div
+            class="chip stepper"
+            title="流程自我迭代轮数"
+          >
+            <Repeat
+              :size="14"
+              :stroke-width="1.7"
+            />
             循环
-            <button class="step-b" @click.stop="form.loopCount = Math.max(1, form.loopCount - 1)">−</button>
+            <button
+              class="step-b"
+              @click.stop="form.loopCount = Math.max(1, form.loopCount - 1)"
+            >
+              −
+            </button>
             <span class="step-n">{{ form.loopCount }}</span>
-            <button class="step-b" @click.stop="form.loopCount = Math.min(5, form.loopCount + 1)">+</button>
+            <button
+              class="step-b"
+              @click.stop="form.loopCount = Math.min(5, form.loopCount + 1)"
+            >
+              +
+            </button>
           </div>
         </div>
 
         <div class="foot-submit">
           <label class="run-now">
-            <input type="checkbox" v-model="runNow" /> 创建后立即运行
+            <input
+              v-model="runNow"
+              type="checkbox"
+            > 创建后立即运行
           </label>
-          <button class="btn-cancel" @click="auto.closeEditor()">取消</button>
-          <button class="btn-create" :disabled="!canSubmit" @click="submit">
+          <button
+            class="btn-cancel"
+            @click="auto.closeEditor()"
+          >
+            取消
+          </button>
+          <button
+            class="btn-create"
+            :disabled="!canSubmit"
+            @click="submit"
+          >
             {{ editing ? "保存" : "创建" }}
           </button>
         </div>
@@ -306,25 +475,46 @@ async function submit() {
   position: fixed;
   inset: 0;
   z-index: 9990;
-  background: rgba(20, 28, 40, 0.34);
-  backdrop-filter: blur(2px);
+  /* 液态玻璃遮罩：统一 scrim 配方 */
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px;
 }
 .modal {
+  position: relative;
   width: 100%;
   max-width: 720px;
-  background: var(--panel);
-  border: 1px solid var(--hairline, var(--border));
-  border-radius: 14px;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.1);
+  /* 液态玻璃：弹窗走 chrome 真磨砂配方 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
+  box-shadow: var(--chrome-shadow);
   padding: 16px 18px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   animation: mIn 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+/* v9：弹窗主容器一圈棱边折射环 */
+.modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 @keyframes mIn {
   from { opacity: 0; transform: translateY(10px) scale(0.985); }
@@ -378,10 +568,13 @@ async function submit() {
 }
 .ghost-btn:hover { color: var(--text); background: var(--selection-bg); }
 .line-btn {
-  border-color: var(--border);
+  /* 液态玻璃：次级按钮走 card 配方 */
+  border-color: var(--card-border);
+  background: var(--card-bg);
   color: var(--text-2);
+  border-radius: 10px;
 }
-.line-btn:hover { border-color: var(--ink); color: var(--ink); }
+.line-btn:hover { color: var(--ink); transform: translateY(-1px); box-shadow: var(--shadow); }
 .info-dot {
   display: inline-flex;
   color: var(--dim);
@@ -411,7 +604,7 @@ async function submit() {
   background: var(--bg-soft, var(--panel));
   font-family: var(--mono);
 }
-.m-prompt:focus { outline: none; border-color: var(--primary); }
+.m-prompt:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .m-desc {
   border: none;
   border-bottom: 1px dashed var(--border);
@@ -426,7 +619,9 @@ async function submit() {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  border-top: 1px solid var(--border-soft);
+  /* v9：脚部渐隐发丝线 */
+  border-top: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   padding-top: 12px;
 }
 .foot-controls {
@@ -480,10 +675,13 @@ async function submit() {
   min-width: 190px;
   max-height: 320px;
   overflow-y: auto;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.2);
+  /* 液态玻璃：下拉菜单走 chrome 真磨砂配方（小件圆角取 14px，避免首尾项裁角） */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 14px;
+  box-shadow: var(--chrome-shadow);
   padding: 5px;
   display: flex;
   flex-direction: column;
@@ -570,15 +768,21 @@ async function submit() {
 }
 .btn-cancel:hover { color: var(--ink); background: var(--selection-bg); }
 .btn-create {
-  border: none;
+  /* 液态玻璃：主按钮玻璃三件套高光 */
+  border: 1px solid rgba(255, 255, 255, 0.22);
   background: var(--btn-solid-bg);
   color: var(--btn-solid-text);
   font-size: 13px;
   padding: 7px 20px;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   letter-spacing: 1px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
 }
 .btn-create:hover:not(:disabled) { background: var(--primary); }
+/* v9：主 CTA 按压反馈 */
+.btn-create { transition: background 120ms var(--ease, ease), transform 0.12s var(--ease, ease); }
+.btn-create:active:not(:disabled) { transform: scale(0.98); }
 .btn-create:disabled { opacity: 0.45; cursor: not-allowed; }
 </style>

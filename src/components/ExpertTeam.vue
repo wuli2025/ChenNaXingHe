@@ -149,58 +149,121 @@ const emit = defineEmits<{
         class="rs-input"
         placeholder="搜索专家名字、角色、触发词…"
         @input="applyFilter"
-      />
-      <button class="dbg-btn" :class="{ on: showDebug }" @click="showDebug = !showDebug">
-        🔬 匹配测试
+      >
+      <button
+        class="dbg-btn"
+        :class="{ on: showDebug }"
+        @click="showDebug = !showDebug"
+      >
+        匹配测试
       </button>
     </div>
 
     <!-- 智能匹配测试面板 -->
-    <div v-if="showDebug" class="debug-panel">
+    <div
+      v-if="showDebug"
+      class="debug-panel"
+    >
       <div class="dbg-row">
         <input
           v-model="debugQuery"
           class="rs-input"
           placeholder="输入一句需求，看智能匹配会召集谁、为什么…"
           @keyup.enter="runDebug"
-        />
-        <button class="dbg-run" :disabled="debugBusy" @click="runDebug">
+        >
+        <button
+          class="dbg-run"
+          :disabled="debugBusy"
+          @click="runDebug"
+        >
           {{ debugBusy ? "…" : "测试匹配" }}
         </button>
       </div>
-      <div v-if="debugRows.length" class="dbg-results">
-        <div v-for="r in debugRows" :key="r.id" class="dbg-item" :class="{ sel: r.wouldSelect }">
+      <div
+        v-if="debugRows.length"
+        class="dbg-results"
+      >
+        <div
+          v-for="r in debugRows"
+          :key="r.id"
+          class="dbg-item"
+          :class="{ sel: r.wouldSelect }"
+        >
           <span class="dbg-name">{{ r.name }}</span>
           <span class="dbg-bar"><i :style="{ width: Math.min(100, r.similarity * 120) + '%' }" /></span>
           <span class="dbg-score">{{ r.similarity.toFixed(3) }}</span>
-          <span v-if="r.wouldSelect" class="dbg-tag">召集</span>
-          <span v-if="r.hitSignals.length" class="dbg-sig">命中: {{ r.hitSignals.join("、") }}</span>
+          <span
+            v-if="r.wouldSelect"
+            class="dbg-tag"
+          >召集</span>
+          <span
+            v-if="r.hitSignals.length"
+            class="dbg-sig"
+          >命中: {{ r.hitSignals.join("、") }}</span>
         </div>
       </div>
-      <p v-else class="dbg-hint">输入需求并测试，可看到每位专家的命中信号与相似度——用来校准触发词。</p>
+      <p
+        v-else
+        class="dbg-hint"
+      >
+        输入需求并测试，可看到每位专家的命中信号与相似度——用来校准触发词。
+      </p>
     </div>
 
     <!-- ① 业务专家团 -->
-    <div class="section-title">🧭 业务专家团 · 一句话组队</div>
+    <div class="section-title">
+      业务专家团 · 一句话组队
+    </div>
     <div class="team-grid">
-      <button v-for="tm in teams" :key="tm.id" class="team-card" @click="emit('select-team', tm.id)">
-        <img class="team-avatar" :src="avatarUrl(tm.leadId, tm.icon)" :alt="tm.name" loading="lazy" decoding="async" />
+      <button
+        v-for="tm in teams"
+        :key="tm.id"
+        class="team-card"
+        @click="emit('select-team', tm.id)"
+      >
+        <img
+          class="team-avatar"
+          :src="avatarUrl(tm.leadId, tm.icon)"
+          :alt="tm.name"
+          loading="lazy"
+          decoding="async"
+        >
         <div class="team-body">
-          <div class="team-name">{{ tm.icon }} {{ tm.name }}</div>
-          <div class="team-tag">{{ tm.tagline }}</div>
-          <div class="team-meta">{{ tm.memberIds.length + 1 }} 人 · {{ tm.tags.slice(0, 3).join(" / ") }}</div>
+          <div class="team-name">
+            {{ tm.icon }} {{ tm.name }}
+          </div>
+          <div class="team-tag">
+            {{ tm.tagline }}
+          </div>
+          <div class="team-meta">
+            {{ tm.memberIds.length + 1 }} 人 · {{ tm.tags.slice(0, 3).join(" / ") }}
+          </div>
         </div>
         <div class="card-actions">
-          <span class="dl-inline" title="下载该团 CLAUDE.md" @click.stop="downloadDoc('team', tm.id, tm.name, $event)">⬇</span>
-          <span class="summon-pill" title="召唤这支团" @click.stop="emit('select-team', tm.id)">召唤</span>
+          <span
+            class="dl-inline"
+            title="下载该团 CLAUDE.md"
+            @click.stop="downloadDoc('team', tm.id, tm.name, $event)"
+          >⬇</span>
+          <span
+            class="summon-pill"
+            title="召唤这支团"
+            @click.stop="emit('select-team', tm.id)"
+          >召唤</span>
         </div>
       </button>
     </div>
 
     <!-- ② 全部专家 -->
-    <div class="section-title">全部专家 · {{ filteredExperts.length }} / {{ allExperts.length }} 位</div>
+    <div class="section-title">
+      全部专家 · {{ filteredExperts.length }} / {{ allExperts.length }} 位
+    </div>
     <div class="group-bar">
-      <button class="gb-btn" :class="{ on: !selectedGroup }" @click="selectGroup(null)">
+      <button
+        class="gb-btn"
+        :class="{ on: !selectedGroup }"
+        @click="selectGroup(null)"
+      >
         全部 <span class="gb-c">{{ allExperts.length }}</span>
       </button>
       <button
@@ -223,17 +286,33 @@ const emit = defineEmits<{
         :title="exp.description"
         @click="emit('select-expert', exp.id)"
       >
-        <img class="exp-avatar" :src="avatarUrl(exp.id, exp.icon)" :alt="exp.name" loading="lazy" decoding="async" />
+        <img
+          class="exp-avatar"
+          :src="avatarUrl(exp.id, exp.icon)"
+          :alt="exp.name"
+          loading="lazy"
+          decoding="async"
+        >
         <div class="exp-info">
           <div class="exp-name-row">
             <span class="exp-name">{{ exp.name }}</span>
             <span class="exp-tier">{{ tierLabel[exp.costTier] }}</span>
           </div>
-          <div class="exp-role">{{ exp.role }}</div>
+          <div class="exp-role">
+            {{ exp.role }}
+          </div>
         </div>
         <div class="card-actions">
-          <span class="dl-inline" title="下载该专家 CLAUDE.md" @click.stop="downloadDoc('expert', exp.id, exp.name, $event)">⬇</span>
-          <span class="summon-pill sm" title="召唤这位专家" @click.stop="emit('select-expert', exp.id)">召唤</span>
+          <span
+            class="dl-inline"
+            title="下载该专家 CLAUDE.md"
+            @click.stop="downloadDoc('expert', exp.id, exp.name, $event)"
+          >⬇</span>
+          <span
+            class="summon-pill sm"
+            title="召唤这位专家"
+            @click.stop="emit('select-expert', exp.id)"
+          >召唤</span>
         </div>
       </button>
     </div>
@@ -313,7 +392,7 @@ const emit = defineEmits<{
 .dbg-sig { color: var(--faint); font-size: 10.5px; }
 .dbg-hint { font-size: 11.5px; color: var(--faint); margin: 0; }
 
-.section-title { font-size: 12px; font-weight: 700; color: var(--gold2, #e6c984); margin-top: 4px; }
+.section-title { font-size: 12px; font-weight: 700; color: var(--gold2, #e6c984); margin-top: 4px; letter-spacing: 0.08em; }
 
 .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
 .team-card {
@@ -322,14 +401,16 @@ const emit = defineEmits<{
   align-items: center;
   gap: 11px;
   padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.025);
+  border-radius: 14px;
+  /* 玻璃卡：token 四主题自适应（旧白 alpha 在浅色下近乎隐形） */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   cursor: pointer;
   text-align: left;
   transition: all 0.16s;
 }
-.team-card:hover { border-color: rgba(212, 176, 106, 0.45); background: rgba(212, 176, 106, 0.06); transform: translateY(-1px); }
+.team-card:hover { border-color: rgba(212, 176, 106, 0.45); box-shadow: var(--card-shadow-hover); transform: translateY(-1px); }
 .team-avatar { width: 44px; height: 44px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
 .team-body { flex: 1; min-width: 0; }
 .team-name { font-size: 13.5px; font-weight: 700; color: var(--ink); }
@@ -354,12 +435,14 @@ const emit = defineEmits<{
   display: flex; align-items: center; gap: 8px;
   padding: 7px 8px 7px 10px;
   border-radius: 9px;
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--tier-left, var(--line));
-  background: rgba(255, 255, 255, 0.025);
+  /* 玻璃小卡：保留左侧梯队色条 */
+  border: 1px solid var(--card-border);
+  border-left: 3px solid var(--tier-left, var(--card-border));
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   cursor: pointer; text-align: left; transition: all 0.16s;
 }
-.exp-card:hover { border-color: rgba(212, 176, 106, 0.35); background: rgba(255, 255, 255, 0.05); transform: translateY(-1px); }
+.exp-card:hover { border-color: rgba(212, 176, 106, 0.35); box-shadow: var(--card-shadow-hover); transform: translateY(-1px); }
 .exp-avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .exp-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
 .exp-name-row { display: flex; align-items: center; gap: 4px; }
@@ -397,12 +480,15 @@ const emit = defineEmits<{
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.14s;
+  transition: all 0.14s var(--ease, ease);
 }
 .summon-pill:hover {
   background: rgba(212, 176, 106, 0.25);
   border-color: rgba(212, 176, 106, 0.85);
   transform: translateY(-1px);
+}
+.summon-pill:active {
+  transform: translateY(0) scale(0.98);
 }
 .summon-pill.sm { padding: 4px 11px; font-size: 11px; border-radius: 7px; }
 </style>

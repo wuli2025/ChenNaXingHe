@@ -121,11 +121,20 @@ function convertToSupplier() {
     </div>
 
     <!-- ① 开发漏斗看板 -->
-    <TSection title="供应商开发漏斗 · 本月" sub="线索 → 建联 → 回复 → 比价 → 合作" />
+    <TSection
+      title="供应商开发漏斗 · 本月"
+      sub="线索 → 建联 → 回复 → 比价 → 合作"
+    />
     <TPanel pad>
       <div class="fn">
-        <div v-for="(f, i) in store.outreachFunnel.value" :key="f.stage" class="fn-row">
-          <div class="fn-lbl">{{ f.stage }}</div>
+        <div
+          v-for="(f, i) in store.outreachFunnel.value"
+          :key="f.stage"
+          class="fn-row"
+        >
+          <div class="fn-lbl">
+            {{ f.stage }}
+          </div>
           <div class="fn-track">
             <div
               class="fn-fill"
@@ -138,16 +147,28 @@ function convertToSupplier() {
               <span class="fn-n">{{ f.n }}</span>
             </div>
           </div>
-          <div class="fn-conv">{{ f.conv || "—" }}</div>
+          <div class="fn-conv">
+            {{ f.conv || "—" }}
+          </div>
         </div>
       </div>
     </TPanel>
 
     <!-- ② 线索池表 -->
-    <TSection title="线索池" :sub="`${store.leads.value.length} 条 · 同公司自动去重合并`">
+    <TSection
+      title="线索池"
+      :sub="`${store.leads.value.length} 条 · 同公司自动去重合并`"
+    >
       <template #actions>
-        <button class="t-btn sm" :disabled="!selected || store.busy.value" @click="genOutreach">
-          <TIcon :path="ICONS.lead" :size="14" /> {{ store.busy.value ? "生成中…" : "生成开发信" }}
+        <button
+          class="t-btn sm"
+          :disabled="!selected || store.busy.value"
+          @click="genOutreach"
+        >
+          <TIcon
+            :path="ICONS.lead"
+            :size="14"
+          /> {{ store.busy.value ? "生成中…" : "生成开发信" }}
         </button>
       </template>
     </TSection>
@@ -174,20 +195,47 @@ function convertToSupplier() {
           >
             <td>
               <b>{{ l.company }}</b>
-              <div class="t-muted" style="font-size: 11px">{{ l.contact }} · {{ l.email }}</div>
+              <div
+                class="t-muted"
+                style="font-size: 11px"
+              >
+                {{ l.contact }} · {{ l.email }}
+              </div>
             </td>
             <td>{{ l.country }} · {{ l.region }}</td>
-            <td style="max-width: 200px">{{ l.category }}</td>
-            <td><TBadge :tone="gradeTone(l.grade)">{{ l.grade }} · {{ l.score }}</TBadge></td>
-            <td><span class="t-pill">{{ sourceLabel(l.source) }}</span></td>
-            <td><TBadge :tone="STATUS_TONE[l.status]">{{ STATUS_LABEL[l.status] }}</TBadge></td>
+            <td style="max-width: 200px">
+              {{ l.category }}
+            </td>
             <td>
-              <span v-if="l.replyClass" class="t-warn-txt" style="font-size: 11.5px">{{ replyClassLabel(l.replyClass) }}</span>
-              <span v-else class="t-muted" style="font-size: 11.5px">—</span>
+              <TBadge :tone="gradeTone(l.grade)">
+                {{ l.grade }} · {{ l.score }}
+              </TBadge>
+            </td>
+            <td><span class="t-pill">{{ sourceLabel(l.source) }}</span></td>
+            <td>
+              <TBadge :tone="STATUS_TONE[l.status]">
+                {{ STATUS_LABEL[l.status] }}
+              </TBadge>
+            </td>
+            <td>
+              <span
+                v-if="l.replyClass"
+                class="t-warn-txt"
+                style="font-size: 11.5px"
+              >{{ replyClassLabel(l.replyClass) }}</span>
+              <span
+                v-else
+                class="t-muted"
+                style="font-size: 11.5px"
+              >—</span>
             </td>
           </tr>
           <tr v-if="!store.leads.value.length">
-            <td colspan="7" class="t-muted" style="text-align: center; padding: 26px">
+            <td
+              colspan="7"
+              class="t-muted"
+              style="text-align: center; padding: 26px"
+            >
               暂无线索。可从 M1 选品把智利/南非新酒庄一键存为建联线索。
             </td>
           </tr>
@@ -197,7 +245,10 @@ function convertToSupplier() {
 
     <!-- ③ 选中线索详情 -->
     <template v-if="selected">
-      <TSection :title="selected.company" :sub="`${selected.country} · ${selected.region} · ${selected.category}`">
+      <TSection
+        :title="selected.company"
+        :sub="`${selected.country} · ${selected.region} · ${selected.category}`"
+      >
         <template #actions>
           <button
             class="t-btn sm"
@@ -221,9 +272,14 @@ function convertToSupplier() {
 
       <div class="t-grid t-g2 detail">
         <!-- 画像 + 往来线程 -->
-        <div class="t-col" style="gap: 12px">
+        <div
+          class="t-col"
+          style="gap: 12px"
+        >
           <TPanel pad>
-            <div class="pf-title">线索画像 <span class="t-muted">· 字段级置信度，&lt;85% 转人工核</span></div>
+            <div class="pf-title">
+              线索画像 <span class="t-muted">· 字段级置信度，&lt;85% 转人工核</span>
+            </div>
             <div class="pf">
               <div
                 v-for="(v, k) in selected.profile"
@@ -233,8 +289,14 @@ function convertToSupplier() {
               >
                 <span class="pf-k">{{ k }}</span>
                 <span class="pf-v">{{ v }}</span>
-                <TConf v-if="selected.confs[k] != null" :value="selected.confs[k]" />
-                <span v-else class="pf-src">已核</span>
+                <TConf
+                  v-if="selected.confs[k] != null"
+                  :value="selected.confs[k]"
+                />
+                <span
+                  v-else
+                  class="pf-src"
+                >已核</span>
               </div>
               <div class="pf-row">
                 <span class="pf-k gold-k">建联优先级</span>
@@ -243,41 +305,75 @@ function convertToSupplier() {
                 </span>
               </div>
             </div>
-            <div class="t-note" :class="selected.grade === 'A' ? 'info' : 'warn'" style="margin-bottom: 0">
+            <div
+              class="t-note"
+              :class="selected.grade === 'A' ? 'info' : 'warn'"
+              style="margin-bottom: 0"
+            >
               {{
                 selected.grade === "A"
                   ? "A 级 · 建议本周联系。"
                   : selected.grade === "B"
-                  ? "B 级 · 可纳入下批建联。"
-                  : "C 级 · 关键信息不足或匹配度低，降级处理。"
+                    ? "B 级 · 可纳入下批建联。"
+                    : "C 级 · 关键信息不足或匹配度低，降级处理。"
               }}
             </div>
           </TPanel>
 
           <TPanel pad>
-            <div class="pf-title">往来线程 <span class="t-muted">· {{ selected.thread.length }} 封</span></div>
-            <div v-if="selected.thread.length" class="thread">
-              <div v-for="(m, i) in selected.thread" :key="i" class="tm" :class="m.dir">
-                <div class="tm-h"><b>{{ m.who }}</b><span class="t-muted">{{ m.at }}</span></div>
-                <div class="tm-b">{{ m.text }}</div>
+            <div class="pf-title">
+              往来线程 <span class="t-muted">· {{ selected.thread.length }} 封</span>
+            </div>
+            <div
+              v-if="selected.thread.length"
+              class="thread"
+            >
+              <div
+                v-for="(m, i) in selected.thread"
+                :key="i"
+                class="tm"
+                :class="m.dir"
+              >
+                <div class="tm-h">
+                  <b>{{ m.who }}</b><span class="t-muted">{{ m.at }}</span>
+                </div>
+                <div class="tm-b">
+                  {{ m.text }}
+                </div>
               </div>
             </div>
-            <div v-else class="empty">
+            <div
+              v-else
+              class="empty"
+            >
               尚无往来。生成开发信并通过外发核准闸后，SMTP 发出，工作流挂起等回信。
             </div>
-            <div v-if="selected.replyClass" class="t-note ok" style="margin-bottom: 0">
+            <div
+              v-if="selected.replyClass"
+              class="t-note ok"
+              style="margin-bottom: 0"
+            >
               回信意向分类：<b>{{ replyClassLabel(selected.replyClass) }}</b>。
-              <template v-if="canConvert">可一键<b>转为潜在供应商</b>进入 M3 供应商公海（标签“新建联”）走既有询价比价流程。</template>
-              <template v-else>非合作意向，加入抑制名单，不再建联。</template>
+              <template v-if="canConvert">
+                可一键<b>转为潜在供应商</b>进入 M3 供应商公海（标签“新建联”）走既有询价比价流程。
+              </template>
+              <template v-else>
+                非合作意向，加入抑制名单，不再建联。
+              </template>
             </div>
           </TPanel>
         </div>
 
         <!-- 开发信草稿区 -->
         <TPanel pad>
-          <div class="pf-title">开发信草稿 <span class="t-muted">· 逐家个性化，非模板群发</span></div>
+          <div class="pf-title">
+            开发信草稿 <span class="t-muted">· 逐家个性化，非模板群发</span>
+          </div>
           <div class="lang-bar">
-            <span class="t-muted" style="font-size: 12px">语言</span>
+            <span
+              class="t-muted"
+              style="font-size: 12px"
+            >语言</span>
             <div class="lang-tabs">
               <button
                 v-for="ln in LANGS"
@@ -295,7 +391,10 @@ function convertToSupplier() {
               :disabled="store.busy.value"
               @click="genOutreach"
             >
-              <TIcon :path="ICONS.lead" :size="13" />
+              <TIcon
+                :path="ICONS.lead"
+                :size="13"
+              />
               {{ store.busy.value ? "生成中…" : currentDraft ? "重写此语言" : "生成开发信" }}
             </button>
           </div>
@@ -306,12 +405,21 @@ function convertToSupplier() {
             <span>语言 <b>{{ draftLang.toUpperCase() }}</b></span>
           </div>
 
-          <pre v-if="currentDraft" class="mail-body">{{ currentDraft }}</pre>
-          <div v-else class="empty">
+          <pre
+            v-if="currentDraft"
+            class="mail-body"
+          >{{ currentDraft }}</pre>
+          <div
+            v-else
+            class="empty"
+          >
             尚无 {{ draftLang.toUpperCase() }} 草稿。点“生成开发信”由 Claude 起草个性化破冰信（右侧 Console 可看流式过程），<b>生成后自动进外发核准闸</b>。
           </div>
 
-          <div class="t-note info" style="margin-bottom: 0">
+          <div
+            class="t-note info"
+            style="margin-bottom: 0"
+          >
             每封信引用对方真实信息（产区 / 认证 / 品类契合点）。去重（30 天同 domain）+ 频控 + <b>首发人工闸</b>生效——这一步会进人工审核看板。
           </div>
         </TPanel>

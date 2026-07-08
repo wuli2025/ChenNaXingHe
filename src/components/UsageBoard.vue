@@ -93,15 +93,33 @@ function cacheTotal(b: TokenBucket): number {
 
 <template>
   <Teleport to="body">
-    <div class="ub-overlay" @click="store.closeUsage()">
-      <div class="ub" @click.stop>
+    <div
+      class="ub-overlay"
+      @click="store.closeUsage()"
+    >
+      <div
+        class="ub"
+        @click.stop
+      >
         <div class="ub-accent" />
         <header class="ub-head">
           <div>
-            <div class="ub-title">使用统计</div>
-            <div class="ub-sub">查看 AI 模型的使用情况和成本统计 · 数据源 ~/.claude/projects</div>
+            <div class="ub-title">
+              使用统计
+            </div>
+            <div class="ub-sub">
+              查看 AI 模型的使用情况和成本统计 · 数据源 ~/.claude/projects
+            </div>
           </div>
-          <button class="icon-btn" @click="store.closeUsage()"><X :size="18" :stroke-width="1.8" /></button>
+          <button
+            class="icon-btn"
+            @click="store.closeUsage()"
+          >
+            <X
+              :size="18"
+              :stroke-width="1.8"
+            />
+          </button>
         </header>
 
         <!-- 筛选行 -->
@@ -118,8 +136,15 @@ function cacheTotal(b: TokenBucket): number {
             </button>
           </div>
           <div class="filter-right">
-            <button class="ghost-btn" title="刷新" @click="store.refreshUsage()">
-              <RefreshCw :size="13" :stroke-width="1.8" /> 刷新
+            <button
+              class="ghost-btn"
+              title="刷新"
+              @click="store.refreshUsage()"
+            >
+              <RefreshCw
+                :size="13"
+                :stroke-width="1.8"
+              /> 刷新
             </button>
             <div class="period-seg">
               <button
@@ -138,26 +163,56 @@ function cacheTotal(b: TokenBucket): number {
           <!-- 套餐额度 / 实时余额:每个已配置供应商查各自的额度接口 -->
           <section class="plans">
             <div class="plans-head">
-              <span class="sec-title"><Wallet :size="13" :stroke-width="2" /> 套餐额度</span>
-              <button class="ghost-btn" title="刷新全部供应商额度" @click="store.refreshConfiguredBalances()">
-                <RefreshCw :size="13" :stroke-width="1.8" /> 刷新额度
+              <span class="sec-title"><Wallet
+                :size="13"
+                :stroke-width="2"
+              /> 套餐额度</span>
+              <button
+                class="ghost-btn"
+                title="刷新全部供应商额度"
+                @click="store.refreshConfiguredBalances()"
+              >
+                <RefreshCw
+                  :size="13"
+                  :stroke-width="1.8"
+                /> 刷新额度
               </button>
             </div>
-            <div v-if="planProviders.length" class="plan-grid">
-              <div v-for="p in planProviders" :key="p.id" class="plan-card">
+            <div
+              v-if="planProviders.length"
+              class="plan-grid"
+            >
+              <div
+                v-for="p in planProviders"
+                :key="p.id"
+                class="plan-card"
+              >
                 <div class="plan-top">
-                  <span class="plan-dot" :style="{ background: p.color }" />
+                  <span
+                    class="plan-dot"
+                    :style="{ background: p.color }"
+                  />
                   <span class="plan-name">{{ p.name }}</span>
                   <button
                     class="mini-refresh"
                     :title="`刷新 ${p.name} 额度`"
                     @click="store.refreshBalance(p.id)"
                   >
-                    <span v-if="store.balanceBusy[p.id]" class="mini-spin" />
-                    <RefreshCw v-else :size="11" :stroke-width="1.8" />
+                    <span
+                      v-if="store.balanceBusy[p.id]"
+                      class="mini-spin"
+                    />
+                    <RefreshCw
+                      v-else
+                      :size="11"
+                      :stroke-width="1.8"
+                    />
                   </button>
                 </div>
-                <div class="plan-val" :class="balClass(store.balances[p.id])">
+                <div
+                  class="plan-val"
+                  :class="balClass(store.balances[p.id])"
+                >
                   {{ store.balances[p.id]?.label ?? "—" }}
                 </div>
                 <div class="plan-detail">
@@ -168,11 +223,17 @@ function cacheTotal(b: TokenBucket): number {
                   class="plan-console"
                   @click="openUrl(store.balances[p.id]!.consoleUrl)"
                 >
-                  控制台 <ExternalLink :size="10" :stroke-width="1.8" />
+                  控制台 <ExternalLink
+                    :size="10"
+                    :stroke-width="1.8"
+                  />
                 </button>
               </div>
             </div>
-            <div v-else class="plans-empty">
+            <div
+              v-else
+              class="plans-empty"
+            >
               尚未配置任何带 Key 的供应商 · 配好后这里逐家显示套餐额度
             </div>
           </section>
@@ -183,25 +244,40 @@ function cacheTotal(b: TokenBucket): number {
               <div class="card">
                 <div class="c-head">
                   <span class="c-lab">总请求数</span>
-                  <span class="c-ic blue"><Activity :size="15" :stroke-width="2" /></span>
+                  <span class="c-ic blue"><Activity
+                    :size="15"
+                    :stroke-width="2"
+                  /></span>
                 </div>
-                <div class="c-num">{{ fmtInt(bucket.requests) }}</div>
+                <div class="c-num">
+                  {{ fmtInt(bucket.requests) }}
+                </div>
               </div>
 
               <div class="card">
                 <div class="c-head">
                   <span class="c-lab">总成本<span class="c-est">估算</span></span>
-                  <span class="c-ic green"><DollarSign :size="15" :stroke-width="2" /></span>
+                  <span class="c-ic green"><DollarSign
+                    :size="15"
+                    :stroke-width="2"
+                  /></span>
                 </div>
-                <div class="c-num">{{ fmtCost(bucket.cost) }}</div>
+                <div class="c-num">
+                  {{ fmtCost(bucket.cost) }}
+                </div>
               </div>
 
               <div class="card">
                 <div class="c-head">
                   <span class="c-lab">总 Token 数</span>
-                  <span class="c-ic purple"><Layers :size="15" :stroke-width="2" /></span>
+                  <span class="c-ic purple"><Layers
+                    :size="15"
+                    :stroke-width="2"
+                  /></span>
                 </div>
-                <div class="c-num">{{ fmtInt(bucket.total) }}</div>
+                <div class="c-num">
+                  {{ fmtInt(bucket.total) }}
+                </div>
                 <div class="c-sub">
                   <span>Input</span><b>{{ fmtK(bucket.input) }}</b>
                   <span>Output</span><b>{{ fmtK(bucket.output) }}</b>
@@ -211,9 +287,14 @@ function cacheTotal(b: TokenBucket): number {
               <div class="card">
                 <div class="c-head">
                   <span class="c-lab">缓存 Token</span>
-                  <span class="c-ic amber"><Database :size="15" :stroke-width="2" /></span>
+                  <span class="c-ic amber"><Database
+                    :size="15"
+                    :stroke-width="2"
+                  /></span>
                 </div>
-                <div class="c-num">{{ fmtInt(cacheTotal(bucket)) }}</div>
+                <div class="c-num">
+                  {{ fmtInt(cacheTotal(bucket)) }}
+                </div>
                 <div class="c-sub">
                   <span>创建</span><b>{{ fmtK(bucket.cacheCreation) }}</b>
                   <span>命中</span><b>{{ fmtK(bucket.cacheRead) }}</b>
@@ -241,19 +322,35 @@ function cacheTotal(b: TokenBucket): number {
                       :style="{ height: Math.max(2, (d.total / dailyMax) * 100) + '%' }"
                     />
                   </div>
-                  <div class="bar-lab">{{ d.label.slice(-2) }}</div>
+                  <div class="bar-lab">
+                    {{ d.label.slice(-2) }}
+                  </div>
                 </div>
               </div>
             </div>
           </template>
 
-          <div v-else-if="store.usage && !store.usage.available" class="empty">
-            <div class="empty-big">暂无用量数据</div>
-            <div class="empty-sub">尚未通过 Claude Code 产生会话</div>
+          <div
+            v-else-if="store.usage && !store.usage.available"
+            class="empty"
+          >
+            <div class="empty-big">
+              暂无用量数据
+            </div>
+            <div class="empty-sub">
+              尚未通过 Claude Code 产生会话
+            </div>
           </div>
-          <div v-else class="empty">
-            <div class="empty-big">{{ source === "codex" ? "Codex" : "Gemini" }} 暂无数据</div>
-            <div class="empty-sub">该看板仅聚合 Claude Code 日志；{{ source === "codex" ? "Codex" : "Gemini" }} 用量需对应 CLI 自身记录</div>
+          <div
+            v-else
+            class="empty"
+          >
+            <div class="empty-big">
+              {{ source === "codex" ? "Codex" : "Gemini" }} 暂无数据
+            </div>
+            <div class="empty-sub">
+              该看板仅聚合 Claude Code 日志；{{ source === "codex" ? "Codex" : "Gemini" }} 用量需对应 CLI 自身记录
+            </div>
           </div>
         </div>
       </div>
@@ -266,8 +363,10 @@ function cacheTotal(b: TokenBucket): number {
   position: fixed;
   inset: 0;
   z-index: 9600;
-  background: rgba(20, 20, 25, 0.28);
-  backdrop-filter: blur(2px);
+  /* 液态玻璃遮罩：统一 scrim 配方 */
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -276,16 +375,35 @@ function cacheTotal(b: TokenBucket): number {
 }
 @keyframes ov { from { opacity: 0; } }
 .ub {
+  position: relative;
   width: min(860px, 96vw);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg), 0 0 0 1px var(--hairline);
+  /* 液态玻璃：大弹窗走 chrome 真磨砂配方 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 20px;
+  box-shadow: var(--chrome-shadow);
   overflow: hidden;
   animation: pop 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* v9：弹窗主容器一圈棱边折射环 */
+.ub::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 @keyframes pop { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
 .ub-accent {
@@ -362,14 +480,15 @@ function cacheTotal(b: TokenBucket): number {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  /* 液态玻璃：次级按钮走 card 配方 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text-2);
   font-size: 12px;
   padding: 5px 11px;
-  border-radius: 8px;
+  border-radius: 10px;
 }
-.ghost-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ghost-btn:hover { color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow); }
 .period-seg {
   display: inline-flex;
   border: 1px solid var(--border);
@@ -401,7 +520,9 @@ function cacheTotal(b: TokenBucket): number {
 .plans {
   margin-bottom: 20px;
   padding-bottom: 18px;
-  border-bottom: 1px solid var(--border-soft);
+  /* v9：分区渐隐发丝线 */
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
 }
 .plans-head {
   display: flex;
@@ -420,11 +541,12 @@ function cacheTotal(b: TokenBucket): number {
   gap: 10px;
 }
 .plan-card {
-  background: linear-gradient(165deg, var(--panel) 0%, var(--bg-soft) 100%);
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
+  /* 液态玻璃：内部卡片走 card 配方 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
   padding: 12px 13px 11px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -497,8 +619,9 @@ function cacheTotal(b: TokenBucket): number {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  /* 液态玻璃：小号次级按钮同走 card 配方 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text-2);
   font-size: 10px;
   padding: 2px 8px;
@@ -519,11 +642,12 @@ function cacheTotal(b: TokenBucket): number {
   margin-bottom: 22px;
 }
 .card {
-  background: linear-gradient(165deg, var(--panel) 0%, var(--bg-soft) 100%);
-  border: 1px solid var(--border-soft);
-  border-radius: 13px;
+  /* 液态玻璃：统计卡走 card 配方 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
   padding: 15px 15px 14px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
   min-height: 116px;
   display: flex;
   flex-direction: column;
@@ -585,7 +709,9 @@ function cacheTotal(b: TokenBucket): number {
 }
 
 .trend {
-  border-top: 1px solid var(--border-soft);
+  /* v9：分区渐隐发丝线 */
+  border-top: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   padding-top: 16px;
 }
 .trend-head {

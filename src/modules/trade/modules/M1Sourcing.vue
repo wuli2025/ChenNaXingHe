@@ -44,8 +44,8 @@ function saveAsLead(s: SkuCandidate) {
   if (s.state === "lead") return;
   const lead = store.promoteSkuToLead(s);
   store.log("ok", lead
-    ? `📌 已并入 M2 线索池：${s.name}（${s.region}）· 等级 ${lead.grade} → 可在 M2 发破冰开发信`
-    : `📌 ${s.name} 已在 M2 线索池中`);
+    ? `已并入 M2 线索池：${s.name}（${s.region}）· 等级 ${lead.grade} → 可在 M2 发破冰开发信`
+    : `${s.name} 已在 M2 线索池中`);
 }
 
 /* 入库：人工闸。派单进中央审核看板（kind: sku-intake）。
@@ -89,7 +89,10 @@ function provTone(p?: SkuCandidate["provenance"]) {
 <template>
   <div class="t-view-anim">
     <!-- 采集条件表单 -->
-    <TSection title="采集条件" sub="关键词 / 产区 / 品类 / 数量 → Agent 联网采集 · 三级降级">
+    <TSection
+      title="采集条件"
+      sub="关键词 / 产区 / 品类 / 数量 → Agent 联网采集 · 三级降级"
+    >
       <template #actions>
         <span class="t-pill">候选 {{ total }}</span>
         <span class="t-pill">已转线索 {{ leadCount }}</span>
@@ -101,31 +104,70 @@ function provTone(p?: SkuCandidate["provenance"]) {
       <div class="sf-grid">
         <label class="sf-fld">
           <span class="sf-lbl">关键词</span>
-          <input v-model="keywords" class="sf-in" type="text" placeholder="如：有机红酒 · 新酒庄" :disabled="store.busy.value" />
+          <input
+            v-model="keywords"
+            class="sf-in"
+            type="text"
+            placeholder="如：有机红酒 · 新酒庄"
+            :disabled="store.busy.value"
+          >
         </label>
         <label class="sf-fld">
           <span class="sf-lbl">产区</span>
-          <input v-model="region" class="sf-in" type="text" placeholder="如：智利 / 南非" :disabled="store.busy.value" />
+          <input
+            v-model="region"
+            class="sf-in"
+            type="text"
+            placeholder="如：智利 / 南非"
+            :disabled="store.busy.value"
+          >
         </label>
         <label class="sf-fld">
           <span class="sf-lbl">品类</span>
-          <input v-model="category" class="sf-in" type="text" placeholder="如：进口葡萄酒" :disabled="store.busy.value" />
+          <input
+            v-model="category"
+            class="sf-in"
+            type="text"
+            placeholder="如：进口葡萄酒"
+            :disabled="store.busy.value"
+          >
         </label>
         <label class="sf-fld sf-num">
           <span class="sf-lbl">数量</span>
-          <input v-model.number="limit" class="sf-in" type="number" min="1" max="50" :disabled="store.busy.value" />
+          <input
+            v-model.number="limit"
+            class="sf-in"
+            type="number"
+            min="1"
+            max="50"
+            :disabled="store.busy.value"
+          >
         </label>
       </div>
 
       <div class="sf-bar">
-        <button class="t-btn primary" :disabled="store.busy.value" @click="collect">
-          <TIcon :path="ICONS.sourcing" :size="15" />
+        <button
+          class="t-btn primary"
+          :disabled="store.busy.value"
+          @click="collect"
+        >
+          <TIcon
+            :path="ICONS.sourcing"
+            :size="15"
+          />
           {{ store.busy.value ? "采集中…" : "开始采集" }}
         </button>
-        <span v-if="store.runStatus.value" class="sf-status" :class="{ busy: store.busy.value }">
+        <span
+          v-if="store.runStatus.value"
+          class="sf-status"
+          :class="{ busy: store.busy.value }"
+        >
           {{ store.runStatus.value }}
         </span>
-        <span v-else class="t-muted sf-hint">采集过程实时显示在右侧 Console；结果结构化为 SKU 候选写入下表。</span>
+        <span
+          v-else
+          class="t-muted sf-hint"
+        >采集过程实时显示在右侧 Console；结果结构化为 SKU 候选写入下表。</span>
       </div>
     </TPanel>
 
@@ -135,38 +177,67 @@ function provTone(p?: SkuCandidate["provenance"]) {
     </div>
 
     <!-- 候选结果表 -->
-    <TSection title="候选品结果" sub="SkuCandidate · 字段置信度 · 可入库 / 存为线索">
+    <TSection
+      title="候选品结果"
+      sub="SkuCandidate · 字段置信度 · 可入库 / 存为线索"
+    >
       <template #actions>
-        <span class="t-muted" style="font-size:11.5px">共 {{ total }} 个候选</span>
+        <span
+          class="t-muted"
+          style="font-size:11.5px"
+        >共 {{ total }} 个候选</span>
       </template>
     </TSection>
 
     <TPanel>
-      <table v-if="total" class="t-table sf-table">
+      <table
+        v-if="total"
+        class="t-table sf-table"
+      >
         <thead>
           <tr>
             <th>品名</th>
             <th>产区</th>
             <th>价位带</th>
             <th>认证</th>
-            <th style="min-width:160px">采集置信度</th>
+            <th style="min-width:160px">
+              采集置信度
+            </th>
             <th>来源</th>
             <th>状态</th>
-            <th style="text-align:right">操作</th>
+            <th style="text-align:right">
+              操作
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(s, i) in store.skus.value" :key="s.id || s.name + i">
+          <tr
+            v-for="(s, i) in store.skus.value"
+            :key="s.id || s.name + i"
+          >
             <td><b>{{ s.name }}</b></td>
             <td>{{ s.region }}</td>
-            <td class="t-mono">{{ s.priceBand }}</td>
+            <td class="t-mono">
+              {{ s.priceBand }}
+            </td>
             <td>
               <span v-if="s.certs && s.certs !== '—'">{{ s.certs }}</span>
-              <span v-else class="t-muted sf-nocert">缺认证</span>
+              <span
+                v-else
+                class="t-muted sf-nocert"
+              >缺认证</span>
             </td>
             <td><TConf :value="s.conf" /></td>
-            <td><TBadge :tone="provTone(s.provenance)">{{ provLabel(s.provenance) }}</TBadge></td>
-            <td><TBadge :tone="stateTone(s.state)">{{ stateLabel(s.state) }}</TBadge></td>
+            <td>
+              <TBadge :tone="provTone(s.provenance)">
+                {{ provLabel(s.provenance) }}
+              </TBadge>
+            </td>
+            <td>
+              <TBadge :tone="stateTone(s.state)">
+                {{ stateLabel(s.state) }}
+              </TBadge>
+            </td>
             <td>
               <div class="sf-acts">
                 <button
@@ -192,17 +263,34 @@ function provTone(p?: SkuCandidate["provenance"]) {
       </table>
 
       <!-- 采集中占位（首次采集、尚无结果） -->
-      <div v-else-if="store.busy.value" class="sf-empty">
+      <div
+        v-else-if="store.busy.value"
+        class="sf-empty"
+      >
         <span class="sf-spinner" />
-        <div class="sf-empty-t">正在联网采集候选品…</div>
-        <div class="sf-empty-s">Agent 正按三级降级抓取并结构化，实时过程见右侧 Console，完成后候选会写入本表。</div>
+        <div class="sf-empty-t">
+          正在联网采集候选品…
+        </div>
+        <div class="sf-empty-s">
+          Agent 正按三级降级抓取并结构化，实时过程见右侧 Console，完成后候选会写入本表。
+        </div>
       </div>
 
       <!-- 空态 -->
-      <div v-else class="sf-empty">
-        <TIcon :path="ICONS.sourcing" :size="30" />
-        <div class="sf-empty-t">暂无候选品</div>
-        <div class="sf-empty-s">填写上方采集条件并点「开始采集」，Agent 联网抓取后会把结构化候选写到这里。</div>
+      <div
+        v-else
+        class="sf-empty"
+      >
+        <TIcon
+          :path="ICONS.sourcing"
+          :size="30"
+        />
+        <div class="sf-empty-t">
+          暂无候选品
+        </div>
+        <div class="sf-empty-s">
+          填写上方采集条件并点「开始采集」，Agent 联网抓取后会把结构化候选写到这里。
+        </div>
       </div>
     </TPanel>
 

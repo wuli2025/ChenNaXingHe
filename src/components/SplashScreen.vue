@@ -47,30 +47,51 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="splash" @click="finish" title="点击进入">
+  <div
+    class="splash"
+    title="点击进入"
+    @click="finish"
+  >
     <div class="sky">
-      <div class="layer far" :style="{ boxShadow: farStars }"></div>
-      <div class="layer mid" :style="{ boxShadow: midStars }"></div>
-      <div class="layer near" :style="{ boxShadow: nearStars }"></div>
+      <div
+        class="layer far"
+        :style="{ boxShadow: farStars }"
+      />
+      <div
+        class="layer mid"
+        :style="{ boxShadow: midStars }"
+      />
+      <div
+        class="layer near"
+        :style="{ boxShadow: nearStars }"
+      />
     </div>
 
-    <div class="aurora"></div>
+    <div class="aurora" />
 
     <!-- 北极星：发光主星 + 十字光芒 -->
     <div class="polaris">
-      <span class="core"></span>
-      <span class="ray ray-v"></span>
-      <span class="ray ray-h"></span>
-      <span class="halo"></span>
+      <span class="core" />
+      <span class="ray ray-v" />
+      <span class="ray ray-h" />
+      <span class="halo" />
     </div>
 
     <div class="verse">
-      <p class="line l1">愿北极星能够照亮你前路的所有黑暗</p>
-      <p class="line l2">在混乱的时代坚守本心</p>
+      <p class="line l1">
+        愿北极星能够照亮你前路的所有黑暗
+      </p>
+      <p class="line l2">
+        在混乱的时代坚守本心
+      </p>
     </div>
 
-    <div class="wordmark">北极星跨境 · ChenNaXingHe</div>
-    <div class="hint">点击任意处进入</div>
+    <div class="wordmark">
+      北极星跨境 · ChenNaXingHe
+    </div>
+    <div class="hint">
+      点击任意处进入
+    </div>
   </div>
 </template>
 
@@ -151,7 +172,8 @@ onBeforeUnmount(() => {
     rgba(40, 70, 110, 0.08) 40%,
     transparent 72%
   );
-  filter: blur(10px);
+  /* 微调:极光多一分色彩饱和,更接近琉璃通透感(不动动画) */
+  filter: blur(10px) saturate(135%);
   pointer-events: none;
   opacity: 0;
   animation: starsIn 2s ease 0.3s forwards;

@@ -155,7 +155,7 @@ export const useLongTaskStore = defineStore("longTask", () => {
     const total = manifest?.units?.length ?? 0;
     const done = doneCount(manifest);
     if (total > 0 && done >= total) {
-      note(convId, `✅ 分批长任务完成：共 ${total} 个单元全部生成（产物在右侧「参考资料」/「项目」可预览）。`);
+      note(convId, `分批长任务完成：共 ${total} 个单元全部生成（产物在右侧「参考资料」/「项目」可预览）。`);
     } else if (total > 0) {
       note(convId, `分批已结束：${done}/${total} 个单元完成。重发可从断点继续。`);
     }

@@ -177,7 +177,10 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
 
 <template>
   <div class="t-view-anim rv-root">
-    <TSection title="人工审核看板" sub="全链路每一个人工闸，汇成一条可追溯的审核流水线">
+    <TSection
+      title="人工审核看板"
+      sub="全链路每一个人工闸，汇成一条可追溯的审核流水线"
+    >
       <template #actions>
         <span class="rv-kbd">
           <b>J</b>/<b>K</b> 移动 · <b>A</b> 通过 · <b>R</b> 驳回重跑 · <b>C</b> 认领
@@ -191,7 +194,10 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
       <div class="rv-stat">
         <span class="rv-stat-v">{{ pending }}</span>
         <span class="rv-stat-l">待审核</span>
-        <span v-if="hardPending" class="rv-stat-hard">含 {{ hardPending }} 硬闸</span>
+        <span
+          v-if="hardPending"
+          class="rv-stat-hard"
+        >含 {{ hardPending }} 硬闸</span>
       </div>
       <div class="rv-stat">
         <span class="rv-stat-v">{{ inReview }}</span>
@@ -202,10 +208,11 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
         <span class="rv-stat-l">今日已决</span>
       </div>
       <div class="rv-stat rv-stat-note">
-        <TIcon :path="ICONS.review" :size="15" />
-        <span
-          >来自选品、建联、报关、合规、物流、补货、报价、对账等模块的人工闸，均在此统一决策。</span
-        >
+        <TIcon
+          :path="ICONS.review"
+          :size="15"
+        />
+        <span>来自选品、建联、报关、合规、物流、补货、报价、对账等模块的人工闸，均在此统一决策。</span>
       </div>
     </div>
 
@@ -213,15 +220,23 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
       v-if="hardPending"
       class="t-note danger"
     >
-      <b>⛔ {{ hardPending }} 项硬闸待处理</b> —— 硬差异 / 缺证类任务不可跳过导出，请优先处理（已置顶）。
+      <b>{{ hardPending }} 项硬闸待处理</b> —— 硬差异 / 缺证类任务不可跳过导出，请优先处理（已置顶）。
     </div>
 
     <!-- 四列看板 -->
     <div class="rv-board">
-      <div v-for="col in columns" :key="col.key" class="rv-col" :class="`col-${col.key}`">
+      <div
+        v-for="col in columns"
+        :key="col.key"
+        class="rv-col"
+        :class="`col-${col.key}`"
+      >
         <div class="rv-col-head">
           <div class="rv-col-title">
-            <span class="rv-col-dot" :class="`dot-${col.key}`" />
+            <span
+              class="rv-col-dot"
+              :class="`dot-${col.key}`"
+            />
             {{ col.label }}
             <span class="rv-col-count">{{ col.tasks.length }}</span>
           </div>
@@ -230,8 +245,14 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
 
         <div class="rv-col-body">
           <!-- 空态 -->
-          <div v-if="!col.tasks.length" class="rv-empty">
-            <TIcon :path="ICONS.review" :size="18" />
+          <div
+            v-if="!col.tasks.length"
+            class="rv-empty"
+          >
+            <TIcon
+              :path="ICONS.review"
+              :size="18"
+            />
             <span>{{ EMPTY_TEXT[col.key] }}</span>
           </div>
 
@@ -251,22 +272,38 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
                 <span class="rv-card-kind">{{ REVIEW_KIND_META[t.kind]?.label || t.kind }}</span>
               </span>
               <span class="rv-badges">
-                <TBadge v-if="t.origin && ORIGIN_META[t.origin]" :tone="ORIGIN_META[t.origin].tone">{{ ORIGIN_META[t.origin].label }}</TBadge>
+                <TBadge
+                  v-if="t.origin && ORIGIN_META[t.origin]"
+                  :tone="ORIGIN_META[t.origin].tone"
+                >{{ ORIGIN_META[t.origin].label }}</TBadge>
                 <TBadge :tone="RISK_META[t.risk].tone">{{ RISK_META[t.risk].label }}</TBadge>
               </span>
             </div>
 
             <!-- 硬闸醒目标记 -->
-            <div v-if="t.hardGate" class="rv-hardgate">
-              <TIcon :path="ICONS.compliance" :size="13" />
+            <div
+              v-if="t.hardGate"
+              class="rv-hardgate"
+            >
+              <TIcon
+                :path="ICONS.compliance"
+                :size="13"
+              />
               硬闸 · 拦截导出，必须处理
             </div>
 
-            <h4 class="rv-card-title">{{ t.title }}</h4>
-            <p class="rv-card-sum">{{ t.summary }}</p>
+            <h4 class="rv-card-title">
+              {{ t.title }}
+            </h4>
+            <p class="rv-card-sum">
+              {{ t.summary }}
+            </p>
 
             <!-- facts 小表（value 含百分比时附置信度条） -->
-            <dl v-if="t.facts.length" class="rv-facts">
+            <dl
+              v-if="t.facts.length"
+              class="rv-facts"
+            >
               <div
                 v-for="(f, i) in t.facts"
                 :key="i"
@@ -275,30 +312,46 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
               >
                 <div class="rv-fact-line">
                   <dt>{{ f.k }}</dt>
-                  <dd :class="{ 'warn-v': f.warn }">{{ f.v }}</dd>
+                  <dd :class="{ 'warn-v': f.warn }">
+                    {{ f.v }}
+                  </dd>
                 </div>
                 <div
                   v-if="!f.warn && factConf(f.v) !== null"
                   class="rv-conf"
                   :class="`conf-${confTone(factConf(f.v)!)}`"
                 >
-                  <span class="rv-conf-fill" :style="{ width: factConf(f.v)! + '%' }" />
+                  <span
+                    class="rv-conf-fill"
+                    :style="{ width: factConf(f.v)! + '%' }"
+                  />
                 </div>
-                <div v-if="f.source" class="rv-fact-src">
+                <div
+                  v-if="f.source"
+                  class="rv-fact-src"
+                >
                   <span class="rv-src-ico">⌖</span>依据：{{ f.source }}
                 </div>
               </div>
             </dl>
 
             <!-- 决策信息（已决卡） -->
-            <div v-if="t.status === 'approved' || t.status === 'rejected'" class="rv-decided">
+            <div
+              v-if="t.status === 'approved' || t.status === 'rejected'"
+              class="rv-decided"
+            >
               <span class="rv-decided-line">
                 <TBadge :tone="t.status === 'approved' ? 'green' : 'red'">{{
                   t.status === "approved" ? "已通过" : "已驳回"
                 }}</TBadge>
                 <span class="t-muted">{{ t.decidedBy || "运营" }} · {{ fmtTime(t.decidedAt) }}</span>
               </span>
-              <p v-if="t.note" class="rv-note">批注：{{ t.note }}</p>
+              <p
+                v-if="t.note"
+                class="rv-note"
+              >
+                批注：{{ t.note }}
+              </p>
             </div>
 
             <!-- 卡脚：时间 + 动作 -->
@@ -306,16 +359,52 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
               <span class="rv-time t-mono">{{ fmtTime(t.createdAt) }} 入列</span>
               <div class="rv-acts">
                 <template v-if="t.status === 'pending'">
-                  <button class="t-btn sm" :disabled="store.busy.value" @click="store.claimReview(t.id)">认领</button>
-                  <button class="t-btn sm primary" :disabled="store.busy.value" @click="store.approveReview(t.id)">通过</button>
-                  <button class="t-btn sm rv-reject" :disabled="store.busy.value" @click="openReject(t.id)">驳回</button>
+                  <button
+                    class="t-btn sm"
+                    :disabled="store.busy.value"
+                    @click="store.claimReview(t.id)"
+                  >
+                    认领
+                  </button>
+                  <button
+                    class="t-btn sm primary"
+                    :disabled="store.busy.value"
+                    @click="store.approveReview(t.id)"
+                  >
+                    通过
+                  </button>
+                  <button
+                    class="t-btn sm rv-reject"
+                    :disabled="store.busy.value"
+                    @click="openReject(t.id)"
+                  >
+                    驳回
+                  </button>
                 </template>
                 <template v-else-if="t.status === 'in_review'">
-                  <button class="t-btn sm primary" :disabled="store.busy.value" @click="store.approveReview(t.id)">通过</button>
-                  <button class="t-btn sm rv-reject" :disabled="store.busy.value" @click="openReject(t.id)">驳回</button>
+                  <button
+                    class="t-btn sm primary"
+                    :disabled="store.busy.value"
+                    @click="store.approveReview(t.id)"
+                  >
+                    通过
+                  </button>
+                  <button
+                    class="t-btn sm rv-reject"
+                    :disabled="store.busy.value"
+                    @click="openReject(t.id)"
+                  >
+                    驳回
+                  </button>
                 </template>
                 <template v-else>
-                  <button class="t-btn sm" :disabled="store.busy.value" @click="store.resetReview(t.id)">退回待审</button>
+                  <button
+                    class="t-btn sm"
+                    :disabled="store.busy.value"
+                    @click="store.resetReview(t.id)"
+                  >
+                    退回待审
+                  </button>
                 </template>
               </div>
             </div>
@@ -325,10 +414,16 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
     </div>
 
     <!-- 驳回批注弹层 -->
-    <div v-if="rejecting" class="rv-modal-mask" @click.self="cancelReject">
+    <div
+      v-if="rejecting"
+      class="rv-modal-mask"
+      @click.self="cancelReject"
+    >
       <div class="rv-modal">
         <h4>驳回并退回修正</h4>
-        <p class="t-muted">填写驳回原因。AI 产出类任务（归类 / 对账 / 开发信 / 报价）将<b>带这条批注自动重跑</b>并重新入闸；其余任务退回来源修正。</p>
+        <p class="t-muted">
+          填写驳回原因。AI 产出类任务（归类 / 对账 / 开发信 / 报价）将<b>带这条批注自动重跑</b>并重新入闸；其余任务退回来源修正。
+        </p>
         <textarea
           v-model="rejectNote"
           class="rv-textarea"
@@ -336,8 +431,18 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
           placeholder="例如：发票金额与报关不符，请重开发票后再提交…"
         />
         <div class="rv-modal-acts">
-          <button class="t-btn sm" @click="cancelReject">取消</button>
-          <button class="t-btn sm rv-reject" @click="confirmReject">确认驳回</button>
+          <button
+            class="t-btn sm"
+            @click="cancelReject"
+          >
+            取消
+          </button>
+          <button
+            class="t-btn sm rv-reject"
+            @click="confirmReject"
+          >
+            确认驳回
+          </button>
         </div>
       </div>
     </div>
@@ -364,9 +469,10 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
   flex-direction: column;
   gap: 2px;
   padding: 10px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   min-width: 96px;
 }
 .rv-stat-v {
@@ -447,8 +553,8 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
   font-size: 11px;
   font-weight: 700;
   color: var(--muted);
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
   padding: 1px 9px;
   min-width: 22px;
@@ -483,18 +589,19 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
 
 /* ── 卡片 ── */
 .rv-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 11px;
   padding: 12px 13px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-shadow: var(--card-shadow);
   transition: box-shadow 0.16s, transform 0.16s, border-color 0.16s;
 }
 .rv-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--card-shadow-hover);
   transform: translateY(-1px);
 }
 .rv-card.is-hard {
@@ -502,7 +609,7 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
 }
 .rv-card.is-sel {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary), 0 6px 18px -8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 2px var(--primary), var(--card-shadow-hover);
 }
 .rv-badges { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
 
@@ -665,7 +772,9 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
 .rv-modal-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -673,32 +782,47 @@ const EMPTY_TEXT: Record<ReviewStatus, string> = {
   animation: rvFade 0.16s ease;
 }
 @keyframes rvFade { from { opacity: 0; } to { opacity: 1; } }
+/* 弹层：真磨砂 chrome */
 .rv-modal {
+  position: relative;
   width: min(420px, 92vw);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
   padding: 18px 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--chrome-shadow);
 }
-.rv-modal h4 { font-size: 14px; font-weight: 750; color: var(--text); }
+/* 棱边折射环：跟随圆角的 1px 玻璃棱光 */
+.rv-modal::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none; z-index: 3;
+}
+.rv-modal h4 { font-size: 14px; font-weight: 750; color: var(--text); letter-spacing: -0.01em; }
 .rv-modal p { font-size: 12px; }
 .rv-textarea {
   width: 100%;
   resize: vertical;
   border: 1px solid var(--border-strong);
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--bg-soft);
   color: var(--text);
   font-size: 12.5px;
   line-height: 1.5;
   padding: 9px 11px;
   font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-.rv-textarea:focus { outline: none; border-color: var(--primary); }
+.rv-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .rv-modal-acts {
   display: flex;
   justify-content: flex-end;

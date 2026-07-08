@@ -202,28 +202,44 @@ onUnmounted(() => {
   <div class="fs-root">
     <div class="head">
       <div class="title-row">
-        <div class="title">聊天机器人 · 飞书</div>
-        <span class="status" :class="gwState">{{ stateLabel() }}</span>
+        <div class="title">
+          聊天机器人 · 飞书
+        </div>
+        <span
+          class="status"
+          :class="gwState"
+        >{{ stateLabel() }}</span>
       </div>
       <div class="sub">
         飞书里 <b>@机器人</b>（或私聊）的指令，会经长连接进来交给 <b>Claude Code</b>（在「飞书机器人」项目里、带工具执行、可操作软件），
         过程在 Polaris 里实时可见，结果发回飞书。
       </div>
-      <div v-if="unavailable" class="result err" style="margin-top: 12px">
+      <div
+        v-if="unavailable"
+        class="result err"
+        style="margin-top: 12px"
+      >
         飞书功能当前未配置 / 不可用（后端命令未实现或浏览器模式）。配置与联调请在桌面版进行。
       </div>
     </div>
 
     <!-- 扫码去建应用 -->
     <div class="scan-box">
-      <button class="scan-btn" @click="openScan">扫码前往建应用</button>
-      <p class="scan-hint">飞书无「扫码自动下发凭证」能力，扫码带你到开放平台创建机器人</p>
+      <button
+        class="scan-btn"
+        @click="openScan"
+      >
+        扫码前往建应用
+      </button>
+      <p class="scan-hint">
+        飞书无「扫码自动下发凭证」能力，扫码带你到开放平台创建机器人
+      </p>
     </div>
 
     <div class="divider">
-      <span class="line"></span>
+      <span class="line" />
       <span class="dtext">或 手动填写、修改已有机器人信息</span>
-      <span class="line"></span>
+      <span class="line" />
     </div>
 
     <ol class="guide">
@@ -231,14 +247,25 @@ onUnmounted(() => {
       <li>权限里开启「读取与发送单聊/群组消息」；「凭证与基础信息」页拿到 App ID 与 App Secret</li>
       <li>把 App ID / Secret 填入下方保存，再启动下方「对话引擎」</li>
     </ol>
-    <a class="guide-link" @click="openConsole">配置手册 / 打开开放平台 ↗</a>
+    <a
+      class="guide-link"
+      @click="openConsole"
+    >配置手册 / 打开开放平台 ↗</a>
 
     <div class="form">
       <label class="fld">
         <span>App ID</span>
         <div class="ip">
-          <input v-model="cfg.appId" placeholder="cli_xxxxxxxx" spellcheck="false" />
-          <button v-if="cfg.appId" class="clr" @click="clearField('appId')">✕</button>
+          <input
+            v-model="cfg.appId"
+            placeholder="cli_xxxxxxxx"
+            spellcheck="false"
+          >
+          <button
+            v-if="cfg.appId"
+            class="clr"
+            @click="clearField('appId')"
+          >✕</button>
         </div>
       </label>
       <label class="fld">
@@ -249,17 +276,30 @@ onUnmounted(() => {
             :type="showSecret ? 'text' : 'password'"
             placeholder="留 ******** 表示不修改"
             spellcheck="false"
-          />
-          <button v-if="cfg.appSecret" class="clr" @click="clearField('appSecret')">✕</button>
-          <button class="eye" @click="showSecret = !showSecret">{{ showSecret ? "🙈" : "👁" }}</button>
+          >
+          <button
+            v-if="cfg.appSecret"
+            class="clr"
+            @click="clearField('appSecret')"
+          >✕</button>
+          <button
+            class="eye"
+            @click="showSecret = !showSecret"
+          >{{ showSecret ? "隐藏" : "显示" }}</button>
         </div>
         <em class="hint">从飞书开放平台「凭证与基础信息」获取</em>
       </label>
 
-      <button class="adv-toggle" @click="showAdvanced = !showAdvanced">
+      <button
+        class="adv-toggle"
+        @click="showAdvanced = !showAdvanced"
+      >
         {{ showAdvanced ? "▾" : "▸" }} 高级设置（版本 / 私聊策略 / 群聊）
       </button>
-      <div v-if="showAdvanced" class="adv">
+      <div
+        v-if="showAdvanced"
+        class="adv"
+      >
         <label class="fld">
           <span>版本</span>
           <select v-model="cfg.domain">
@@ -276,37 +316,77 @@ onUnmounted(() => {
           </select>
         </label>
         <label class="fld check">
-          <input type="checkbox" v-model="cfg.groupRequireMention" />
+          <input
+            v-model="cfg.groupRequireMention"
+            type="checkbox"
+          >
           <span>群聊需 @机器人才响应（推荐）</span>
         </label>
-        <label class="fld" v-if="cfg.dmPolicy === 'allowlist'">
+        <label
+          v-if="cfg.dmPolicy === 'allowlist'"
+          class="fld"
+        >
           <span>白名单 open_id（每行一个）</span>
-          <textarea v-model="allowText" rows="3" placeholder="ou_xxx" spellcheck="false"></textarea>
+          <textarea
+            v-model="allowText"
+            rows="3"
+            placeholder="ou_xxx"
+            spellcheck="false"
+          />
         </label>
       </div>
     </div>
 
     <div class="actions">
-      <button class="btn primary" :disabled="saving" @click="save">{{ saving ? "保存中…" : "保存" }}</button>
-      <button class="btn" :disabled="testing" @click="test">{{ testing ? "测试中…" : "连接测试" }}</button>
-      <span v-if="savedMsg" class="saved">{{ savedMsg }}</span>
+      <button
+        class="btn primary"
+        :disabled="saving"
+        @click="save"
+      >
+        {{ saving ? "保存中…" : "保存" }}
+      </button>
+      <button
+        class="btn"
+        :disabled="testing"
+        @click="test"
+      >
+        {{ testing ? "测试中…" : "连接测试" }}
+      </button>
+      <span
+        v-if="savedMsg"
+        class="saved"
+      >{{ savedMsg }}</span>
     </div>
-    <div v-if="testResult" class="result" :class="{ ok: testResult.ok, err: !testResult.ok }">
+    <div
+      v-if="testResult"
+      class="result"
+      :class="{ ok: testResult.ok, err: !testResult.ok }"
+    >
       {{ testResult.message }}
-      <span v-if="testResult.ok && testResult.botOpenId" class="oid">bot open_id: {{ testResult.botOpenId }}</span>
+      <span
+        v-if="testResult.ok && testResult.botOpenId"
+        class="oid"
+      >bot open_id: {{ testResult.botOpenId }}</span>
     </div>
 
     <!-- 对话引擎 -->
     <div class="engine">
       <div class="eng-head">
         <span class="eng-title">对话引擎</span>
-        <span class="eng-state" :class="gwState">{{ stateLabel() }}</span>
+        <span
+          class="eng-state"
+          :class="gwState"
+        >{{ stateLabel() }}</span>
       </div>
       <p class="eng-desc">
         启动后挂飞书长连接收发消息。内置<b>防断守护</b>（断线/崩溃自动重连重起），来消息才跑 Claude，空闲几乎零开销。首启会自动 npm 装飞书 SDK（需 Node.js）。
       </p>
       <label class="fld check auto">
-        <input type="checkbox" v-model="cfg.autoStart" @change="toggleAutoStart" />
+        <input
+          v-model="cfg.autoStart"
+          type="checkbox"
+          @change="toggleAutoStart"
+        >
         <span>App 启动时自动开启网关（开机自动上线）</span>
       </label>
       <div class="actions">
@@ -318,26 +398,74 @@ onUnmounted(() => {
         >
           {{ gwBusy ? "启动中…" : "启动网关" }}
         </button>
-        <button v-else class="btn" :disabled="gwBusy" @click="stopGateway">停止网关</button>
+        <button
+          v-else
+          class="btn"
+          :disabled="gwBusy"
+          @click="stopGateway"
+        >
+          停止网关
+        </button>
       </div>
-      <div v-if="gwLog.length" class="eng-log">
-        <div v-for="(l, i) in gwLog" :key="i" class="log-line">{{ l }}</div>
+      <div
+        v-if="gwLog.length"
+        class="eng-log"
+      >
+        <div
+          v-for="(l, i) in gwLog"
+          :key="i"
+          class="log-line"
+        >
+          {{ l }}
+        </div>
       </div>
     </div>
 
     <!-- 扫码弹窗 -->
-    <div v-if="qrOpen" class="qr-mask" @click.self="closeScan">
+    <div
+      v-if="qrOpen"
+      class="qr-mask"
+      @click.self="closeScan"
+    >
       <div class="qr-card">
-        <div class="qr-title">前往飞书开放平台建应用</div>
-        <div class="qr-frame">
-          <div v-if="qrLoading" class="qr-ph">正在生成二维码…</div>
-          <div v-else-if="qrError" class="qr-ph err">{{ qrError }}</div>
-          <div v-else class="qr-img" v-html="qrSvg"></div>
+        <div class="qr-title">
+          前往飞书开放平台建应用
         </div>
-        <p class="qr-desc">用<b>飞书</b>扫一扫前往开放平台创建机器人；建好后回到这里填 App ID 和 Secret。</p>
+        <div class="qr-frame">
+          <div
+            v-if="qrLoading"
+            class="qr-ph"
+          >
+            正在生成二维码…
+          </div>
+          <div
+            v-else-if="qrError"
+            class="qr-ph err"
+          >
+            {{ qrError }}
+          </div>
+          <div
+            v-else
+            class="qr-img"
+            v-html="qrSvg"
+          />
+        </div>
+        <p class="qr-desc">
+          用<b>飞书</b>扫一扫前往开放平台创建机器人；建好后回到这里填 App ID 和 Secret。
+        </p>
         <div class="qr-actions">
-          <button class="btn" @click="openConsole">在浏览器打开 ↗</button>
-          <button class="btn primary" @click="closeScan">我已创建好，去填凭证</button>
+          <button
+            class="btn"
+            @click="openConsole"
+          >
+            在浏览器打开 ↗
+          </button>
+          <button
+            class="btn primary"
+            @click="closeScan"
+          >
+            我已创建好，去填凭证
+          </button>
         </div>
       </div>
     </div>
@@ -391,23 +519,35 @@ onUnmounted(() => {
   margin-top: 18px;
   max-width: 620px;
   border: 1px dashed var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 22px 16px;
   text-align: center;
-  background: var(--panel);
+  /* 液态玻璃：卡片底走 card 配方（虚线框保留） */
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
 }
 .scan-btn {
   padding: 10px 22px;
   border-radius: 10px;
-  border: none;
+  /* 液态玻璃：主按钮玻璃三件套高光 */
+  border: 1px solid rgba(255, 255, 255, 0.22);
   background: var(--primary);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
 }
 .scan-btn:hover {
   opacity: 0.9;
+}
+/* v9：主 CTA 按压反馈 */
+.scan-btn {
+  transition: opacity 120ms var(--ease, ease), transform 0.12s var(--ease, ease);
+}
+.scan-btn:active {
+  transform: scale(0.98);
 }
 .scan-hint {
   margin: 10px 0 0;
@@ -480,7 +620,7 @@ onUnmounted(() => {
   flex: 1;
   padding: 8px 64px 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--panel);
   color: var(--text);
   font-size: 13px;
@@ -488,6 +628,7 @@ onUnmounted(() => {
 .ip input:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .ip .clr,
 .ip .eye {
@@ -518,7 +659,7 @@ onUnmounted(() => {
 .fld textarea {
   padding: 7px 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--panel);
   color: var(--text);
   font-size: 13px;
@@ -527,6 +668,7 @@ onUnmounted(() => {
 .fld textarea:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .fld.check {
   flex-direction: row;
@@ -554,9 +696,11 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 14px;
   padding: 14px;
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  background: var(--panel);
+  /* 液态玻璃：高级设置子卡片走 card 配方 */
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: var(--card-shadow);
 }
 .actions {
   margin-top: 18px;
@@ -566,20 +710,32 @@ onUnmounted(() => {
 }
 .btn {
   padding: 7px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--panel);
+  border-radius: 10px;
+  /* 液态玻璃：次级按钮走 card 配方 */
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
 }
-.btn:hover {
-  background: var(--selection-bg);
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
 }
 .btn.primary {
   background: var(--primary);
-  border-color: var(--primary);
   color: #fff;
+  /* 液态玻璃：主按钮玻璃三件套高光 */
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), inset 0 -1px 0 rgba(0, 0, 0, 0.14),
+    0 6px 16px -6px rgba(28, 48, 69, 0.55);
+}
+/* v9：主 CTA 按压反馈（hover 有 translateY，按压归位再收缩） */
+.btn {
+  transition: transform 0.12s var(--ease, ease), box-shadow 0.12s var(--ease, ease);
+}
+.btn.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 .btn:disabled {
   opacity: 0.5;
@@ -615,7 +771,9 @@ onUnmounted(() => {
 .engine {
   margin-top: 24px;
   padding-top: 18px;
-  border-top: 1px solid var(--border-soft);
+  /* v9：分区渐隐发丝线 */
+  border-top: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   max-width: 620px;
 }
 .eng-head {
@@ -670,20 +828,42 @@ onUnmounted(() => {
 .qr-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  /* 液态玻璃遮罩：统一 scrim 配方 */
+  background: var(--overlay);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
 }
 .qr-card {
+  position: relative;
   width: 340px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  /* 液态玻璃：扫码弹窗走 chrome 真磨砂配方 */
+  background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  border: 1px solid var(--chrome-border);
+  border-radius: 18px;
   padding: 24px;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--chrome-shadow);
+}
+/* v9：扫码弹窗一圈棱边折射环 */
+.qr-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
 }
 .qr-title {
   font-size: 15px;

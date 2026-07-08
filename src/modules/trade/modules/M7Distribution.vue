@@ -82,11 +82,16 @@ const qBottles = ref<number>(1200);
 const quoteResult = ref<string>("");
 
 const qUnit = computed(() => SKU_OPTS.find((s) => s.sku === qSku.value)?.unit ?? 0);
+// 瓶数必须是正整数（酒按瓶报价，无半瓶）：非整/非正一律取 0，避免「1.5 瓶」这类口径把总额与单价算岔。
+const qBottlesInt = computed(() => {
+  const n = Number(qBottles.value);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+});
 // 完税价值（taxable）= 不含税单价 × 瓶数。含税价来源即由此透明推导。
-const qTaxable = computed(() => Math.round(qUnit.value * Math.max(0, qBottles.value) * 100) / 100);
+const qTaxable = computed(() => Math.round(qUnit.value * qBottlesInt.value * 100) / 100);
 const qTax = computed(() => computeWineTax(qTaxable.value));
 const qInclPerBottle = computed(() =>
-  qBottles.value > 0 ? Math.round((qTax.value.inclTotal / qBottles.value) * 100) / 100 : 0
+  qBottlesInt.value > 0 ? Math.round((qTax.value.inclTotal / qBottlesInt.value) * 100) / 100 : 0
 );
 
 /** 含税总额构成占比（完税价值 / WET / GST），驱动可视化构成条。 */
@@ -102,9 +107,9 @@ const qMix = computed(() => {
 });
 
 async function generateQuote() {
-  if (!qCustomer.value || store.busy.value) return;
+  if (!qCustomer.value || store.busy.value || qBottlesInt.value <= 0) return;
   quoteResult.value = "";
-  const res = await store.runQuoteOut(qCustomer.value, qSku.value, qTaxable.value);
+  const res = await store.runQuoteOut(qCustomer.value, qSku.value, qTaxable.value, qBottlesInt.value);
   if (res) quoteResult.value = res;
 }
 </script>
@@ -113,14 +118,37 @@ async function generateQuote() {
   <div class="t-view-anim">
     <!-- 概览 KPI -->
     <div class="t-grid t-g4">
-      <TKpi :value="fmtKpi(custKpi.ytd)" label="YTD 分销额" acc="gold" :icon="ICONS.customer" />
-      <TKpi :value="fmtKpi(custKpi.open)" label="未回款合计" acc="amber" :icon="ICONS.finance" />
-      <TKpi :value="String(custKpi.active)" label="活跃客户" acc="green" :icon="ICONS.customer" />
-      <TKpi :value="String(store.salesOrders.value.length)" label="在手销售订单" acc="blue" :icon="ICONS.purchase" />
+      <TKpi
+        :value="fmtKpi(custKpi.ytd)"
+        label="YTD 分销额"
+        acc="gold"
+        :icon="ICONS.customer"
+      />
+      <TKpi
+        :value="fmtKpi(custKpi.open)"
+        label="未回款合计"
+        acc="amber"
+        :icon="ICONS.finance"
+      />
+      <TKpi
+        :value="String(custKpi.active)"
+        label="活跃客户"
+        acc="green"
+        :icon="ICONS.customer"
+      />
+      <TKpi
+        :value="String(store.salesOrders.value.length)"
+        label="在手销售订单"
+        acc="blue"
+        :icon="ICONS.purchase"
+      />
     </div>
 
     <!-- ① 分销客户 -->
-    <TSection title="分销客户" sub="B2B 批发 CRM · 层级 / 账期 / 未回款">
+    <TSection
+      title="分销客户"
+      sub="B2B 批发 CRM · 层级 / 账期 / 未回款"
+    >
       <template #actions>
         <span class="t-pill">{{ custKpi.total }} 家客户</span>
       </template>
@@ -130,20 +158,50 @@ async function generateQuote() {
         <thead>
           <tr>
             <th>客户</th><th>层级</th><th>账期</th>
-            <th class="num">YTD 销售</th><th class="num">未回款</th><th>状态</th>
+            <th class="num">
+              YTD 销售
+            </th><th class="num">
+              未回款
+            </th><th>状态</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in store.customers.value" :key="c.name">
+          <tr
+            v-for="c in store.customers.value"
+            :key="c.name"
+          >
             <td><b>{{ c.name }}</b></td>
-            <td><TBadge :tone="tierTone(c.tier)">{{ c.tier }} 级</TBadge></td>
-            <td class="t-mono">{{ c.terms }}</td>
-            <td class="num">{{ fmtAud(c.ytd) }}</td>
-            <td class="num" :class="{ 't-warn-txt': c.open > 30000 }">{{ fmtAud(c.open) }}</td>
-            <td><TBadge :tone="custTone(c.status)">{{ c.status }}</TBadge></td>
+            <td>
+              <TBadge :tone="tierTone(c.tier)">
+                {{ c.tier }} 级
+              </TBadge>
+            </td>
+            <td class="t-mono">
+              {{ c.terms }}
+            </td>
+            <td class="num">
+              {{ fmtAud(c.ytd) }}
+            </td>
+            <td
+              class="num"
+              :class="{ 't-warn-txt': c.open > 30000 }"
+            >
+              {{ fmtAud(c.open) }}
+            </td>
+            <td>
+              <TBadge :tone="custTone(c.status)">
+                {{ c.status }}
+              </TBadge>
+            </td>
           </tr>
           <tr v-if="!store.customers.value.length">
-            <td colspan="6" class="t-muted" style="text-align:center;padding:22px">暂无分销客户</td>
+            <td
+              colspan="6"
+              class="t-muted"
+              style="text-align:center;padding:22px"
+            >
+              暂无分销客户
+            </td>
           </tr>
         </tbody>
       </table>
@@ -153,31 +211,59 @@ async function generateQuote() {
     </div>
 
     <!-- ② 销售订单看板（按状态分列） -->
-    <TSection title="销售订单" sub="报价 → 订单 → 备货 → 发货 → 回款">
+    <TSection
+      title="销售订单"
+      sub="报价 → 订单 → 备货 → 发货 → 回款"
+    >
       <template #actions>
         <span class="t-pill">含税额口径 = WET+GST</span>
       </template>
     </TSection>
     <div class="t-grid t-g3">
-      <TPanel v-for="col in SO_COLS" :key="col.key" pad>
+      <TPanel
+        v-for="col in SO_COLS"
+        :key="col.key"
+        pad
+      >
         <div class="so-head">
-          <TBadge :tone="col.tone">{{ col.label }}</TBadge>
+          <TBadge :tone="col.tone">
+            {{ col.label }}
+          </TBadge>
           <span class="t-muted">{{ soGroups[col.key].orders.length }} 单 · {{ fmtAud(soGroups[col.key].incl) }}</span>
         </div>
-        <div v-if="!soGroups[col.key].orders.length" class="so-empty t-muted">暂无{{ col.label }}订单</div>
-        <div v-for="o in soGroups[col.key].orders" :key="o.id" class="so-card">
-          <div class="t-row" style="justify-content:space-between">
+        <div
+          v-if="!soGroups[col.key].orders.length"
+          class="so-empty t-muted"
+        >
+          暂无{{ col.label }}订单
+        </div>
+        <div
+          v-for="o in soGroups[col.key].orders"
+          :key="o.id"
+          class="so-card"
+        >
+          <div
+            class="t-row"
+            style="justify-content:space-between"
+          >
             <b class="t-mono">{{ o.id }}</b>
             <span class="so-incl">{{ fmtAud(o.incl) }}</span>
           </div>
-          <div class="so-cust">{{ o.customer }}</div>
-          <div class="so-lines t-muted">{{ o.lines }}</div>
+          <div class="so-cust">
+            {{ o.customer }}
+          </div>
+          <div class="so-lines t-muted">
+            {{ o.lines }}
+          </div>
         </div>
       </TPanel>
     </div>
 
     <!-- ③ 报价区 -->
-    <TSection title="生成含税报价单" sub="选客户 + SKU + 瓶数 → WET/GST 拆解 → 外发人工闸">
+    <TSection
+      title="生成含税报价单"
+      sub="选客户 + SKU + 瓶数 → WET/GST 拆解 → 外发人工闸"
+    >
       <template #actions>
         <span class="t-pill">单点真相 · computeWineTax</span>
       </template>
@@ -187,24 +273,52 @@ async function generateQuote() {
       <TPanel pad>
         <div class="q-field">
           <label>分销客户</label>
-          <select v-model="qCustomer" class="q-sel" :disabled="store.busy.value">
-            <option v-if="!store.customers.value.length" value="">暂无分销客户</option>
-            <option v-for="c in store.customers.value" :key="c.name" :value="c.name">
+          <select
+            v-model="qCustomer"
+            class="q-sel"
+            :disabled="store.busy.value"
+          >
+            <option
+              v-if="!store.customers.value.length"
+              value=""
+            >
+              暂无分销客户
+            </option>
+            <option
+              v-for="c in store.customers.value"
+              :key="c.name"
+              :value="c.name"
+            >
               {{ c.name }}（{{ c.tier }} 级 · {{ c.terms }}）
             </option>
           </select>
         </div>
         <div class="q-field">
           <label>SKU</label>
-          <select v-model="qSku" class="q-sel" :disabled="store.busy.value">
-            <option v-for="s in SKU_OPTS" :key="s.sku" :value="s.sku">
+          <select
+            v-model="qSku"
+            class="q-sel"
+            :disabled="store.busy.value"
+          >
+            <option
+              v-for="s in SKU_OPTS"
+              :key="s.sku"
+              :value="s.sku"
+            >
               {{ s.sku }} · 不含税 AUD {{ s.unit.toFixed(2) }}/瓶
             </option>
           </select>
         </div>
         <div class="q-field">
           <label>瓶数</label>
-          <input v-model.number="qBottles" type="number" min="0" step="60" class="q-inp" :disabled="store.busy.value" />
+          <input
+            v-model.number="qBottles"
+            type="number"
+            min="0"
+            step="60"
+            class="q-inp"
+            :disabled="store.busy.value"
+          >
         </div>
         <div class="q-note t-note">
           完税价值 taxable = 不含税单价 <b>AUD {{ qUnit.toFixed(2) }}</b> × <b>{{ qBottles }}</b> 瓶
@@ -216,10 +330,16 @@ async function generateQuote() {
           :disabled="store.busy.value || !qCustomer || qBottles <= 0"
           @click="generateQuote"
         >
-          <TIcon :path="ICONS.customer" :size="14" />
+          <TIcon
+            :path="ICONS.customer"
+            :size="14"
+          />
           {{ store.busy.value ? "生成中…" : "生成含税报价单（进外发人工闸）" }}
         </button>
-        <div class="t-note warn" style="margin-bottom:0">
+        <div
+          class="t-note warn"
+          style="margin-bottom:0"
+        >
           <b>人工闸：</b>此动作生成报价邮件并派单进<b>「M7 报价单外发核准」</b>人工审核看板，运营预览确认后方可外发（反误发闸）。
         </div>
       </TPanel>
@@ -231,15 +351,31 @@ async function generateQuote() {
           <span class="t-muted">WET 29% + GST 10%（WET 计入 GST 基数）</span>
         </div>
         <!-- 含税构成条：完税价值 / WET / GST 占比可视化 -->
-        <div class="q-mix" role="img" aria-label="含税总额构成">
-          <span class="q-mix-seg base" :style="{ width: qMix.taxable + '%' }" title="完税价值"></span>
-          <span class="q-mix-seg wet" :style="{ width: qMix.wet + '%' }" title="WET 29%"></span>
-          <span class="q-mix-seg gst" :style="{ width: qMix.gst + '%' }" title="GST 10%"></span>
+        <div
+          class="q-mix"
+          role="img"
+          aria-label="含税总额构成"
+        >
+          <span
+            class="q-mix-seg base"
+            :style="{ width: qMix.taxable + '%' }"
+            title="完税价值"
+          />
+          <span
+            class="q-mix-seg wet"
+            :style="{ width: qMix.wet + '%' }"
+            title="WET 29%"
+          />
+          <span
+            class="q-mix-seg gst"
+            :style="{ width: qMix.gst + '%' }"
+            title="GST 10%"
+          />
         </div>
         <div class="q-mix-legend">
-          <span><i class="dot base"></i>完税价值</span>
-          <span><i class="dot wet"></i>WET</span>
-          <span><i class="dot gst"></i>GST</span>
+          <span><i class="dot base" />完税价值</span>
+          <span><i class="dot wet" />WET</span>
+          <span><i class="dot gst" />GST</span>
           <span class="q-mix-taxpct t-muted">税负占含税额 {{ qMix.taxPct }}%</span>
         </div>
         <div class="q-brk">
@@ -247,14 +383,16 @@ async function generateQuote() {
             <span>完税价值（taxable）</span>
             <span class="t-mono">AUD {{ qTax.taxable.toLocaleString("en-AU") }}</span>
           </div>
-          <div class="q-brk-row op"><span class="op-s">＋</span> <span>WET 29%</span>
+          <div class="q-brk-row op">
+            <span class="op-s">＋</span> <span>WET 29%</span>
             <span class="t-mono">AUD {{ qTax.wet.toLocaleString("en-AU") }}</span>
           </div>
           <div class="q-brk-row sub">
             <span>= GST 基数（taxable + WET）</span>
             <span class="t-mono">AUD {{ qTax.gstBase.toLocaleString("en-AU") }}</span>
           </div>
-          <div class="q-brk-row op"><span class="op-s">＋</span> <span>GST 10%（基数 × 10%）</span>
+          <div class="q-brk-row op">
+            <span class="op-s">＋</span> <span>GST 10%（基数 × 10%）</span>
             <span class="t-mono">AUD {{ qTax.gst.toLocaleString("en-AU") }}</span>
           </div>
           <div class="q-brk-row tax">
@@ -270,17 +408,25 @@ async function generateQuote() {
             <span class="t-mono">AUD {{ qInclPerBottle.toFixed(2) }}</span>
           </div>
         </div>
-        <div class="t-note info" style="margin-bottom:0">
+        <div
+          class="t-note info"
+          style="margin-bottom:0"
+        >
           <b>单点真相：</b>此含税价与 <b>M4 报关税费测算</b>、<b>M9 合规计算器</b>共用同一 <span class="t-mono">computeWineTax()</span> 函数，逐分位一致，杜绝三处算出三个数。
         </div>
       </TPanel>
     </div>
 
     <!-- 报价邮件结果 -->
-    <TPanel v-if="quoteResult" pad>
+    <TPanel
+      v-if="quoteResult"
+      pad
+    >
       <div class="q-brk-h">
         <span class="q-brk-t">报价邮件草稿</span>
-        <TBadge tone="amber">已入外发核准闸</TBadge>
+        <TBadge tone="amber">
+          已入外发核准闸
+        </TBadge>
       </div>
       <pre class="q-mail">{{ quoteResult }}</pre>
     </TPanel>

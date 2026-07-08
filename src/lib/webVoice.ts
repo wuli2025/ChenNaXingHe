@@ -5,7 +5,7 @@
 //   getUserMedia → 录 Float32 → 重采样 16k 单声道 → 编 16-bit PCM WAV → 交给调用方上传。
 // 服务端再用既有 voice_transcribe_file(sherpa 读 WAV)识别 + 防污染,与桌面同一条管线。
 //
-// ⚠ getUserMedia 需「安全上下文」(HTTPS 或 localhost),纯 http:// 的局域网/Tailscale IP
+// getUserMedia 需「安全上下文」(HTTPS 或 localhost),纯 http:// 的局域网/Tailscale IP
 //   会被浏览器直接拒。远程访问请用 `tailscale serve` 套 HTTPS,或 localhost 端口转发。
 
 /** 线性插值重采样到 16kHz(镜像 voice_live.rs 的 resample_to_16k,保证两端口径一致)。 */

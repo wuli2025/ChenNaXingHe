@@ -168,85 +168,214 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
 </script>
 
 <template>
-  <div class="trade" :class="{ 'dock-collapsed': dockCollapsed }">
+  <div
+    class="trade"
+    :class="{ 'dock-collapsed': dockCollapsed }"
+  >
     <!-- ─────────── 中：工作区 ─────────── -->
     <main class="work">
       <header class="work-head">
-        <div class="crumb"><span>{{ crumbGroup }}</span><span class="sep">/</span><b>{{ crumbName }}</b></div>
-        <div class="wh-status" :class="{ busy: store.busy.value }">
+        <div class="crumb">
+          <span>{{ crumbGroup }}</span><span class="sep">/</span><b>{{ crumbName }}</b>
+        </div>
+        <div
+          class="wh-status"
+          :class="{ busy: store.busy.value }"
+        >
           <span class="dot" />{{ store.runStatus.value || (store.busy.value ? "Claude 运行中…" : "就绪") }}
         </div>
       </header>
       <div class="work-body">
-        <Transition name="tswap" mode="out-in">
-          <component :is="currentComp" :key="view" />
+        <Transition
+          name="tswap"
+          mode="out-in"
+        >
+          <component
+            :is="currentComp"
+            :key="view"
+          />
         </Transition>
       </div>
     </main>
 
     <!-- ─────────── 右：AI 坞 ─────────── -->
-    <aside v-show="!dockCollapsed" class="dock">
+    <aside
+      v-show="!dockCollapsed"
+      class="dock"
+    >
       <div class="dock-head">
         <div class="dt-tabs">
-          <button :class="{ on: dockTab === 'chat' }" @click="dockTab = 'chat'">AI 对话</button>
-          <button :class="{ on: dockTab === 'console' }" @click="dockTab = 'console'">
-            运行记录<span v-if="consoleDot" class="tab-dot" />
+          <button
+            :class="{ on: dockTab === 'chat' }"
+            @click="dockTab = 'chat'"
+          >
+            AI 对话
+          </button>
+          <button
+            :class="{ on: dockTab === 'console' }"
+            @click="dockTab = 'console'"
+          >
+            运行记录<span
+              v-if="consoleDot"
+              class="tab-dot"
+            />
           </button>
         </div>
-        <button class="dock-x" title="收起" @click="dockCollapsed = true">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" /></svg>
+        <button
+          class="dock-x"
+          title="收起"
+          @click="dockCollapsed = true"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          ><path d="M9 18l6-6-6-6" /></svg>
         </button>
       </div>
 
       <!-- 对话 -->
       <template v-if="dockTab === 'chat'">
         <!-- 空态：居中大问候（“最右风格”），快捷问随当前模块自适应 -->
-        <div v-if="isEmptyChat" class="chat-hero">
-          <div class="hero-mark">★</div>
-          <div class="hero-title">你说，北极星帮你跑</div>
-          <div class="hero-sub">澳鲸进口全链路助手 · 正在看「{{ crumbName }}」<br />关键动作前都有人工审核闸</div>
+        <div
+          v-if="isEmptyChat"
+          class="chat-hero"
+        >
+          <div class="hero-mark">
+            ★
+          </div>
+          <div class="hero-title">
+            你说，北极星帮你跑
+          </div>
+          <div class="hero-sub">
+            澳鲸进口全链路助手 · 正在看「{{ crumbName }}」<br>关键动作前都有人工审核闸
+          </div>
           <div class="hero-chips">
-            <button v-for="q in quickAsks" :key="q" class="hero-chip" @click="sendChat(q)">{{ q }}</button>
+            <button
+              v-for="q in quickAsks"
+              :key="q"
+              class="hero-chip"
+              @click="sendChat(q)"
+            >
+              {{ q }}
+            </button>
           </div>
         </div>
         <!-- 有对话：气泡流 -->
-        <div v-else ref="logEl" class="chat-log">
-          <div v-for="(m, i) in chatLog" :key="i" class="msg" :class="m.role">
-            <div class="av">{{ m.role === "ai" ? "★" : "你" }}</div>
+        <div
+          v-else
+          ref="logEl"
+          class="chat-log"
+        >
+          <div
+            v-for="(m, i) in chatLog"
+            :key="i"
+            class="msg"
+            :class="m.role"
+          >
+            <div class="av">
+              {{ m.role === "ai" ? "★" : "你" }}
+            </div>
             <div class="msg-main">
               <!-- 内联工具活动（AI 跑了什么，实时/可折叠） -->
-              <div v-if="m.role === 'ai' && m.tools.length" class="tool-strip">
-                <button class="tool-toggle" @click="m.showTools = !m.showTools">
-                  <span class="ts-dot" :class="{ live: m.streaming }" />
+              <div
+                v-if="m.role === 'ai' && m.tools.length"
+                class="tool-strip"
+              >
+                <button
+                  class="tool-toggle"
+                  @click="m.showTools = !m.showTools"
+                >
+                  <span
+                    class="ts-dot"
+                    :class="{ live: m.streaming }"
+                  />
                   {{ m.streaming ? "正在调用" : "调用了" }} {{ m.tools.length }} 个工具
-                  <svg class="ts-chev" :class="{ open: m.showTools }" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" /></svg>
+                  <svg
+                    class="ts-chev"
+                    :class="{ open: m.showTools }"
+                    viewBox="0 0 24 24"
+                    width="12"
+                    height="12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  ><path d="M6 9l6 6 6-6" /></svg>
                 </button>
-                <div v-if="m.showTools" class="tool-list">
-                  <div v-for="(tl, ti) in m.tools" :key="ti" class="tool-item">
+                <div
+                  v-if="m.showTools"
+                  class="tool-list"
+                >
+                  <div
+                    v-for="(tl, ti) in m.tools"
+                    :key="ti"
+                    class="tool-item"
+                  >
                     <span class="tool-name">{{ toolLabel(tl.name) }}</span>
-                    <span v-if="tl.detail" class="tool-detail">{{ tl.detail }}</span>
+                    <span
+                      v-if="tl.detail"
+                      class="tool-detail"
+                    >{{ tl.detail }}</span>
                   </div>
                 </div>
               </div>
-              <div class="bubble md" :class="{ err: m.error }">
-                <div v-if="m.role === 'ai' && m.streaming && !m.raw" class="t-typing">···</div>
+              <div
+                class="bubble md"
+                :class="{ err: m.error }"
+              >
+                <div
+                  v-if="m.role === 'ai' && m.streaming && !m.raw"
+                  class="t-typing"
+                >
+                  ···
+                </div>
                 <template v-else>
-                  <div class="md-body" v-html="renderMd(m.raw, !m.streaming)" /><span v-if="m.streaming" class="caret" />
+                  <div
+                    class="md-body"
+                    v-html="renderMd(m.raw, !m.streaming)"
+                  /><span
+                    v-if="m.streaming"
+                    class="caret"
+                  />
                 </template>
               </div>
               <div class="msg-foot">
                 <span class="msg-time">{{ fmtTime(m.at) }}</span>
-                <button v-if="m.role === 'ai' && !m.streaming && m.raw" class="msg-copy" title="复制" @click="copyMsg(m)">复制</button>
+                <button
+                  v-if="m.role === 'ai' && !m.streaming && m.raw"
+                  class="msg-copy"
+                  title="复制"
+                  @click="copyMsg(m)"
+                >
+                  复制
+                </button>
               </div>
             </div>
           </div>
         </div>
         <!-- 上下文条：明示 AI 正贴着哪个模块作答 + 清空 -->
-        <div v-if="!isEmptyChat" class="chat-ctx">
-          <span class="ctx-chip"><span class="ctx-live" :class="{ on: chatBusy }" />贴合「{{ crumbName }}」作答</span>
-          <button class="ctx-clear" @click="clearChat">清空对话</button>
+        <div
+          v-if="!isEmptyChat"
+          class="chat-ctx"
+        >
+          <span class="ctx-chip"><span
+            class="ctx-live"
+            :class="{ on: chatBusy }"
+          />贴合「{{ crumbName }}」作答</span>
+          <button
+            class="ctx-clear"
+            @click="clearChat"
+          >
+            清空对话
+          </button>
         </div>
-        <div class="chat-input" :class="{ busy: chatBusy }">
+        <div
+          class="chat-input"
+          :class="{ busy: chatBusy }"
+        >
           <textarea
             v-model="chatText"
             rows="1"
@@ -254,11 +383,42 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
             :disabled="chatBusy || store.busy.value"
             @keydown.enter.exact.prevent="sendChat()"
           />
-          <button v-if="chatBusy" class="chat-stop" title="停止生成" @click="stopChat()">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+          <button
+            v-if="chatBusy"
+            class="chat-stop"
+            title="停止生成"
+            @click="stopChat()"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="currentColor"
+            ><rect
+              x="6"
+              y="6"
+              width="12"
+              height="12"
+              rx="2"
+            /></svg>
           </button>
-          <button v-else class="chat-send" :disabled="!chatText.trim() || store.busy.value" title="发送" @click="sendChat()">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></svg>
+          <button
+            v-else
+            class="chat-send"
+            :disabled="!chatText.trim() || store.busy.value"
+            title="发送"
+            @click="sendChat()"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></svg>
           </button>
         </div>
       </template>
@@ -267,28 +427,68 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
       <template v-else>
         <div class="console-head">
           <span>实时日志 · AI 跑了什么</span>
-          <button class="lnk" @click="store.clearConsole()">清空</button>
+          <button
+            class="lnk"
+            @click="store.clearConsole()"
+          >
+            清空
+          </button>
         </div>
-        <div ref="consoleEl" class="console-log">
-          <div v-if="store.consoleLines.value.length === 0" class="empty">Agent 采集 / 归类 / 评判 / 对账时，Claude 的流式输出与工具调用在此实时显示。</div>
-          <div v-for="(l, i) in store.consoleLines.value" :key="i" class="cl" :class="`cl-${l.kind}`">
+        <div
+          ref="consoleEl"
+          class="console-log"
+        >
+          <div
+            v-if="store.consoleLines.value.length === 0"
+            class="empty"
+          >
+            Agent 采集 / 归类 / 评判 / 对账时，Claude 的流式输出与工具调用在此实时显示。
+          </div>
+          <div
+            v-for="(l, i) in store.consoleLines.value"
+            :key="i"
+            class="cl"
+            :class="`cl-${l.kind}`"
+          >
             <span class="clt">{{ fmtTime(l.at) }}</span><span class="clx">{{ l.text }}</span>
           </div>
         </div>
-        <div class="console-head">Agent 记录（{{ store.runs.value.length }}）</div>
+        <div class="console-head">
+          Agent 记录（{{ store.runs.value.length }}）
+        </div>
         <div class="runs">
-          <div v-if="recentRuns.length === 0" class="empty small">暂无 RUN 记录</div>
-          <div v-for="r in recentRuns" :key="r.id" class="run">
+          <div
+            v-if="recentRuns.length === 0"
+            class="empty small"
+          >
+            暂无 RUN 记录
+          </div>
+          <div
+            v-for="r in recentRuns"
+            :key="r.id"
+            class="run"
+          >
             <span class="run-kind">{{ r.kind }}</span>
             <div class="run-body">
-              <div class="run-sum">{{ r.resultSummary }}</div>
-              <div class="run-meta">{{ r.mod.toUpperCase() }} · {{ fmtTime(r.at) }} · {{ r.tools.length }} 工具</div>
+              <div class="run-sum">
+                {{ r.resultSummary }}
+              </div>
+              <div class="run-meta">
+                {{ r.mod.toUpperCase() }} · {{ fmtTime(r.at) }} · {{ r.tools.length }} 工具
+              </div>
             </div>
           </div>
         </div>
       </template>
     </aside>
-    <button v-show="dockCollapsed" class="dock-reopen" title="展开 AI 坞" @click="dockCollapsed = false">★</button>
+    <button
+      v-show="dockCollapsed"
+      class="dock-reopen"
+      title="展开 AI 坞"
+      @click="dockCollapsed = false"
+    >
+      ★
+    </button>
   </div>
 </template>
 
@@ -314,7 +514,7 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
 }
 .crumb { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .crumb .sep { color: var(--dim); }
-.crumb b { color: var(--text); font-weight: 700; font-size: 13.5px; }
+.crumb b { color: var(--text); font-weight: 700; font-size: 13.5px; letter-spacing: -0.01em; }
 .wh-status {
   margin-left: auto; display: flex; align-items: center; gap: 7px;
   font-size: 11.5px; color: var(--muted);
@@ -352,14 +552,19 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
   font-size: 12px; font-weight: 600; color: var(--muted);
   padding: 5px 10px; border-radius: 7px;
 }
-.dt-tabs button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }
+/* 选中 tab：玻璃小卡（描边走 inset 阴影，不改盒模型） */
+.dt-tabs button.on { background: var(--card-bg); color: var(--text); box-shadow: inset 0 0 0 1px var(--card-border), 0 1px 3px rgba(0, 0, 0, 0.06); }
 .tab-dot { display: inline-block; width: 6px; height: 6px; margin-left: 5px; vertical-align: middle; border-radius: 50%; background: var(--ok); animation: tpulse 1.1s ease-in-out infinite; }
 .dock-x { margin-left: auto; border: none; background: transparent; color: var(--muted); cursor: pointer; padding: 3px; display: flex; border-radius: 6px; }
 .dock-x:hover { background: var(--panel-hover); color: var(--text); }
+/* 贴边浮钮：真磨砂 chrome（悬浮件） */
 .dock-reopen {
   position: absolute; right: 0; top: 50%;
-  border: 1px solid var(--border); border-right: none;
-  background: var(--panel); color: var(--gold);
+  border: 1px solid var(--chrome-border); border-right: none;
+  background: var(--chrome-bg); color: var(--gold);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
+  box-shadow: var(--chrome-shadow);
   border-radius: 8px 0 0 8px; padding: 10px 6px; cursor: pointer;
 }
 
@@ -381,11 +586,12 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
 .hero-sub { font-size: 11.5px; color: var(--muted); line-height: 1.6; max-width: 240px; }
 .hero-chips { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; width: 100%; max-width: 260px; }
 .hero-chip {
-  border: 1px solid var(--border-soft); background: var(--panel);
+  border: 1px solid var(--card-border); background: var(--card-bg);
   color: var(--text-2); font-size: 12px; text-align: left;
   padding: 9px 12px; border-radius: 10px; cursor: pointer; transition: all 0.14s;
+  box-shadow: var(--card-shadow);
 }
-.hero-chip:hover { border-color: var(--primary); color: var(--text); background: var(--panel-hover); }
+.hero-chip:hover { border-color: var(--primary); color: var(--text); transform: translateY(-1px); box-shadow: var(--card-shadow-hover); }
 
 .chat-log { flex: 1; overflow-y: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 16px; }
 .msg { display: flex; gap: 8px; }
@@ -394,7 +600,7 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
   width: 24px; height: 24px; flex-shrink: 0; border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700;
-  background: var(--panel); color: var(--gold); border: 1px solid var(--border);
+  background: var(--card-bg); color: var(--gold); border: 1px solid var(--card-border);
 }
 .msg.me .av { background: var(--primary); color: #fff; border: none; }
 
@@ -425,9 +631,10 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
 
 .bubble {
   font-size: 12.5px; line-height: 1.64; color: var(--text-2);
-  background: var(--panel); border: 1px solid var(--border-soft);
+  background: var(--card-bg); border: 1px solid var(--card-border);
   padding: 9px 12px; border-radius: 12px; border-top-left-radius: 4px;
   word-break: break-word; overflow: hidden;
+  box-shadow: var(--card-shadow);
 }
 .msg.me .bubble { background: var(--primary-soft); color: var(--primary-deep); border: none; border-radius: 12px; border-top-right-radius: 4px; }
 .bubble.err { background: var(--vermilion-soft); border-color: transparent; color: var(--vermilion); }
@@ -484,15 +691,29 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
 .ctx-clear { border: none; background: transparent; color: var(--dim); font-size: 10.5px; cursor: pointer; padding: 0; }
 .ctx-clear:hover { color: var(--vermilion); }
 
+/* 输入浮岛：真磨砂 chrome，内容从玻璃下滑过 */
 .chat-input {
+  position: relative;
   display: flex; gap: 8px; align-items: flex-end;
   margin: 8px 12px 12px; padding: 8px 8px 8px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 14px; background: var(--panel);
+  border: 1px solid var(--chrome-border);
+  border-radius: 14px; background: var(--chrome-bg);
+  backdrop-filter: var(--chrome-blur);
+  -webkit-backdrop-filter: var(--chrome-blur);
   box-shadow: var(--glass-hi);
-  transition: border-color 0.15s;
+  transition: border-color 0.15s var(--ease, ease), box-shadow 0.15s var(--ease, ease);
 }
-.chat-input:focus-within { border-color: var(--primary); }
+/* 棱边折射环：跟随圆角的 1px 玻璃棱光 */
+.chat-input::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none; z-index: 3;
+}
+.chat-input:focus-within { border-color: var(--primary); box-shadow: var(--glass-hi), 0 0 0 3px var(--primary-soft); }
 .chat-input.busy { border-color: var(--border-soft); }
 .chat-input textarea {
   flex: 1; resize: none; border: none; background: transparent;
@@ -504,24 +725,26 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
 .chat-send, .chat-stop {
   flex: 0 0 auto; width: 32px; height: 32px; border: none; cursor: pointer;
   border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
-  transition: opacity 0.15s, transform 0.1s, filter 0.15s;
+  transition: opacity 0.15s, transform 0.12s var(--ease, ease), filter 0.15s;
 }
 .chat-send { background: linear-gradient(160deg, var(--primary), var(--primary-deep)); color: #fff; }
 .chat-send:hover:not(:disabled) { transform: translateY(-1px); }
+.chat-send:active:not(:disabled) { transform: translateY(0) scale(0.98); }
 .chat-send:disabled { opacity: 0.4; cursor: default; }
 .chat-stop { background: var(--vermilion-soft); color: var(--vermilion); }
 .chat-stop:hover { filter: brightness(0.95); }
 
 .console-head {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
   color: var(--muted); padding: 10px 14px 6px;
 }
 .lnk { border: none; background: transparent; color: var(--muted); font-size: 10.5px; cursor: pointer; text-transform: none; }
 .lnk:hover { color: var(--primary); }
 .console-log {
   flex: 1; min-height: 120px; overflow-y: auto; margin: 0 12px;
-  background: var(--panel); border: 1px solid var(--border-soft); border-radius: 9px;
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 9px;
+  box-shadow: var(--card-shadow);
   padding: 8px; font-family: var(--mono); font-size: 10.5px; line-height: 1.55;
 }
 .empty { color: var(--dim); font-family: var(--sans); font-size: 11.5px; padding: 6px; line-height: 1.6; }
@@ -534,8 +757,8 @@ const quickAsks = computed(() => QUICK_BY_MOD[String(view.value)] ?? QUICK_BY_MO
 .cl-error .clx { color: var(--vermilion); }
 .cl-info .clx { color: var(--gold); }
 .runs { max-height: 210px; overflow-y: auto; padding: 0 12px 14px; display: flex; flex-direction: column; gap: 6px; }
-.run { display: flex; gap: 8px; background: var(--panel); border: 1px solid var(--border-soft); border-radius: 8px; padding: 7px 9px; }
-.run-kind { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 5px; height: fit-content; background: var(--primary-soft); color: var(--primary-deep); text-transform: uppercase; }
+.run { display: flex; gap: 8px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 7px 9px; box-shadow: var(--card-shadow); }
+.run-kind { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 5px; height: fit-content; background: var(--primary-soft); color: var(--primary-deep); text-transform: uppercase; letter-spacing: 0.08em; }
 .run-sum { font-size: 11.5px; font-weight: 600; color: var(--text); }
 .run-meta { font-size: 9.5px; color: var(--dim); font-family: var(--mono); margin-top: 1px; }
 

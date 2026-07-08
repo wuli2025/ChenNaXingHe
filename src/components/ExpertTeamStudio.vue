@@ -90,23 +90,47 @@ function avatarUrl(id: string, icon: string): string {
 <template>
   <div class="studio">
     <div class="studio-head">
-      <span class="studio-title">🧭 专家团工作台</span>
-      <span v-if="activeTeam" class="studio-badge">{{ activeTeam.icon }} {{ activeTeam.name }}</span>
-      <span v-else-if="soloExpert" class="studio-badge">{{ soloExpert.icon }} {{ soloExpert.name }}</span>
-      <span v-else class="studio-empty-hint">智能匹配中</span>
+      <span class="studio-title">专家团工作台</span>
+      <span
+        v-if="activeTeam"
+        class="studio-badge"
+      >{{ activeTeam.icon }} {{ activeTeam.name }}</span>
+      <span
+        v-else-if="soloExpert"
+        class="studio-badge"
+      >{{ soloExpert.icon }} {{ soloExpert.name }}</span>
+      <span
+        v-else
+        class="studio-empty-hint"
+      >智能匹配中</span>
     </div>
 
-    <div v-if="loading" class="studio-loading">
+    <div
+      v-if="loading"
+      class="studio-loading"
+    >
       <span class="loading-dot" /><span class="loading-dot" /><span class="loading-dot" />
     </div>
 
-    <div v-else-if="!roster.length" class="studio-empty">
-      <div class="empty-icon">🧭</div>
-      <p class="empty-title">默认已启用「智能匹配专家团」</p>
-      <p class="empty-sub">直接说出你的需求即可——系统会自动召集最合适的专家。也可在「专家团」里手动入驻一支业务团。</p>
+    <div
+      v-else-if="!roster.length"
+      class="studio-empty"
+    >
+      <div class="empty-icon">
+        智能匹配
+      </div>
+      <p class="empty-title">
+        默认已启用「智能匹配专家团」
+      </p>
+      <p class="empty-sub">
+        直接说出你的需求即可——系统会自动召集最合适的专家。也可在「专家团」里手动入驻一支业务团。
+      </p>
     </div>
 
-    <div v-else class="team-board">
+    <div
+      v-else
+      class="team-board"
+    >
       <div
         v-for="(m, idx) in roster"
         :key="m.id"
@@ -114,28 +138,58 @@ function avatarUrl(id: string, icon: string): string {
         :style="{ '--tier-left': tierColor[m.costTier] }"
       >
         <div class="member-avatar-wrap">
-          <img :src="avatarUrl(m.id, m.icon)" :alt="m.name" class="member-avatar" />
-          <div v-if="activeTeam && idx === 0" class="orchestrator-badge">🧭</div>
+          <img
+            :src="avatarUrl(m.id, m.icon)"
+            :alt="m.name"
+            class="member-avatar"
+          >
+          <div
+            v-if="activeTeam && idx === 0"
+            class="orchestrator-badge"
+          >
+            领衔
+          </div>
         </div>
         <div class="member-info">
           <div class="member-name-row">
             <span class="member-name">{{ m.icon }} {{ m.name }}</span>
-            <span v-if="activeTeam && idx === 0" class="lead-tag">领衔</span>
-            <span class="member-tier" :style="{ color: tierColor[m.costTier], borderColor: tierColor[m.costTier] + '55' }">
+            <span
+              v-if="activeTeam && idx === 0"
+              class="lead-tag"
+            >领衔</span>
+            <span
+              class="member-tier"
+              :style="{ color: tierColor[m.costTier], borderColor: tierColor[m.costTier] + '55' }"
+            >
               {{ tierLabel[m.costTier] }}
             </span>
-            <span class="status-dot" :style="{ background: statusColor[statusOf(m.id)] }" :title="statusLabel[statusOf(m.id)]" />
+            <span
+              class="status-dot"
+              :style="{ background: statusColor[statusOf(m.id)] }"
+              :title="statusLabel[statusOf(m.id)]"
+            />
           </div>
-          <div class="member-role">{{ m.role }}</div>
+          <div class="member-role">
+            {{ m.role }}
+          </div>
           <div class="member-reason">
-            <span v-for="s in m.triggerSignals.slice(0, 4)" :key="s" class="reason-chip">{{ s }}</span>
-            <span v-if="m.complements" class="reason-comp">补「{{ m.complements }}」</span>
+            <span
+              v-for="s in m.triggerSignals.slice(0, 4)"
+              :key="s"
+              class="reason-chip"
+            >{{ s }}</span>
+            <span
+              v-if="m.complements"
+              class="reason-comp"
+            >补「{{ m.complements }}」</span>
           </div>
         </div>
       </div>
 
       <div class="orchestrate-note">
-        <div class="note-icon">💡</div>
+        <div class="note-icon">
+          提示
+        </div>
         <p>领衔者按情况临时组阵：简单任务单人直接干，确需分工且并行有收益时才多人协作。对话中可随时追加 / 换人。</p>
       </div>
     </div>
@@ -143,7 +197,23 @@ function avatarUrl(id: string, icon: string): string {
 </template>
 
 <style scoped>
-.studio { padding: 14px 16px; background: var(--panel, rgba(24, 24, 34, 0.66)); border-radius: 12px; border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); min-height: 140px; }
+/* 编队工作台：玻璃卡材质（token 四主题自适应） */
+.studio { position: relative; padding: 14px 16px; background: var(--card-bg); border-radius: 14px; border: 1px solid var(--card-border); box-shadow: var(--card-shadow); min-height: 140px; }
+/* v9：工作台主容器棱边折射环（仅主容器，成员小卡不加） */
+.studio::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--edge-refract);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
 .studio-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .studio-title { font-size: 14px; font-weight: 700; color: var(--ink, #e9e8ee); }
 .studio-badge { font-size: 12px; background: rgba(212, 176, 106, 0.15); border: 1px solid rgba(212, 176, 106, 0.3); color: var(--gold, #d4b06a); padding: 2px 10px; border-radius: 20px; }
@@ -161,14 +231,15 @@ function avatarUrl(id: string, icon: string): string {
 .empty-sub { font-size: 12px; color: var(--dim, #a7a6b4); line-height: 1.5; max-width: 280px; margin: 0; }
 
 .team-board { display: flex; flex-direction: column; gap: 10px; }
-.member-card { display: flex; gap: 12px; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line); border-left: 3px solid var(--tier-left, var(--line)); background: var(--panel2, rgba(32, 32, 46, 0.5)); position: relative; }
+/* 成员玻璃卡：保留左侧梯队色条 */
+.member-card { display: flex; gap: 12px; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--card-border); border-left: 3px solid var(--tier-left, var(--card-border)); background: var(--card-bg); box-shadow: var(--card-shadow); position: relative; }
 .member-avatar-wrap { position: relative; flex: 0 0 56px; }
 .member-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.1); }
 .orchestrator-badge { position: absolute; bottom: -2px; right: -2px; font-size: 14px; background: var(--panel, rgba(24, 24, 34, 0.9)); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(212, 176, 106, 0.4); }
 .member-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .member-name-row { display: flex; align-items: center; gap: 7px; }
 .member-name { font-size: 14px; font-weight: 700; color: var(--ink); }
-.lead-tag { font-size: 10px; color: var(--gold, #d4b06a); border: 1px solid rgba(212, 176, 106, 0.4); border-radius: 4px; padding: 0 5px; }
+.lead-tag { font-size: 10px; color: var(--gold, #d4b06a); border: 1px solid rgba(212, 176, 106, 0.4); border-radius: 4px; padding: 0 5px; letter-spacing: 0.08em; }
 .member-tier { font-size: 10px; padding: 0 6px; border-radius: 4px; border: 1px solid; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-left: auto; }
 .member-role { font-size: 12px; color: var(--dim); }

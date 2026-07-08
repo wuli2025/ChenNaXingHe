@@ -248,10 +248,20 @@ async function runLearn() {
           <span class="dim">采集/热键/注入/推理运行时为下一阶段，本页先把配置与防污染打磨好。</span>
         </p>
       </div>
-      <button class="btn" @click="app.setView('settings')">← 返回设置</button>
+      <button
+        class="btn"
+        @click="app.setView('settings')"
+      >
+        ← 返回设置
+      </button>
     </header>
 
-    <div v-if="loadErr" class="err-line">{{ loadErr }}</div>
+    <div
+      v-if="loadErr"
+      class="err-line"
+    >
+      {{ loadErr }}
+    </div>
 
     <template v-if="cfg">
       <!-- 启用实时语音输入 -->
@@ -265,11 +275,22 @@ async function runLearn() {
           </span>
         </div>
         <div class="row">
-          <button class="btn primary" :class="{ on: listenOn }" @click="toggleListen">
+          <button
+            class="btn primary"
+            :class="{ on: listenOn }"
+            @click="toggleListen"
+          >
             {{ listenOn ? "■ 停用语音输入" : "● 启用语音输入" }}
           </button>
-          <span v-if="listenOn" class="dim sm">已就绪 — 按住 {{ cfg.hotkey }} 说话</span>
-          <span v-if="listenErr" class="err-line" style="margin: 0">{{ listenErr }}</span>
+          <span
+            v-if="listenOn"
+            class="dim sm"
+          >已就绪 — 按住 {{ cfg.hotkey }} 说话</span>
+          <span
+            v-if="listenErr"
+            class="err-line"
+            style="margin: 0"
+          >{{ listenErr }}</span>
         </div>
         <div class="tierhint">
           Windows 桌面版已内置本地语音识别;首次使用前请在「设置 → 感官 API」
@@ -279,20 +300,35 @@ async function runLearn() {
 
       <!-- 激活方式 -->
       <section class="block">
-        <div class="b-head"><h2>激活方式</h2></div>
+        <div class="b-head">
+          <h2>激活方式</h2>
+        </div>
         <div class="row">
           <div class="seg">
-            <button :class="{ on: cfg.activation === 'hold' }" @click="setCfg({ activation: 'hold' })">
+            <button
+              :class="{ on: cfg.activation === 'hold' }"
+              @click="setCfg({ activation: 'hold' })"
+            >
               按住说
             </button>
-            <button :class="{ on: cfg.activation === 'free' }" @click="setCfg({ activation: 'free' })">
+            <button
+              :class="{ on: cfg.activation === 'free' }"
+              @click="setCfg({ activation: 'free' })"
+            >
               自由说
             </button>
           </div>
           <label class="fl">
             激活键
-            <select :value="cfg.hotkey" @change="setCfg({ hotkey: ($event.target as HTMLSelectElement).value })">
-              <option v-for="k in HOTKEYS" :key="k.id" :value="k.id">{{ k.name }}</option>
+            <select
+              :value="cfg.hotkey"
+              @change="setCfg({ hotkey: ($event.target as HTMLSelectElement).value })"
+            >
+              <option
+                v-for="k in HOTKEYS"
+                :key="k.id"
+                :value="k.id"
+              >{{ k.name }}</option>
             </select>
           </label>
           <span class="dim sm">Windows 右 Alt 可能 = AltGr，撞快捷键就改键</span>
@@ -301,16 +337,29 @@ async function runLearn() {
 
       <!-- 识别引擎 -->
       <section class="block">
-        <div class="b-head"><h2>识别引擎</h2></div>
+        <div class="b-head">
+          <h2>识别引擎</h2>
+        </div>
         <div class="row">
           <select
             class="wide"
             :value="cfg.engine"
             @change="setCfg({ engine: ($event.target as HTMLSelectElement).value })"
           >
-            <option v-for="e in ENGINES" :key="e.id" :value="e.id">{{ e.name }}</option>
+            <option
+              v-for="e in ENGINES"
+              :key="e.id"
+              :value="e.id"
+            >
+              {{ e.name }}
+            </option>
           </select>
-          <button class="btn sm" @click="app.setView('sense_api')">更多引擎（感官 API）›</button>
+          <button
+            class="btn sm"
+            @click="app.setView('sense_api')"
+          >
+            更多引擎（感官 API）›
+          </button>
         </div>
         <div class="row">
           <label class="sw">
@@ -318,7 +367,7 @@ async function runLearn() {
               type="checkbox"
               :checked="cfg.fluent_mode"
               @change="setCfg({ fluentMode: ($event.target as HTMLInputElement).checked })"
-            />
+            >
             流畅模式（真流式 Paraformer，首次开启需下载 ~250MB）
           </label>
           <label class="sw">
@@ -326,7 +375,7 @@ async function runLearn() {
               type="checkbox"
               :checked="cfg.polish"
               @change="setCfg({ polish: ($event.target as HTMLInputElement).checked })"
-            />
+            >
             说完 AI 润色（去语气词·补标点，默认关最快）
           </label>
         </div>
@@ -340,13 +389,22 @@ async function runLearn() {
         </div>
         <div class="row">
           <div class="seg">
-            <button :class="{ on: cfg.antipollute === 'lite' }" @click="setCfg({ antipollute: 'lite' })">
-              ⚡ 秒达（默认）
+            <button
+              :class="{ on: cfg.antipollute === 'lite' }"
+              @click="setCfg({ antipollute: 'lite' })"
+            >
+              秒达（默认）
             </button>
-            <button :class="{ on: cfg.antipollute === 'heavy' }" @click="setCfg({ antipollute: 'heavy' })">
-              🧠 重型
+            <button
+              :class="{ on: cfg.antipollute === 'heavy' }"
+              @click="setCfg({ antipollute: 'heavy' })"
+            >
+              重型
             </button>
-            <button :class="{ on: cfg.antipollute === 'off' }" @click="setCfg({ antipollute: 'off' })">
+            <button
+              :class="{ on: cfg.antipollute === 'off' }"
+              @click="setCfg({ antipollute: 'off' })"
+            >
               关闭
             </button>
           </div>
@@ -364,35 +422,69 @@ async function runLearn() {
         </div>
         <div class="tierhint">
           <template v-if="cfg.antipollute === 'lite'">
-            <b>⚡ 秒达</b>：热词偏置 + 拼音查表纠同音，<b>纯本地、无网络、~毫秒级</b>。治同音错（占错误大头）。
+            <b>秒达</b>：热词偏置 + 拼音查表纠同音，<b>纯本地、无网络、~毫秒级</b>。治同音错（占错误大头）。
           </template>
           <template v-else-if="cfg.antipollute === 'heavy'">
-            <b>🧠 重型</b>：秒达全部 + LLM 拼音/语义纠错（治语序/歧义）。
+            <b>重型</b>：秒达全部 + LLM 拼音/语义纠错（治语序/歧义）。
             <span class="warn">LLM 纠错待接入供应商坞，当前先跑秒达。</span>
           </template>
-          <template v-else><b>关闭</b>：识别结果原样上屏，不做任何纠正。</template>
+          <template v-else>
+            <b>关闭</b>：识别结果原样上屏，不做任何纠正。
+          </template>
         </div>
       </section>
 
       <!-- 防污染「测一下」 -->
       <section class="block">
-        <div class="b-head"><h2>测一下防污染</h2></div>
-        <textarea v-model="probeIn" class="ta" rows="2" placeholder="贴一段识别原文，看防污染怎么纠…"></textarea>
+        <div class="b-head">
+          <h2>测一下防污染</h2>
+        </div>
+        <textarea
+          v-model="probeIn"
+          class="ta"
+          rows="2"
+          placeholder="贴一段识别原文，看防污染怎么纠…"
+        />
         <div class="row">
-          <button class="btn primary sm" :disabled="probeBusy" @click="runProbe">
+          <button
+            class="btn primary sm"
+            :disabled="probeBusy"
+            @click="runProbe"
+          >
             {{ probeBusy ? "纠错中…" : "运行防污染" }}
           </button>
-          <span v-if="probeRes" class="dim sm">档位 {{ probeRes.tier }} · {{ probeRes.changes.length }} 处改动</span>
+          <span
+            v-if="probeRes"
+            class="dim sm"
+          >档位 {{ probeRes.tier }} · {{ probeRes.changes.length }} 处改动</span>
         </div>
-        <div v-if="probeRes" class="probe-out">
-          <div class="po-text">{{ probeRes.text }}</div>
-          <div v-if="probeRes.changes.length" class="po-changes">
-            <span v-for="(c, i) in probeRes.changes" :key="i" class="chg" :class="c.layer">
+        <div
+          v-if="probeRes"
+          class="probe-out"
+        >
+          <div class="po-text">
+            {{ probeRes.text }}
+          </div>
+          <div
+            v-if="probeRes.changes.length"
+            class="po-changes"
+          >
+            <span
+              v-for="(c, i) in probeRes.changes"
+              :key="i"
+              class="chg"
+              :class="c.layer"
+            >
               <s>{{ c.from }}</s> → <b>{{ c.to }}</b>
               <em>{{ c.layer === "exact" ? "精确" : "拼音" }}</em>
             </span>
           </div>
-          <div v-else class="dim sm">无改动（识别原文已干净，或没有命中词表）</div>
+          <div
+            v-else
+            class="dim sm"
+          >
+            无改动（识别原文已干净，或没有命中词表）
+          </div>
         </div>
       </section>
 
@@ -403,18 +495,48 @@ async function runLearn() {
           <span class="b-desc">选一个 16k 单声道 wav，跑本地 SenseVoice 识别 + 防污染（需以 voice-asr 构建并已下载模型）</span>
         </div>
         <div class="row">
-          <button class="btn primary sm" :disabled="asrBusy" @click="pickAndTranscribe">
+          <button
+            class="btn primary sm"
+            :disabled="asrBusy"
+            @click="pickAndTranscribe"
+          >
             {{ asrBusy ? "识别中…" : "选音频文件识别" }}
           </button>
-          <span v-if="asrErr" class="err-line" style="margin: 0">{{ asrErr }}</span>
+          <span
+            v-if="asrErr"
+            class="err-line"
+            style="margin: 0"
+          >{{ asrErr }}</span>
         </div>
-        <div v-if="asrRes" class="probe-out">
-          <div class="dim sm">原文（ASR）</div>
-          <div class="po-text">{{ asrRes.raw }}</div>
-          <div class="dim sm" style="margin-top: 8px">终稿（防污染后 · {{ asrRes.tier }} · {{ asrRes.ms }}ms）</div>
-          <div class="po-text">{{ asrRes.text }}</div>
-          <div v-if="asrRes.changes.length" class="po-changes">
-            <span v-for="(c, i) in asrRes.changes" :key="i" class="chg" :class="c.layer">
+        <div
+          v-if="asrRes"
+          class="probe-out"
+        >
+          <div class="dim sm">
+            原文（ASR）
+          </div>
+          <div class="po-text">
+            {{ asrRes.raw }}
+          </div>
+          <div
+            class="dim sm"
+            style="margin-top: 8px"
+          >
+            终稿（防污染后 · {{ asrRes.tier }} · {{ asrRes.ms }}ms）
+          </div>
+          <div class="po-text">
+            {{ asrRes.text }}
+          </div>
+          <div
+            v-if="asrRes.changes.length"
+            class="po-changes"
+          >
+            <span
+              v-for="(c, i) in asrRes.changes"
+              :key="i"
+              class="chg"
+              :class="c.layer"
+            >
               <s>{{ c.from }}</s> → <b>{{ c.to }}</b>
             </span>
           </div>
@@ -422,40 +544,91 @@ async function runLearn() {
       </section>
 
       <!-- 个人词表 · 热词 -->
-      <section class="block" v-if="lex">
+      <section
+        v-if="lex"
+        class="block"
+      >
         <div class="b-head">
           <h2>个人词表 · 热词</h2>
           <span class="b-desc">高频专名，识别时偏置 + 拼音模糊回填的目标（共 {{ lex.hotwords.length }} 个）</span>
         </div>
         <div class="row">
-          <input v-model="newHotword" class="in" placeholder="加热词，如 Polaris / 感官坞" @keydown.enter="addHotword" />
-          <button class="btn sm" @click="addHotword">加入</button>
+          <input
+            v-model="newHotword"
+            class="in"
+            placeholder="加热词，如 Polaris / 感官坞"
+            @keydown.enter="addHotword"
+          >
+          <button
+            class="btn sm"
+            @click="addHotword"
+          >
+            加入
+          </button>
         </div>
         <div class="chips">
-          <span v-for="w in lex.hotwords" :key="w" class="chip">
-            {{ w }}<button class="x" @click="removeHotword(w)">×</button>
+          <span
+            v-for="w in lex.hotwords"
+            :key="w"
+            class="chip"
+          >
+            {{ w }}<button
+              class="x"
+              @click="removeHotword(w)"
+            >×</button>
           </span>
         </div>
       </section>
 
       <!-- 个人词表 · 纠错映射 -->
-      <section class="block" v-if="lex">
+      <section
+        v-if="lex"
+        class="block"
+      >
         <div class="b-head">
           <h2>同音/歧义纠错</h2>
           <span class="b-desc">错词 → 规范词（精确替换，跨脚本也能纠：扣带式 → codex）</span>
         </div>
         <div class="row">
-          <input v-model="newWrong" class="in sm" placeholder="错词（扣带式）" />
+          <input
+            v-model="newWrong"
+            class="in sm"
+            placeholder="错词（扣带式）"
+          >
           <span class="arr">→</span>
-          <input v-model="newRight" class="in sm" placeholder="规范词（codex）" @keydown.enter="addCorrection" />
-          <button class="btn sm" @click="addCorrection">加入</button>
+          <input
+            v-model="newRight"
+            class="in sm"
+            placeholder="规范词（codex）"
+            @keydown.enter="addCorrection"
+          >
+          <button
+            class="btn sm"
+            @click="addCorrection"
+          >
+            加入
+          </button>
         </div>
         <div class="corr-list">
-          <div v-for="c in correctionList" :key="c.wrong" class="corr-row">
+          <div
+            v-for="c in correctionList"
+            :key="c.wrong"
+            class="corr-row"
+          >
             <span class="cw"><s>{{ c.wrong }}</s> → <b>{{ c.right }}</b></span>
-            <button class="x" @click="removeCorrection(c.wrong)">删除</button>
+            <button
+              class="x"
+              @click="removeCorrection(c.wrong)"
+            >
+              删除
+            </button>
           </div>
-          <div v-if="!correctionList.length" class="dim sm">暂无纠错映射</div>
+          <div
+            v-if="!correctionList.length"
+            class="dim sm"
+          >
+            暂无纠错映射
+          </div>
         </div>
       </section>
 
@@ -465,14 +638,30 @@ async function runLearn() {
           <h2>从历史学词</h2>
           <span class="b-desc">贴一段你常说/常写的文本，自动抽高频技术专名并入热词（自动化将搭回声层「每日做梦」周期跑）</span>
         </div>
-        <textarea v-model="learnIn" class="ta" rows="3" placeholder="贴对话/文档片段…"></textarea>
+        <textarea
+          v-model="learnIn"
+          class="ta"
+          rows="3"
+          placeholder="贴对话/文档片段…"
+        />
         <div class="row">
-          <button class="btn primary sm" :disabled="learnBusy || !learnIn.trim()" @click="runLearn">
+          <button
+            class="btn primary sm"
+            :disabled="learnBusy || !learnIn.trim()"
+            @click="runLearn"
+          >
             {{ learnBusy ? "学习中…" : "抽词并入库" }}
           </button>
         </div>
-        <div v-if="mined.length" class="chips">
-          <span v-for="m in mined" :key="m.term" class="chip mined">{{ m.term }}<em>{{ m.count }}</em></span>
+        <div
+          v-if="mined.length"
+          class="chips"
+        >
+          <span
+            v-for="m in mined"
+            :key="m.term"
+            class="chip mined"
+          >{{ m.term }}<em>{{ m.count }}</em></span>
         </div>
       </section>
     </template>
@@ -493,7 +682,9 @@ async function runLearn() {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--hairline);
+  /* v9：页头渐隐发丝线 */
+  border-bottom: 1px solid transparent;
+  border-image: var(--hairline-grad) 1;
   padding-bottom: 18px;
   margin-bottom: 22px;
 }
@@ -524,12 +715,13 @@ async function runLearn() {
   margin: 8px 0;
 }
 .block {
-  background: var(--panel);
-  border: 1px solid var(--hairline);
-  border-radius: 4px;
+  /* 液态玻璃：设置分块走 card 配方 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
   padding: 16px 18px;
   margin-bottom: 16px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--card-shadow);
 }
 .b-head {
   display: flex;
@@ -560,7 +752,7 @@ async function runLearn() {
 .seg {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 10px;
   overflow: hidden;
 }
 .seg button {
@@ -600,7 +792,7 @@ select,
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 10px;
   padding: 6px 9px;
   font-size: 12.5px;
   font-family: inherit;
@@ -624,23 +816,34 @@ select:focus,
 .ta:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 .arr {
   color: var(--dim);
 }
 .btn {
   padding: 7px 14px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  /* 液态玻璃：次级按钮走 card 配方 */
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
   color: var(--text-2);
   font-size: 12.5px;
   cursor: pointer;
   white-space: nowrap;
 }
 .btn:hover:not(:disabled) {
-  border-color: var(--ink);
   color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+/* v9：主 CTA 按压反馈（hover 有 translateY，按压归位再收缩） */
+.btn {
+  transition: transform 0.12s var(--ease, ease), box-shadow 0.12s var(--ease, ease),
+    color 0.12s var(--ease, ease);
+}
+.btn.primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 .btn:disabled {
   opacity: 0.5;
