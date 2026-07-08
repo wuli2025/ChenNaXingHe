@@ -820,6 +820,12 @@ function create() {
         log("error", `意向分类返回非法值「${data.replyClass}」，已忽略未回写`);
         return null;
       }
+      // AI 置信不足时不回写意向、不改 lead 状态（否则会以「AI 基本靠猜」的分类解锁「转供应商」流程）——与选品/选路/OCR 口径一致。
+      const conf = Number(data.conf);
+      if (!Number.isFinite(conf) || conf < 60) {
+        log("info", `意向分类置信不足（${data.conf}），需人工判读回信，暂不回写`);
+        return null;
+      }
       l.replyClass = cls;
       l.status = "replied";
       saveLeads();

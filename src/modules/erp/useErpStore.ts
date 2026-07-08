@@ -56,9 +56,10 @@ function uid(prefix: string): string {
  * 注：强制人工清单（付款/报税/退税）不受 params 影响，本函数只收窄其余边界的攻击面。
  */
 const PARAM_RANGES: Record<keyof ErpParams, [number, number]> = {
-  targetMarginPct: [0, 90], minMarginFloorPct: [0, 90], monthlyGmvTarget: [0, 1e9],
+  // 下界：作分母/除数的经营参数须 >0（monthlyGmvTarget 用于达成率、dailyActionCap 用于限频），否则 KPI 会 Infinity/NaN。
+  targetMarginPct: [0, 90], minMarginFloorPct: [0, 90], monthlyGmvTarget: [1, 1e9],
   priceAutoBandPct: [0, 50], fxRecalcThresholdPct: [0, 50],
-  autoAmountCapUsd: [0, 1e6], autoRefundCapUsd: [0, 1e6], dailyActionCap: [0, 1e5],
+  autoAmountCapUsd: [0, 1e6], autoRefundCapUsd: [0, 1e6], dailyActionCap: [1, 1e5],
   ocrAutoBookConf: [0, 100], ocrAutoBookCapCny: [0, 1e8],
   safetyStockDays: [0, 3650], leadTimeDays: [0, 3650], highValueShipmentUsd: [0, 1e6],
   platformFeePct: [0, 90], adCostPct: [0, 90], returnRatePct: [0, 90],
@@ -976,7 +977,7 @@ function create() {
   });
 
   const dashKpi = computed(() => [
-    { v: `$${(monthGmv.value / 1000).toFixed(1)}k`, l: "本月 GMV", d: `目标 $${(params.value.monthlyGmvTarget / 1000).toFixed(0)}k · 达成 ${Math.round((monthGmv.value / params.value.monthlyGmvTarget) * 100)}%`, up: true, acc: "gold", ico: EICONS.dash },
+    { v: `$${(monthGmv.value / 1000).toFixed(1)}k`, l: "本月 GMV", d: `目标 $${(params.value.monthlyGmvTarget / 1000).toFixed(0)}k · 达成 ${params.value.monthlyGmvTarget > 0 ? Math.round((monthGmv.value / params.value.monthlyGmvTarget) * 100) : 0}%`, up: true, acc: "gold", ico: EICONS.dash },
     { v: String(pendingCount.value), l: "待你审批", d: pendingHardGates.value.length ? `含 ${pendingHardGates.value.length} 项强制人工` : "无硬闸", up: pendingHardGates.value.length === 0, acc: pendingHardGates.value.length ? "red" : "green", ico: EICONS.review },
     { v: `${autonomyStats.value.autoRate}%`, l: "无人化率", d: `${autonomyStats.value.auto} 自动 / ${autonomyStats.value.human} 人工`, up: true, acc: "blue", ico: EICONS.params },
     { v: String(lowStock.value.length), l: "库存告警", d: lowStock.value[0] ? `${lowStock.value[0].name} 剩 ${lowStock.value[0].daysLeft} 天` : "库存健康", up: lowStock.value.length === 0, acc: "amber", ico: EICONS.purchase },
@@ -1240,11 +1241,13 @@ function create() {
         prompt: P.promptRoute(o.goods, o.country, weightG, battery, chTable), useKb: false, ...makeCallbacks(toolSink),
       });
       addRun({ mod: "e5", kind: "route", inputSummary: o.id, resultSummary: data.channel, tools: toolSink });
-      // AI 选路结果校验：渠道必须在渠道库中、运费必须为有限正数、带电件必须走可带电渠道；
-      // 任一不满足则不自动出单（否则会以负/零运费、空渠道或不存在渠道自动建运单并把订单误置 shipped）。
+      // AI 选路结果校验：渠道必须在渠道库中、运费必须为有限正数、带电件必须走可带电渠道、AI 置信须足够；
+      // 任一不满足则不自动出单（否则会以负/零运费、空渠道、不存在渠道或低置信自动建运单并把订单误置 shipped）。
       const chosen = channels.value.find((c) => c.name === String(data.channel || "").trim());
       const cost = Number(data.costCny);
-      const routeValid = !!chosen && Number.isFinite(cost) && cost > 0 && (!battery || chosen.battery);
+      const conf = Number(data.confidence);
+      const lowConf = !Number.isFinite(conf) || conf < 80; // 与调价/OCR 口径一致：AI 置信不足转人工确认
+      const routeValid = !!chosen && Number.isFinite(cost) && cost > 0 && (!battery || chosen.battery) && !lowConf;
       const d = decide("logistics-channel", { amountUsd: o.amountUsd });
       if (d.mode === "auto" && routeValid) {
         createShipment(o.id, o.goods, o.country, chosen!.name, weightG, cost, data.reason, "auto");
@@ -1252,7 +1255,7 @@ function create() {
         log("ok", runStatus.value);
         return "auto";
       }
-      if (!routeValid) log("info", `选路结果需人工核对（渠道「${data.channel}」/运费 ${data.costCny}/带电 ${battery}），转渠道核准闸`);
+      if (!routeValid) log("info", `选路结果需人工核对（渠道「${data.channel}」/运费 ${data.costCny}/带电 ${battery}/置信 ${data.confidence}），转渠道核准闸`);
       enqueueReview({
         mod: "e5", kind: "logistics-channel", title: `渠道核准 · 订单 ${o.id}`, refId: o.id, origin: "ai",
         summary: `拟走「${data.channel}」，运费 ¥${data.costCny}。${d.why}`,
