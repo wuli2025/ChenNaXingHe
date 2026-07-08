@@ -254,7 +254,9 @@ function create() {
     t.decidedBy = "老板";
     onReviewDecided(t, false);
     log("error", `已驳回：${t.title}${note ? " · " + note : ""}`);
-    if (!t.reran && RERUNNABLE.has(t.kind)) void rerunFromReject(t, note);
+    // 自动重跑触发新的 AI run：若已有 AI 动作在跑则不并发启动（避免 runStatus/console 交错与并发回写）；
+    // 用户可在当前动作结束后手动重跑。UI 也会在 busy 时禁用驳回按钮（纵深）。
+    if (!t.reran && RERUNNABLE.has(t.kind) && !busy.value) void rerunFromReject(t, note);
   }
   function resetReview(id: string) {
     const t = reviewTasks.value.find((x) => x.id === id);
@@ -1024,7 +1026,11 @@ function create() {
     filings.value = lsLoad(ELS.filings, seed.seedFilings());
     params.value = sanitizeParams(lsLoad<Partial<ErpParams>>(ELS.params, {}));
     paramLog.value = lsLoad(ELS.paramLog, []);
-    reviewTasks.value = lsLoad(ELS.reviews, []);
+    // 旧版本 localStorage 的审批卡可能缺 facts/payload（schema 演进）——组件会 facts.length 崩。
+    // 载入即规范化：数组兜底 + 每条卡片补齐 facts:[]，避免升级后一读即崩。
+    reviewTasks.value = (Array.isArray(lsLoad(ELS.reviews, [])) ? lsLoad<ReviewTask[]>(ELS.reviews, []) : []).map((t) => ({
+      ...t, facts: Array.isArray(t?.facts) ? t.facts : [], payload: t?.payload ?? {},
+    }));
     runs.value = lsLoad(ELS.runs, []);
     executedActions.value = lsLoad(ELS.executed, []);
     if (!lsLoad<boolean>(ELS.seeded, false)) {
@@ -1353,7 +1359,9 @@ function create() {
       const doc = intakeDoc({
         type: data.type, party, no, date,
         amount, currency: currency as "CNY" | "USD" | "EUR",
-        taxAmount: data.taxAmount !== undefined && Number.isFinite(Number(data.taxAmount)) && Number(data.taxAmount) >= 0 ? Number(data.taxAmount) : undefined,
+        // 税额只对增值税发票且为正数时保留：非发票（银行回单/物流账单等）按 prompt 示例可能返回 taxAmount:0，
+        // 保存后台账会显示「税额 ¥0」而非「—」，语义错。仅 vat-invoice 且 >0 才记。
+        taxAmount: data.type === "vat-invoice" && Number.isFinite(Number(data.taxAmount)) && Number(data.taxAmount) > 0 ? Number(data.taxAmount) : undefined,
         conf: Number(data.conf) || 0,
         // lowFields 必须规范化为数组：AI 可能返回字符串（如 "金额"），落库后 intakeDoc 组卡时 .join() 会抛错，
         // 且 doc 已 unshift 导致「僵尸票据」（已落库、未入账、无审批卡）。类型标注是 string[]，但运行时不可信。

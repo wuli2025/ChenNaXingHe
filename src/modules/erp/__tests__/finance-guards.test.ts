@@ -137,7 +137,7 @@ describe("财税守卫 · 税务检查", () => {
     expect(store.docs.value.length).toBe(docsBefore);
   });
 
-  it("OCR 识别 taxAmount 为 0 时保留 0 而非丢成 undefined", async () => {
+  it("非增值税发票（收据）的 taxAmount:0 不保存为 0（应为无税额 undefined）", async () => {
     const store = await freshStore();
     h.runJsonResult.value = {
       type: "receipt", party: "零税额对手方", no: "TA-000", date: "2026-07-01",
@@ -145,7 +145,17 @@ describe("财税守卫 · 税务检查", () => {
     };
     const doc = await store.runOcr("零税额小票文本");
     expect(doc).toBeTruthy();
-    expect(doc!.taxAmount).toBe(0);
+    expect(doc!.taxAmount).toBeUndefined(); // 非发票不应显示「税额 ¥0」
+  });
+
+  it("增值税发票的正税额正常保留", async () => {
+    const store = await freshStore();
+    h.runJsonResult.value = {
+      type: "vat-invoice", party: "有税额供应商", no: "VAT-TA-1", date: "2026-07-01",
+      amount: 1130, currency: "CNY", taxAmount: 130, conf: 99, lowFields: [], suggestBundle: "",
+    };
+    const doc = await store.runOcr("增值税发票文本");
+    expect(doc!.taxAmount).toBe(130);
   });
 
   it("非就绪申报：不入提交闸，批准回写也拒绝置 submitted", async () => {
@@ -737,6 +747,30 @@ describe("财税守卫 · 第五轮（codex 终审：深度纵深）", () => {
     expect(store.reviewTasks.value.some((t) => t.kind === "ocr-book" && t.refId === doc!.id)).toBe(true);
   });
 
+  it("载入：localStorage 投毒 monthlyGmvTarget=0 被拒回退默认（防 Infinity 达成率）", async () => {
+    vi.resetModules();
+    localStorage.clear();
+    localStorage.setItem("cnxh.erp.params.v1", JSON.stringify({ monthlyGmvTarget: 0, dailyActionCap: 0 }));
+    const mod = await import("../useErpStore");
+    const store = mod.useErpStore();
+    expect(store.params.value.monthlyGmvTarget).toBe(60000); // 越界回退默认
+    expect(store.params.value.dailyActionCap).toBe(60);
+    expect(store.dashKpi.value.every((k) => !/Infinity|NaN/.test(String(k.d)))).toBe(true);
+  });
+
+  it("载入：旧 schema 审批卡缺 facts 时补空数组（不一读即崩）", async () => {
+    vi.resetModules();
+    localStorage.clear();
+    localStorage.setItem("cnxh.erp.seeded.v1", JSON.stringify(true));
+    localStorage.setItem("cnxh.erp.reviews.v1", JSON.stringify([
+      { id: "rv-old", mod: "e7", kind: "ocr-book", status: "pending", title: "旧卡", summary: "无 facts 字段", risk: "normal", createdAt: 1 },
+    ]));
+    const mod = await import("../useErpStore");
+    const store = mod.useErpStore();
+    const card = store.reviewTasks.value.find((t) => t.id === "rv-old")!;
+    expect(Array.isArray(card.facts)).toBe(true); // 补齐，组件 facts.length 不崩
+  });
+
   it("参数：百分比参数 ≥100% 或使可变成本+利润≥100% 被拒（防 Infinity 保本价）", async () => {
     const store = await freshStore();
     expect(store.setParam("platformFeePct", 95)).toBe("invalid");
@@ -767,6 +801,25 @@ describe("财税守卫 · 第五轮（codex 终审：深度纵深）", () => {
     store.approveReview(t.id);
     expect(store.params.value.minMarginFloorPct).toBe(before);
     expect(t.status).not.toBe("approved");
+  });
+
+  it("选路：AI 置信不足（<80）时不自动出单，转人工渠道闸", async () => {
+    const store = await freshStore();
+    const o = store.orders.value.find((x) => x.id === "305-882")!; // 低值 pending 单
+    const shipBefore = store.shipments.value.length;
+    h.runJsonResult.value = { channel: "4PX 联邮通标快", costCny: 26.3, reason: "低置信选路", confidence: 5 };
+    const res = await store.runRoute(o.id);
+    expect(res).not.toBe("auto"); // 低置信不自动出单
+    expect(store.shipments.value.length).toBe(shipBefore);
+  });
+
+  it("选路：AI 高置信（≥80）+ 合法渠道时自动出单", async () => {
+    const store = await freshStore();
+    const o = store.orders.value.find((x) => x.id === "305-882")!;
+    h.runJsonResult.value = { channel: "4PX 联邮通标快", costCny: 26.3, reason: "高置信选路", confidence: 92 };
+    const res = await store.runRoute(o.id);
+    expect(res).toBe("auto");
+    expect(o.status).toBe("shipped");
   });
 
   it("出单幂等：订单已有运单时不重复出单", async () => {

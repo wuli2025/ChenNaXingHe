@@ -345,6 +345,24 @@ describe("外贸 OS store · 财务/审批纵深守卫（codex 终审）", () =>
     expect(dec.status).not.toBe("released"); // 缺 HS 不得放行
   });
 
+  it("M2 回信意向：AI 置信不足（<60）时不回写意向、不改 lead 状态", async () => {
+    const lead = store.leads.value.find((l: any) => l.id === "L-2202")!;
+    const statusBefore = lead.status;
+    h.runJsonResult.value = { replyClass: "sample", reason: "拿不准", conf: 10 };
+    const res = await store.runReplyClass(lead.id, "maybe interested?");
+    expect(res).toBeNull();
+    expect(lead.replyClass).toBeNull(); // 未写入低置信意向
+    expect(lead.status).toBe(statusBefore); // 未解锁转化
+  });
+
+  it("M2 回信意向：AI 高置信时正常回写", async () => {
+    const lead = store.leads.value.find((l: any) => l.id === "L-2202")!;
+    h.runJsonResult.value = { replyClass: "sample", reason: "明确索样", conf: 88 };
+    const res = await store.runReplyClass(lead.id, "please send samples");
+    expect(res).toBe("sample");
+    expect(lead.replyClass).toBe("sample");
+  });
+
   it("M4 HS 归类：AI 返回非法 HS（abc）时拒绝、不覆盖、返回 false", async () => {
     const dec = store.declarations.value[0];
     const originHs = dec.lines[0].hs;

@@ -614,8 +614,15 @@ function create() {
 
   /* ══════════ 初始化 ══════════ */
   function load() {
-    leads.value = lsLoad(LS.leads, seed.seedLeads());
-    declarations.value = lsLoad(LS.declarations, seed.seedDeclarations());
+    // 旧版本 localStorage 的记录可能缺嵌套数组字段（schema 演进）——组件 .thread/.checks/.lines 迭代会崩。
+    // 载入即规范化：数组兜底 + 每条记录补齐必需数组，避免升级后一读即崩。
+    const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+    leads.value = arr<SupplierLead>(lsLoad(LS.leads, seed.seedLeads())).map((l) => ({
+      ...l, thread: arr(l?.thread), profile: l?.profile ?? {}, confs: l?.confs ?? {},
+    }));
+    declarations.value = arr<CustomsDeclaration>(lsLoad(LS.declarations, seed.seedDeclarations())).map((d) => ({
+      ...d, checks: arr(d?.checks), lines: arr(d?.lines),
+    }));
     customsFlow.value = lsLoad(LS.customsFlow, seed.seedCustomsFlow());
     shipments.value = lsLoad(LS.shipments, seed.seedShipments());
     suppliers.value = lsLoad(LS.suppliers, seed.seedSuppliers());

@@ -23,7 +23,7 @@ WORKDIR /app/src-tauri
 COPY src-tauri ./
 # 主 Cargo.toml 的 [[bin]] polaris-server 因桌面 bundler 问题保持注释
 # （见 Cargo.toml 内 v1.0.1 说明），仅在镜像内追加后编译。
-RUN printf '\n[[bin]]\nname = "polaris-server"\npath = "src/bin/polaris-server.rs"\n' >> Cargo.toml
+RUN printf '\n[[bin]]\nname = "polaris-server"\npath = "server-bin/polaris-server.rs"\n' >> Cargo.toml
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/src-tauri/target \
     cargo build --release --locked --bin polaris-server \

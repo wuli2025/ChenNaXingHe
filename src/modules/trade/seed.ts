@@ -173,7 +173,7 @@ export function seedStock(): StockLot[] {
   return [
     { sku: "SKU-SHRZ-21", name: "Shiraz 2021", batch: "B2405-A", qty: 3120, expiry: "2027-06", fefo: 1, landed: 24.6 },
     { sku: "SKU-CAB-22", name: "Cabernet 2022", batch: "B2404-C", qty: 2860, expiry: "2028-03", fefo: 2, landed: 25.1 },
-    { sku: "SKU-CHRD-23", name: "Chardonnay 2023", batch: "B2403-B", qty: 640, expiry: "2025-11", fefo: 0, landed: 22.9 },
+    { sku: "SKU-CHRD-23", name: "Chardonnay 2023", batch: "B2403-B", qty: 640, expiry: "2026-12", fefo: 0, landed: 22.9 },
     { sku: "SKU-SPRK-22", name: "Sparkling 2022", batch: "B2402-A", qty: 1180, expiry: "2026-08", fefo: 3, landed: 27.3 },
   ];
 }
@@ -181,7 +181,7 @@ export function seedStock(): StockLot[] {
 export function seedReplenish(): ReplenishSuggestion[] {
   return [
     { sku: "SKU-SHRZ-21", name: "Shiraz 2021", qty: 3600, by: "07-20 前下单", reason: "近 30 天日均销 118 瓶，在途 1 柜，交期 45 天，安全库存告警" },
-    { sku: "SKU-CHRD-23", name: "Chardonnay 2023", qty: 2400, by: "本周", reason: "效期 2025-11 临期风险 + 现货仅 640，需以销定采" },
+    { sku: "SKU-CHRD-23", name: "Chardonnay 2023", qty: 2400, by: "本周", reason: "效期 2026-12 临期风险 + 现货仅 640，需以销定采" },
   ];
 }
 

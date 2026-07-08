@@ -224,8 +224,8 @@ const stats = computed(() => store.autonomyStats.value);
                   </button>
                   <button
                     class="t-btn sm rej"
-                    :disabled="!note.trim()"
-                    :title="note.trim() ? '驳回并让 AI 按批注重跑' : '驳回必须填一句理由'"
+                    :disabled="!note.trim() || store.busy.value"
+                    :title="store.busy.value ? 'AI 正在运行，请稍候再驳回（避免并发重跑）' : note.trim() ? '驳回并让 AI 按批注重跑' : '驳回必须填一句理由'"
                     @click="reject(t)"
                   >
                     驳回

@@ -177,12 +177,12 @@ window.TRADE = (function () {
   const stock = [
     { sku: "SKU-SHRZ-21", name: "Shiraz 2021", batch: "B2405-A", qty: 3120, expiry: "2027-06", fefo: 1, landed: 24.6 },
     { sku: "SKU-CAB-22", name: "Cabernet 2022", batch: "B2404-C", qty: 2860, expiry: "2028-03", fefo: 2, landed: 25.1 },
-    { sku: "SKU-CHRD-23", name: "Chardonnay 2023", batch: "B2403-B", qty: 640, expiry: "2025-11", fefo: 0, landed: 22.9 },
+    { sku: "SKU-CHRD-23", name: "Chardonnay 2023", batch: "B2403-B", qty: 640, expiry: "2026-12", fefo: 0, landed: 22.9 },
     { sku: "SKU-SPRK-22", name: "Sparkling 2022", batch: "B2402-A", qty: 1180, expiry: "2026-08", fefo: 3, landed: 27.3 },
   ];
   const replenish = [
     { sku: "SKU-SHRZ-21", name: "Shiraz 2021", qty: 3600, by: "07-20 前下单", reason: "近 30 天日均销 118 瓶，在途 1 柜，交期 45 天，安全库存告警" },
-    { sku: "SKU-CHRD-23", name: "Chardonnay 2023", qty: 2400, by: "本周", reason: "效期 2025-11 临期风险 + 现货仅 640，需以销定采" },
+    { sku: "SKU-CHRD-23", name: "Chardonnay 2023", qty: 2400, by: "本周", reason: "效期 2026-12 临期风险 + 现货仅 640，需以销定采" },
   ];
 
   /* ── 客户与分销（M7） ── */
@@ -236,7 +236,7 @@ window.TRADE = (function () {
     { v: "312", l: "在库 SKU", d: "本月 +18", up: true, acc: "gold", ico: I.warehouse },
     { v: "4", l: "在途货柜", d: "0617 到港清关中", acc: "blue", ico: I.logistics },
     { v: "3", l: "待报关", d: "1 柜有硬差异", up: false, acc: "amber", ico: I.customs },
-    { v: "2", l: "临期批次", d: "Chardonnay 2025-11", up: false, acc: "red", ico: I.warehouse },
+    { v: "2", l: "临期批次", d: "Chardonnay 2026-12", up: false, acc: "red", ico: I.warehouse },
     { v: "$1.14M", l: "本月分销额", d: "环比 +12%", up: true, acc: "green", ico: I.customer },
     { v: "$0.14M", l: "未达账项", d: "4 笔待匹配", acc: "purple", ico: I.finance },
   ];
@@ -253,7 +253,7 @@ window.TRADE = (function () {
   const briefing = [
     { k: "昨日完成", items: ["货柜 0617 完成三单校验（1 软差异待确认）", "Viña Aurora 回信索样，已归类为『索样』意向", "SO-3312 已发货 1,200 瓶给 Dan Murphy's"] },
     { k: "今日待办", items: ["★ 确认 0617 报关草稿并导出交报关行（人工闸1）", "★ 处理 0625 报关：发票金额硬差异 + 缺 HS 归类", "回复 Kanonkop 建联跟进 / 安排 Viña Aurora 样品"] },
-    { k: "风险预警", items: ["0625 缺英文背标 → 合规中心拦发货", "Chardonnay 2023 批次 2025-11 临期，现货仅 640", "报关行费 BRK-0621 $420 未达账，需人工匹配"] },
+    { k: "风险预警", items: ["0625 缺英文背标 → 合规中心拦发货", "Chardonnay 2023 批次 2026-12 临期，现货仅 640", "报关行费 BRK-0621 $420 未达账，需人工匹配"] },
   ];
 
   return {

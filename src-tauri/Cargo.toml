@@ -15,10 +15,6 @@ authors = ["winner3388"]
 edition = "2021"
 # 有两个 bin(polaris-app 桌面 / polaris-server Docker)，`cargo run`(tauri dev) 默认跑桌面壳
 default-run = "polaris-app"
-# 禁用 src/bin/*.rs 自动发现：src/bin/polaris-server.rs 若被 cargo 自动当成 bin,
-# tauri bundler 会把它一起打进桌面安装包(见下方 [[bin]] 注释)。Docker 构建由
-# Dockerfile 追加显式 [[bin]] polaris-server 段编译,不受此开关影响。
-autobins = false
 
 [lib]
 name = "polaris_app_lib"
@@ -161,9 +157,13 @@ local-embed = ["dep:fastembed"]
 # #[cfg(feature="server")] 门控,desktop 默认特性下 main 函数不存在),会
 # 报 does not exist。把整块 [[bin]] 注释掉 → bundler 完全看不到它,直接
 # 出包。Docker 真服务端等 v1.0.2 走 workspace 拆分再补(本版无 docker 镜像)。
+# 源文件刻意放在主包 src/ 之外(server-bin/),避免 cargo autobins 把它当 bin
+# 自动发现后被 tauri bundler 连坐打进桌面安装包(1.8.0 实测:放 src/bin/ 会让
+# bundler 找 polaris-server 二进制而报 os error 2)。Docker 由 Dockerfile 追加
+# 显式 [[bin]](path 指向 server-bin/polaris-server.rs)编译。
 # [[bin]]
 # name = "polaris-server"
-# path = "src/bin/polaris-server.rs"
+# path = "server-bin/polaris-server.rs"
 
 # 桌面二进制保持默认（main.rs）。
 [[bin]]
